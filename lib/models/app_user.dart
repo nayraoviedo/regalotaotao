@@ -8,6 +8,7 @@ class AppUser {
     this.coupleId,
     this.photoUrl,
     this.email,
+    this.gatito,
   });
 
   final String uid;
@@ -23,6 +24,9 @@ class AppUser {
   final String? photoUrl;
   final String? email;
 
+  /// Qué gatito eligió ser (`Gatito.id`). `null` si todavía no eligió.
+  final String? gatito;
+
   String get initial =>
       name.isEmpty ? '?' : String.fromCharCode(name.runes.first).toUpperCase();
 
@@ -35,6 +39,7 @@ class AppUser {
       coupleId: d['coupleId'] as String?,
       photoUrl: d['photoUrl'] as String?,
       email: d['email'] as String?,
+      gatito: d['gatito'] as String?,
     );
   }
 }

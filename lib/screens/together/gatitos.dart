@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../models/app_user.dart';
+
 /// Los dos gatitos que se sientan sobre las fotos de perfil.
 ///
 /// Para usar tus propios dibujos, sube estos PNG con fondo transparente
@@ -9,12 +11,64 @@ import 'package:material_ui/material_ui.dart';
 ///   - `assets/images/gatito_naranja.png`
 ///   - `assets/images/gatito_negro.png`
 /// Mientras no existan, se dibuja un gatito provisional.
+///
+/// Cada persona elige en su perfil qué gatito es (se guarda como `gatito`
+/// en `users/{uid}` con el [id]). Para cambiar el color del segundo gatito,
+/// basta con cambiar aquí su [nombre], sus colores provisionales y subir su
+/// PNG; el [id] puede quedarse igual para no perder lo que ya eligieron.
 enum Gatito {
-  naranja('assets/images/gatito_naranja.png'),
-  negro('assets/images/gatito_negro.png');
+  naranja(
+    id: 'naranja',
+    nombre: 'Naranja',
+    asset: 'assets/images/gatito_naranja.png',
+    pelo: Color(0xFFF2A65A),
+    claro: Color(0xFFFFE3C4),
+  ),
+  negro(
+    id: 'negro',
+    nombre: 'Negro',
+    asset: 'assets/images/gatito_negro.png',
+    pelo: Color(0xFF2F2C36),
+    claro: Color(0xFF4A4655),
+  );
 
-  const Gatito(this.asset);
+  const Gatito({
+    required this.id,
+    required this.nombre,
+    required this.asset,
+    required this.pelo,
+    required this.claro,
+  });
+
+  /// Lo que se guarda en Firestore.
+  final String id;
+
+  /// Cómo se muestra en el perfil ("Gatito naranja").
+  final String nombre;
   final String asset;
+
+  /// Colores del gatito provisional (mientras no esté el PNG).
+  final Color pelo;
+  final Color claro;
+
+  Gatito get otro => this == naranja ? negro : naranja;
+
+  static Gatito? deId(String? id) {
+    for (final g in values) {
+      if (g.id == id) return g;
+    }
+    return null;
+  }
+
+  /// Qué gatito es cada uno: `(el mío, el de mi pareja)`.
+  ///
+  /// Si elegí uno, ese es el mío. Si no, me toca el que no eligió mi pareja,
+  /// y si ninguno eligió, yo soy el naranja. La pareja siempre es el otro.
+  static (Gatito, Gatito) dePareja(AppUser? yo, AppUser? pareja) {
+    final mio =
+        deId(yo?.gatito) ?? deId(pareja?.gatito)?.otro ?? Gatito.naranja;
+    return (mio, mio.otro);
+  }
 }
 
 class GatitoImagen extends StatelessWidget {
@@ -49,10 +103,8 @@ class _GatitoProvisional extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width;
-    final pelo = Paint()
-      ..color = _negro ? const Color(0xFF2F2C36) : const Color(0xFFF2A65A);
-    final claro = Paint()
-      ..color = _negro ? const Color(0xFF4A4655) : const Color(0xFFFFE3C4);
+    final pelo = Paint()..color = gatito.pelo;
+    final claro = Paint()..color = gatito.claro;
     final contorno = Paint()
       ..color = const Color(0xFF2B3A75).withValues(alpha: _negro ? 0.0 : 0.25)
       ..style = PaintingStyle.stroke
