@@ -131,6 +131,10 @@ service cloud.firestore {
           && request.resource.data.authorId == me();
         allow update, delete: if isMember(coupleId)
           && resource.data.authorId == me();
+        // Los dos pueden marcar los pendientes de una nota con lista.
+        allow update: if isMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['items']);
       }
 
       // Cartas "Ábrelo cuando…": cada uno escribe para su pareja. Quien la
