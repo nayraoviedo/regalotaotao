@@ -88,10 +88,11 @@ class TogetherService {
     required String from,
     required String to,
   }) async {
-    final ref = await Db.coupleSub(
-      coupleId,
-      'missYou',
-    ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
+    final ref = await Db.coupleSub(coupleId, 'missYou').add({
+      'from': from,
+      'to': to,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
     NotifyService.instance.send(NotifyKind.missYou, coupleId, ref.id);
   }
 }
