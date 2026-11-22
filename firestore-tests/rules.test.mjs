@@ -26,6 +26,7 @@ await ok('A nota privada', setDoc(doc(db('A'),'users/A/privateNotes/n1'),{author
 await no('B no lee nota privada de A', getDoc(doc(db('B'),'users/A/privateNotes/n1')));
 await ok('A nota con lista para los dos', setDoc(doc(db('A'),'couples/c1/notes/nl1'),{authorId:'A',text:'',items:[{t:'Pan',h:false}]}));
 await ok('B marca un pendiente de A', updateDoc(doc(db('B'),'couples/c1/notes/nl1'),{items:[{t:'Pan',h:true}]}));
+await ok('B quita un pendiente de A', updateDoc(doc(db('B'),'couples/c1/notes/nl1'),{items:[]}));
 await no('B no cambia el texto de la nota de A', updateDoc(doc(db('B'),'couples/c1/notes/nl1'),{text:'otro'}));
 await no('B no borra la nota de A', deleteDoc(doc(db('B'),'couples/c1/notes/nl1')));
 await no('C no marca pendientes', updateDoc(doc(db('C'),'couples/c1/notes/nl1'),{items:[]}));

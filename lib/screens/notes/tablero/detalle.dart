@@ -61,14 +61,20 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
     widget.onToggle?.call(items);
   }
 
+  void _quitar(int i) {
+    final items = [..._items!]..removeAt(i);
+    setState(() => _items = items);
+    widget.onToggle?.call(items);
+  }
+
   @override
   Widget build(BuildContext context) {
     final nota = _nota;
     final categoria = NotasStyle.categoria(nota.categoria);
     final forma = NotasStyle.forma(nota.forma);
     // Las formas redondas dejan poco espacio: si el texto es largo, se
-    // muestra completo debajo.
-    final largo = nota.text.length > 60 || (nota.items?.length ?? 0) > 4;
+    // muestra completo debajo. Las listas siempre, para poder quitar tareas.
+    final largo = nota.text.length > 60 || nota.items != null;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.autor),
@@ -117,19 +123,41 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
                     ? SelectableText(nota.text, style: NotasStyle.letra)
                     : Column(
                         children: [
-                          for (var i = 0; i < nota.items!.length; i++)
-                            CheckboxListTile(
-                              value: nota.items![i].hecho,
-                              onChanged: widget.onToggle == null
-                                  ? null
-                                  : (_) => _marcar(i),
-                              controlAffinity: ListTileControlAffinity.leading,
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                              title: Text(
-                                nota.items![i].texto,
-                                style: NotasStyle.letra,
+                          if (nota.items!.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                'Ya no quedan tareas en esta lista.',
+                                style: TextStyle(color: NotasStyle.gris),
                               ),
+                            ),
+                          for (var i = 0; i < nota.items!.length; i++)
+                            Row(
+                              key: ValueKey('item-$i-${nota.items![i].texto}'),
+                              children: [
+                                Checkbox(
+                                  value: nota.items![i].hecho,
+                                  onChanged: widget.onToggle == null
+                                      ? null
+                                      : (_) => _marcar(i),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    nota.items![i].texto,
+                                    style: NotasStyle.letra,
+                                  ),
+                                ),
+                                if (widget.onToggle != null)
+                                  IconButton(
+                                    tooltip: 'Quitar tarea',
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                    ),
+                                    color: NotasStyle.gris,
+                                    onPressed: () => _quitar(i),
+                                  ),
+                              ],
                             ),
                         ],
                       ),

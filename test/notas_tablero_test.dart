@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/note.dart';
+import 'package:taotao/screens/notes/tablero/detalle.dart';
 import 'package:taotao/screens/notes/tablero/editor.dart';
 import 'package:taotao/screens/notes/tablero/nota_vista.dart';
 import 'package:taotao/screens/notes/tablero/tablero.dart';
@@ -130,6 +131,29 @@ void main() {
     expect(guardada!.items!.single.texto, 'Pan');
     expect(guardada!.forma, 'estrella');
     expect(guardada!.categoria, 'ideas');
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('en la nota abierta se puede quitar una tarea', (tester) async {
+    List<ItemDeLista>? guardados;
+    await tester.binding.setSurfaceSize(const Size(420, 1400));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DetalleDeNota(
+          nota: _nota(
+            'l',
+            'otros',
+            items: const [ItemDeLista('Pan'), ItemDeLista('Leche')],
+          ),
+          autor: 'Tú',
+          onToggle: (items) async => guardados = items,
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Quitar tarea').first);
+    await tester.pump();
+    expect(guardados!.map((i) => i.texto), ['Leche']);
+    expect(find.text('Pan'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 }

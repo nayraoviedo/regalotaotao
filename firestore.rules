@@ -131,7 +131,7 @@ service cloud.firestore {
           && request.resource.data.authorId == me();
         allow update, delete: if isMember(coupleId)
           && resource.data.authorId == me();
-        // Los dos pueden marcar los pendientes de una nota con lista.
+        // Los dos pueden marcar o quitar los pendientes de una nota con lista.
         allow update: if isMember(coupleId)
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['items']);
