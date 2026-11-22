@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/pomodoro_task.dart';
 import '../models/reward.dart';
 import 'db.dart';
+import 'notify_service.dart';
 
 /// Premios de la pareja, lo que cada uno cumplió y las tareas del pomodoro.
 class RewardService {
@@ -74,11 +75,14 @@ class RewardService {
     String coupleId,
     String achievementId,
     Reward reward,
-  ) => _achievements(coupleId).doc(achievementId).update({
-    'rewardId': reward.id,
-    'rewardTitle': reward.title,
-    'rewardChosenAt': FieldValue.serverTimestamp(),
-  });
+  ) async {
+    await _achievements(coupleId).doc(achievementId).update({
+      'rewardId': reward.id,
+      'rewardTitle': reward.title,
+      'rewardChosenAt': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.reward, coupleId, achievementId);
+  }
 
   /// La pareja marca que ya entregó el premio.
   Future<void> markDelivered(String coupleId, String achievementId) =>
