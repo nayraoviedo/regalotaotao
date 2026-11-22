@@ -15,8 +15,9 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Reglas de seguridad (solo la pareja ve sus datos) | ✅ con pruebas |
 | Ánimo del día, visible para la pareja | ✅ (con emojis provisionales) |
 | Mindfulness: respiración guiada, sugerida solo si el ánimo es estrés, tristeza, ansiedad o enojo | ✅ |
-| Pomodoro solo | ✅ |
+| Pomodoro solo (enfoque y descanso, con tareas) | ✅ |
 | Pomodoro en pareja: uno invita y el otro acepta | ✅ |
+| Premios: al completar un pomodoro o una tarea eliges un premio de la lista de la pareja, y la otra persona lo ve y lo marca como entregado | ✅ |
 | Contador de días juntos y próximo aniversario | ✅ |
 | Notas compartidas + notas privadas que se pueden compartir | ✅ |
 | Pregunta del día (ves la respuesta de tu pareja después de responder) | ✅ |
@@ -62,7 +63,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
    flutter run
    ```
 
-### Notificaciones push ("Te extraño" e invitaciones de pomodoro)
+### Notificaciones push ("Te extraño", invitaciones de pomodoro y premios)
 
 Las notificaciones las envían las Cloud Functions de la carpeta `functions/`.
 Firebase pide el plan **Blaze** (pago por uso) para desplegar funciones; con
@@ -99,6 +100,16 @@ Guarda tus PNG (fondo transparente, cuadrados, idealmente 256×256) en
 Mientras un archivo no exista, la app muestra un emoji en su lugar. Para
 cambiar los nombres o agregar ánimos, edita `lib/models/mood.dart`.
 
+## El dibujo del pomodoro
+
+La ilustración de arriba de la pantalla de Pomodoro es
+`assets/images/pomodoro.png` (un tomatito provisional). Para usar tu propio
+dibujo, reemplaza ese archivo con el mismo nombre: PNG con fondo
+transparente, más ancho que alto (idealmente 900×560). La parte de abajo
+del dibujo queda un poco escondida detrás de la tarjeta del temporizador,
+así que deja el personaje más bien arriba y centrado. Los colores de esa
+pantalla están en `lib/screens/pomodoro/pomodoro_style.dart`.
+
 ## Cómo está organizado
 
 ```
@@ -119,11 +130,14 @@ firestore-tests/       pruebas de las reglas con el emulador
 ```
 users/{uid}                      nombre, código, coupleId, tokens de notificación
 users/{uid}/privateNotes/{id}    notas privadas (solo su dueño)
+users/{uid}/pomodoroTasks/{id}   tareas del pomodoro (solo su dueño)
 pairCodes/{código}               código → uid
 couples/{coupleId}               members (los dos uid), startDate
   moods/{uid}                    ánimo actual de cada uno
   notes/{id}                     notas compartidas
   pomodoros/{id}                 invitaciones y sesiones de pomodoro
+  rewards/{id}                   lista de premios (la editan los dos)
+  achievements/{id}              pomodoros y tareas cumplidas + premio elegido
   dailyAnswers/{aaaa-mm-dd}      respuestas a la pregunta del día
   bucketList/{id}                cosas por hacer juntos
   missYou/{id}                   "te extraño" (dispara la notificación)

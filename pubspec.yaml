@@ -63,6 +63,7 @@ flutter:
 
   # Dibujos del ánimo (PNG con fondo transparente).
   assets:
+    - assets/images/pomodoro.png
     - assets/moods/
 
   # To add assets to your application, add an assets section, like this:

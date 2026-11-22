@@ -1,5 +1,8 @@
 // Cloud Functions de Taotao: envían notificaciones push a la pareja.
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const {
+  onDocumentCreated,
+  onDocumentUpdated,
+} = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -52,5 +55,23 @@ exports.onPomodoroInvite = onDocumentCreated(
     const name = await nameOf(invitedBy);
     await notify(invitee, "⏱️ Pomodoro juntos",
       `${name} te invita a concentrarse ${minutes} min`);
+  },
+);
+
+// Premio elegido después de un pomodoro o una tarea: avisa a la pareja.
+exports.onRewardChosen = onDocumentUpdated(
+  "couples/{coupleId}/achievements/{id}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    if (!after.rewardTitle || before.rewardTitle === after.rewardTitle) return;
+    const couple = await db.doc(`couples/${event.params.coupleId}`).get();
+    const partner = (couple.get("members") || []).find((m) => m !== after.uid);
+    if (!partner) return;
+    const name = await nameOf(after.uid);
+    const what = after.kind === "tarea" ? "terminó una tarea" :
+      "completó un pomodoro";
+    await notify(partner, "🎁 Premio elegido",
+      `${name} ${what} y eligió: ${after.rewardTitle}`);
   },
 );
