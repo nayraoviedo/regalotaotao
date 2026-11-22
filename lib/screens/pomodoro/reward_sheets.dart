@@ -1,30 +1,42 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../models/app_user.dart';
 import '../../models/reward.dart';
 import '../../services/reward_service.dart';
 import '../../widgets/text_prompt.dart';
 import 'pomodoro_style.dart';
 
-/// Después de cumplir algo: felicita, deja elegir un premio y lo guarda en
-/// el logro para que la pareja lo vea.
+import 'reward_coupon.dart';
+
+export 'reward_coupon.dart' show showRewardCoupon;
+
+/// Después de cumplir algo: felicita, deja elegir UN premio de la lista de
+/// la pareja (que recién ahí se muestra) y al final muestra el cupón.
+/// En un pomodoro en pareja ([sessionId]) el cupón también muestra lo que
+/// escogió la otra persona.
 Future<void> celebrateAndChooseReward(
   BuildContext context, {
   required String coupleId,
-  required String uid,
+  required AppUser me,
+  required AppUser? partner,
+  required String partnerUid,
+  required String partnerName,
   required String achievementId,
   required String motivo,
+  String? sessionId,
 }) async {
   final reward = await pickReward(
     context,
     coupleId: coupleId,
-    uid: uid,
+    uid: me.uid,
+    partnerUid: partnerUid,
+    partnerName: partnerName,
     motivo: motivo,
   );
   if (reward == null) return;
-  String aviso;
+  String? aviso;
   try {
     await RewardService.instance.chooseReward(coupleId, achievementId, reward);
-    aviso = 'Elegiste "${reward.title}". Tu pareja ya lo puede ver 💛';
   } on RewardAlreadyChosen catch (e) {
     aviso = e.rewardTitle.isEmpty
         ? 'Ya elegiste un premio para esta sesión.'
@@ -32,14 +44,31 @@ Future<void> celebrateAndChooseReward(
               'Solo se puede uno por sesión.';
   }
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(aviso)));
+  if (aviso != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(aviso)));
+    return;
+  }
+  await showRewardCoupon(
+    context,
+    coupleId: coupleId,
+    me: me,
+    partner: partner,
+    partnerName: partnerName,
+    myAchievementId: achievementId,
+    partnerAchievementId: sessionId == null
+        ? null
+        : RewardService.sessionAchievementId(sessionId, partnerUid),
+  );
 }
 
-/// Hoja para elegir un premio de la lista de la pareja.
+/// Hoja para elegir un premio de la lista que armó la pareja. Es el único
+/// momento en que se ve esa lista.
 Future<Reward?> pickReward(
   BuildContext context, {
   required String coupleId,
   required String uid,
+  required String partnerUid,
+  required String partnerName,
   required String motivo,
 }) {
   final service = RewardService.instance;
@@ -56,7 +85,7 @@ Future<Reward?> pickReward(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
         child: StreamBuilder<List<Reward>>(
-          stream: service.watchRewards(coupleId),
+          stream: service.watchRewards(coupleId, createdBy: partnerUid),
           builder: (context, snap) {
             final rewards = snap.data ?? const <Reward>[];
             return Column(
@@ -80,7 +109,8 @@ Future<Reward?> pickReward(
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$motivo. Elige tu premio (solo uno por sesión):',
+                  '$motivo. Elige un premio de la lista de $partnerName '
+                  '(solo uno por sesión):',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: PomodoroStyle.gris),
                 ),
@@ -92,8 +122,8 @@ Future<Reward?> pickReward(
                   child: rewards.isEmpty
                       ? _Suggestions(
                           title:
-                              'Todavía no tienen premios. Toca uno para '
-                              'agregarlo y elegirlo:',
+                              '$partnerName todavía no puso premios en su '
+                              'lista. Toca una idea para elegirla:',
                           onTap: (title) async {
                             final r = await service.addReward(
                               coupleId,
@@ -170,7 +200,8 @@ Future<Reward?> pickReward(
   );
 }
 
-/// Lista de premios de la pareja: agregar, renombrar y borrar.
+/// Mi lista de premios para dar: agregar, renombrar y borrar. La pareja la
+/// ve recién cuando termina un pomodoro o una tarea.
 Future<void> editRewards(
   BuildContext context, {
   required String coupleId,
@@ -190,7 +221,7 @@ Future<void> editRewards(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
         child: StreamBuilder<List<Reward>>(
-          stream: service.watchRewards(coupleId),
+          stream: service.watchRewards(coupleId, createdBy: uid),
           builder: (context, snap) {
             final rewards = snap.data ?? const <Reward>[];
             final titles = rewards.map((r) => r.title.toLowerCase()).toSet();
@@ -206,7 +237,7 @@ Future<void> editRewards(
                 children: [
                   const _Grabber(),
                   Text(
-                    'Nuestros premios',
+                    'Mis premios para dar',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: PomodoroStyle.azul,
                       fontWeight: FontWeight.w800,
@@ -214,8 +245,9 @@ Future<void> editRewards(
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Los dos pueden editar esta lista. Al terminar un '
-                    'pomodoro o una tarea, eliges uno de aquí.',
+                    'Tu pareja ve esta lista recién cuando termina un '
+                    'pomodoro o una tarea, y escoge uno. Tú solo ves la tuya '
+                    'hasta que termines.',
                     style: TextStyle(color: PomodoroStyle.gris),
                   ),
                   const SizedBox(height: 12),

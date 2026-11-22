@@ -8,6 +8,7 @@ import '../../models/couple.dart';
 import '../../models/pomodoro_session.dart';
 import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
+import '../../services/focus/focus_lock.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
@@ -36,6 +37,12 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   /// Pomodoros en pareja que ya se contaron (para no dar dos premios).
   final _counted = <String>{};
+
+  /// Pantalla bloqueada (modo enfoque) para no salirse del pomodoro.
+  bool _locked = false;
+
+  /// Sesión juntos que está corriendo ahora (aceptada y sin terminar).
+  PomodoroSession? _jointActive;
 
   late final StreamSubscription<List<PomodoroTask>> _tasksSub;
   late final StreamSubscription<AppUser?> _partnerSub;
@@ -67,8 +74,98 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   void dispose() {
     _tasksSub.cancel();
     _partnerSub.cancel();
+    if (_locked) FocusLock.unlock();
     super.dispose();
   }
+
+  Future<void> _toggleLock() async {
+    if (_locked) {
+      await FocusLock.unlock();
+      if (mounted) setState(() => _locked = false);
+      return;
+    }
+    await FocusLock.lock();
+    if (!mounted) return;
+    setState(() => _locked = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          FocusLock.isAndroid
+              ? 'Pantalla bloqueada. Para salir, toca el candado.'
+              : 'Modo enfoque activado. Toca el candado para salir.',
+        ),
+      ),
+    );
+  }
+
+  /// Popup antes de salir de una sesión juntos. Si confirma, la sesión se
+  /// detiene para los dos y ya no da premio.
+  Future<bool> _confirmLeaveJoint() async {
+    final s = _jointActive;
+    if (s == null) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: PomodoroStyle.crema,
+        icon: const Icon(
+          Icons.favorite_border,
+          color: PomodoroStyle.azul,
+          size: 32,
+        ),
+        title: const Text('¿Salir de la sesión juntos?'),
+        content: Text(
+          'Si sales ahora, ya no contará como una sesión juntos con '
+          '$_partnerName y no podrás reclamar tu premio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Salir igual'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: PomodoroStyle.azul),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Seguir juntos'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    await PomodoroService.instance.cancel(_coupleId, s.id, by: widget.me.uid);
+    if (mounted) setState(() => _jointActive = null);
+    return true;
+  }
+
+  Future<void> _onBack() async {
+    if (_locked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La pantalla está bloqueada. Toca el candado para salir.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!await _confirmLeaveJoint()) return;
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _celebrate(
+    String achievementId,
+    String motivo, {
+    String? sessionId,
+  }) => celebrateAndChooseReward(
+    context,
+    coupleId: _coupleId,
+    me: widget.me,
+    partner: _partner,
+    partnerUid: _partnerUid,
+    partnerName: _partnerName,
+    achievementId: achievementId,
+    motivo: motivo,
+    sessionId: sessionId,
+  );
 
   Future<void> _onPomodoroDone({String? sessionId}) async {
     if (sessionId != null && !_counted.add(sessionId)) return;
@@ -78,18 +175,18 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       widget.me.uid,
       kind: Achievement.pomodoro,
       taskTitle: task?.title,
-      docId: sessionId == null ? null : '${sessionId}_${widget.me.uid}',
+      sessionId: sessionId,
     );
     if (task != null) await _rewards.addPomodoroToTask(widget.me.uid, task.id);
     if (!mounted) return;
-    await celebrateAndChooseReward(
-      context,
-      coupleId: _coupleId,
-      uid: widget.me.uid,
-      achievementId: id,
-      motivo: task == null
-          ? 'Completaste un pomodoro'
+    await _celebrate(
+      id,
+      task == null
+          ? (sessionId == null
+                ? 'Completaste un pomodoro'
+                : 'Completaron un pomodoro juntos')
           : 'Completaste un pomodoro en "${task.title}"',
+      sessionId: sessionId,
     );
   }
 
@@ -103,13 +200,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       taskTitle: task.title,
     );
     if (!mounted) return;
-    await celebrateAndChooseReward(
-      context,
-      coupleId: _coupleId,
-      uid: widget.me.uid,
-      achievementId: id,
-      motivo: 'Terminaste "${task.title}"',
-    );
+    await _celebrate(id, 'Terminaste "${task.title}"');
   }
 
   Future<void> _addTask() async {
@@ -123,6 +214,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_locked && _jointActive == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: PomodoroStyle.crema,
       body: DecoratedBox(
@@ -140,6 +241,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
             children: [
               _TopBar(
                 juntos: _juntos,
+                locked: _locked,
+                onBack: _onBack,
+                onLock: _toggleLock,
                 onMode: (v) => setState(() => _juntos = v),
                 onEditRewards: () => editRewards(
                   context,
@@ -147,6 +251,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                   uid: widget.me.uid,
                 ),
               ),
+              if (_locked) _LockedBanner(onUnlock: _toggleLock),
               _IllustratedCard(
                 child: Column(
                   children: [
@@ -165,6 +270,12 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                         couple: widget.couple,
                         partnerName: _partnerName,
                         onDone: (s) => _onPomodoroDone(sessionId: s.id),
+                        onActive: (s) {
+                          if (s?.id != _jointActive?.id) {
+                            setState(() => _jointActive = s);
+                          }
+                        },
+                        onStop: _confirmLeaveJoint,
                       ),
                     ),
                   ],
@@ -195,6 +306,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                 me: widget.me,
                 partner: _partner,
                 partnerName: _partnerName,
+                onChoose: (a, motivo) =>
+                    _celebrate(a.id, motivo, sessionId: a.sessionId),
                 onEditRewards: () => editRewards(
                   context,
                   coupleId: _coupleId,
@@ -229,11 +342,17 @@ const _timerStyle = TextStyle(
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.juntos,
+    required this.locked,
+    required this.onBack,
+    required this.onLock,
     required this.onMode,
     required this.onEditRewards,
   });
 
   final bool juntos;
+  final bool locked;
+  final VoidCallback onBack;
+  final VoidCallback onLock;
   final ValueChanged<bool> onMode;
   final VoidCallback onEditRewards;
 
@@ -241,7 +360,12 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const BackButton(color: PomodoroStyle.azul),
+        IconButton(
+          tooltip: 'Volver',
+          color: PomodoroStyle.azul,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: locked ? null : onBack,
+        ),
         Expanded(
           child: Center(
             child: _Pills(
@@ -254,12 +378,61 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Nuestros premios',
+          tooltip: locked ? 'Desbloquear pantalla' : 'Bloquear pantalla',
+          color: PomodoroStyle.azul,
+          style: locked
+              ? IconButton.styleFrom(backgroundColor: PomodoroStyle.amarillo)
+              : null,
+          icon: Icon(locked ? Icons.lock : Icons.lock_open_outlined),
+          onPressed: onLock,
+        ),
+        IconButton(
+          tooltip: 'Mis premios',
           color: PomodoroStyle.azul,
           icon: const Icon(Icons.card_giftcard),
-          onPressed: onEditRewards,
+          onPressed: locked ? null : onEditRewards,
         ),
       ],
+    );
+  }
+}
+
+/// Aviso de que la pantalla está bloqueada para concentrarse.
+class _LockedBanner extends StatelessWidget {
+  const _LockedBanner({required this.onUnlock});
+  final VoidCallback onUnlock;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: PomodoroStyle.azul,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Pantalla bloqueada: a concentrarse 🍅',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onUnlock,
+            style: TextButton.styleFrom(
+              foregroundColor: PomodoroStyle.amarillo,
+            ),
+            child: const Text('Desbloquear'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -634,12 +807,20 @@ class _CoupleTimer extends StatefulWidget {
     required this.couple,
     required this.partnerName,
     required this.onDone,
+    required this.onActive,
+    required this.onStop,
   });
 
   final AppUser me;
   final Couple couple;
   final String partnerName;
   final void Function(PomodoroSession session) onDone;
+
+  /// Avisa qué sesión juntos está corriendo (o null si ninguna).
+  final ValueChanged<PomodoroSession?> onActive;
+
+  /// Detener: muestra el aviso de que ya no contará como sesión juntos.
+  final Future<bool> Function() onStop;
 
   @override
   State<_CoupleTimer> createState() => _CoupleTimerState();
@@ -672,9 +853,28 @@ class _CoupleTimerState extends State<_CoupleTimer> {
       if (ends != null &&
           !DateTime.now().isBefore(ends.subtract(const Duration(seconds: 5)))) {
         widget.onDone(prev);
+      } else {
+        _avisarSiSalio(prev.id);
       }
     }
     if (mounted) setState(() => _session = s);
+    widget.onActive(s?.status == PomodoroStatus.accepted ? s : null);
+  }
+
+  /// Si la pareja se salió de la sesión juntos, avisarme.
+  Future<void> _avisarSiSalio(String sessionId) async {
+    final s = await _service.get(_coupleId, sessionId);
+    if (!mounted || s == null) return;
+    if (s.status != PomodoroStatus.cancelled) return;
+    if (s.cancelledBy == null || s.cancelledBy == widget.me.uid) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${widget.partnerName} salió de la sesión. '
+          'Ya no cuenta como sesión juntos 💔',
+        ),
+      ),
+    );
   }
 
   void _tick() {
@@ -683,8 +883,13 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     final ends = s.endsAt;
     if (ends == null) return;
     if (!DateTime.now().isBefore(ends)) {
-      widget.onDone(s);
-      _service.finish(_coupleId, s.id);
+      // Primero se marca terminada (así ya nadie la puede cancelar) y
+      // después se guarda el logro.
+      _service
+          .finish(_coupleId, s.id)
+          .catchError((_) {})
+          .whenComplete(() => widget.onDone(s));
+      widget.onActive(null);
     }
     if (mounted) setState(() {});
   }
@@ -827,8 +1032,8 @@ class _CoupleTimerState extends State<_CoupleTimer> {
               shape: const StadiumBorder(),
             ),
             icon: const Icon(Icons.stop_rounded),
-            label: const Text('Detener para los dos'),
-            onPressed: () => _service.cancel(_coupleId, s.id),
+            label: const Text('Salir de la sesión'),
+            onPressed: widget.onStop,
           ),
         ),
       ],
@@ -1136,6 +1341,7 @@ class _RewardFeed extends StatelessWidget {
     required this.me,
     required this.partner,
     required this.partnerName,
+    required this.onChoose,
     required this.onEditRewards,
   });
 
@@ -1143,6 +1349,7 @@ class _RewardFeed extends StatelessWidget {
   final AppUser me;
   final AppUser? partner;
   final String partnerName;
+  final void Function(Achievement a, String motivo) onChoose;
   final VoidCallback onEditRewards;
 
   String get myUid => me.uid;
@@ -1188,7 +1395,7 @@ class _RewardFeed extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onEditRewards,
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Editar lista'),
+                  label: const Text('Mi lista'),
                 ),
               ],
             ),
@@ -1234,13 +1441,7 @@ class _RewardFeed extends StatelessWidget {
                 user: a.uid == myUid ? me : partner,
                 what: _what(a, a.uid == myUid),
                 partnerName: partnerName,
-                onChoose: () => celebrateAndChooseReward(
-                  context,
-                  coupleId: coupleId,
-                  uid: myUid,
-                  achievementId: a.id,
-                  motivo: _what(a, true),
-                ),
+                onChoose: () => onChoose(a, _what(a, true)),
                 onDelivered: () => service.markDelivered(coupleId, a.id),
               ),
           ],

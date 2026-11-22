@@ -164,25 +164,50 @@ service cloud.firestore {
           && request.resource.data.invitedBy == me()
           && request.resource.data.invitee != me()
           && request.resource.data.invitee in coupleDoc(coupleId).data.members
-          && request.resource.data.status == 'pending';
+          && request.resource.data.status == 'pending'
+          && request.resource.data.minutes is int
+          && request.resource.data.minutes >= 5
+          && request.resource.data.minutes <= 60
+          && request.resource.data.get('startedAt', null) == null;
+        // Nadie puede cambiar la duración ni la hora de inicio: de eso
+        // depende que la sesión juntos dé premio. Una sesión cancelada
+        // (alguien se salió) o terminada ya no cambia más.
         allow update: if isMember(coupleId)
           && request.resource.data.invitedBy == resource.data.invitedBy
           && request.resource.data.invitee == resource.data.invitee
+          && request.resource.data.minutes == resource.data.minutes
           && (
-            (request.resource.data.status in ['accepted', 'declined']
-              && resource.data.status == 'pending'
-              && me() == resource.data.invitee)
-            || request.resource.data.status in ['cancelled', 'finished']
+            (resource.data.status == 'pending'
+              && me() == resource.data.invitee
+              && ((request.resource.data.status == 'accepted'
+                    && request.resource.data.startedAt == request.time)
+                || (request.resource.data.status == 'declined'
+                    && request.resource.data.get('startedAt', null) == null)))
+            || (request.resource.data.status == 'cancelled'
+              && resource.data.status in ['pending', 'accepted']
+              && request.resource.data.get('startedAt', null) == resource.data.get('startedAt', null))
+            || (request.resource.data.status == 'finished'
+              && resource.data.status == 'accepted'
+              && request.resource.data.startedAt == resource.data.startedAt)
           );
       }
 
-      // Premios: la lista la editan los dos.
+      // Premios: cada uno arma y edita su propia lista. En la app, la lista
+      // de la pareja se muestra recién al terminar una sesión.
       match /rewards/{rewardId} {
-        allow read, delete: if isMember(coupleId);
-        allow create, update: if isMember(coupleId)
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.createdBy == me()
           && request.resource.data.title is string
           && request.resource.data.title.size() > 0
           && request.resource.data.title.size() <= 80;
+        allow update: if isMember(coupleId)
+          && resource.data.createdBy == me()
+          && request.resource.data.createdBy == me()
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 80;
+        allow delete: if isMember(coupleId) && resource.data.createdBy == me();
       }
 
       // Logros (pomodoro o tarea cumplida) y el premio elegido.
@@ -190,9 +215,22 @@ service cloud.firestore {
       // marcar que ya lo entregó. Solo se elige UN premio por logro: nace
       // sin premio, se elige una vez y después ya no se puede cambiar.
       match /achievements/{achievementId} {
+        // Un pomodoro en pareja solo da logro si la sesión no se canceló
+        // (nadie se salió) y ya pasó su tiempo completo.
+        function sessionDone(sid) {
+          let s = get(/databases/$(database)/documents/couples/$(coupleId)/pomodoros/$(sid)).data;
+          return me() in [s.invitedBy, s.invitee]
+            && s.status in ['accepted', 'finished']
+            && s.startedAt is timestamp
+            && request.time > s.startedAt + duration.value(s.minutes * 60 - 10, 's');
+        }
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.uid == me()
+          && (request.resource.data.get('sessionId', null) == null
+            || (request.resource.data.kind == 'pomodoro'
+              && achievementId == request.resource.data.sessionId + '_' + me()
+              && sessionDone(request.resource.data.sessionId)))
           && request.resource.data.kind in ['pomodoro', 'tarea']
           && request.resource.data.delivered == false
           && request.resource.data.get('rewardId', null) == null
