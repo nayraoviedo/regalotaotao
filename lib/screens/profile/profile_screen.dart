@@ -64,6 +64,52 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _unlink(BuildContext context, Couple c) async {
+    final name = partner?.name ?? 'tu pareja';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Desvincular cuentas?'),
+        content: Text(
+          'Se deshará el vínculo con $name y las dos cuentas volverán a la '
+          'pantalla para ingresar un código.\n\n'
+          'No se borra nada: si se vuelven a vincular entre ustedes, '
+          'recuperan sus notas, cartas, aniversario y lo demás. Tus notas '
+          'privadas siguen siendo tuyas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Desvincular'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await CoupleService.instance.unlink(myUid: me.uid, couple: c);
+      navigator.popUntil((r) => r.isFirst);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Listo, sus cuentas ya no están vinculadas.'),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo desvincular: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AppUser?>(
@@ -182,6 +228,16 @@ class ProfileScreen extends StatelessWidget {
                       Navigator.of(context).popUntil((r) => r.isFirst);
                       await AuthService.instance.signOut();
                     },
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    icon: const Icon(Icons.link_off),
+                    label: const Text('Desvincular cuentas'),
+                    onPressed: () => _unlink(context, c),
                   ),
                 ],
               ),
