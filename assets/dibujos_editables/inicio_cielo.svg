@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="900" viewBox="0 0 1080 900">
+  <defs>
+    <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1F2B63"/>
+      <stop offset="0.55" stop-color="#33468C"/>
+      <stop offset="0.85" stop-color="#6F86C4"/>
+      <stop offset="1" stop-color="#A9B8E0"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFF3C9" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#FFF3C9" stop-opacity="0"/>
+    </radialGradient>
+    <symbol id="brillo" viewBox="-10 -10 20 20">
+      <path d="M0 -10 Q1.2 -1.2 10 0 Q1.2 1.2 0 10 Q-1.2 1.2 -10 0 Q-1.2 -1.2 0 -10Z"/>
+    </symbol>
+  </defs>
+
+  <!-- Cielo -->
+  <rect width="1080" height="900" fill="url(#cielo)"/>
+
+  <!-- Estrellitas (puntos) -->
+  <g fill="#FFFFFF">
+    <circle cx="70" cy="420" r="3" opacity=".7"/>
+    <circle cx="160" cy="470" r="2.5" opacity=".6"/>
+    <circle cx="330" cy="640" r="3" opacity=".7"/>
+    <circle cx="420" cy="480" r="2" opacity=".6"/>
+    <circle cx="520" cy="90" r="3" opacity=".8"/>
+    <circle cx="610" cy="200" r="2.5" opacity=".7"/>
+    <circle cx="690" cy="80" r="2" opacity=".6"/>
+    <circle cx="760" cy="300" r="3" opacity=".7"/>
+    <circle cx="1040" cy="330" r="2.5" opacity=".6"/>
+    <circle cx="560" cy="380" r="2" opacity=".6"/>
+    <circle cx="980" cy="440" r="2" opacity=".5"/>
+    <circle cx="460" cy="250" r="2" opacity=".5"/>
+    <circle cx="40" cy="80" r="2" opacity=".5"/>
+  </g>
+  <!-- Destellos -->
+  <g fill="#F6C84C">
+    <use href="#brillo" x="560" y="130" width="34" height="34" transform="translate(-17 -17)"/>
+    <use href="#brillo" x="700" y="390" width="44" height="44" transform="translate(-22 -22)"/>
+    <use href="#brillo" x="1010" y="520" width="30" height="30" transform="translate(-15 -15)"/>
+    <use href="#brillo" x="470" y="500" width="26" height="26" transform="translate(-13 -13)"/>
+  </g>
+  <g fill="#FFFFFF" opacity=".85">
+    <use href="#brillo" x="640" y="290" width="22" height="22" transform="translate(-11 -11)"/>
+    <use href="#brillo" x="1030" y="240" width="24" height="24" transform="translate(-12 -12)"/>
+    <use href="#brillo" x="430" y="600" width="20" height="20" transform="translate(-10 -10)"/>
+  </g>
+
+  <!-- Luna -->
+  <path d="M880 100 A92 92 0 1 0 958 240 A74 74 0 1 1 880 100Z" fill="#F6C84C"/>
+  <path d="M880 100 A92 92 0 1 0 958 240 A74 74 0 1 1 880 100Z" fill="none" stroke="#E7AE2E" stroke-width="4" stroke-linejoin="round" opacity=".6"/>
+
+  <!-- Nubecitas lejanas -->
+  <g fill="#C9D3F0" opacity=".35">
+    <ellipse cx="150" cy="600" rx="150" ry="40"/>
+    <ellipse cx="230" cy="575" rx="90" ry="45"/>
+    <ellipse cx="90" cy="585" rx="70" ry="35"/>
+  </g>
+
+  <!-- ===== Gatito negro (atrás, a la derecha) ===== -->
+  <g id="gatito-negro">
+    <!-- colita -->
+    <path d="M1010 720 C1075 700 1075 610 1030 600" fill="none" stroke="#2F2C36" stroke-width="30" stroke-linecap="round"/>
+    <!-- cuerpo -->
+    <ellipse cx="900" cy="720" rx="150" ry="88" fill="#2F2C36"/>
+    <g transform="rotate(-8 830 650)">
+      <!-- orejas -->
+      <path d="M760 610 L768 528 Q772 518 782 524 L838 572Z" fill="#2F2C36" stroke="#2F2C36" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M900 572 L948 522 Q958 514 962 526 L962 610Z" fill="#2F2C36" stroke="#2F2C36" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M778 590 L782 545 L816 575Z" fill="#6A5F78"/>
+      <path d="M920 574 L948 545 L948 590Z" fill="#6A5F78"/>
+      <!-- cabeza -->
+      <ellipse cx="860" cy="650" rx="108" ry="88" fill="#2F2C36"/>
+      <!-- ojitos cerrados -->
+      <path d="M800 650 Q815 664 830 650" fill="none" stroke="#C9C2D6" stroke-width="6" stroke-linecap="round"/>
+      <path d="M884 650 Q899 664 914 650" fill="none" stroke="#C9C2D6" stroke-width="6" stroke-linecap="round"/>
+      <!-- cachetes -->
+      <ellipse cx="795" cy="680" rx="16" ry="9" fill="#F4B3A8" opacity=".55"/>
+      <ellipse cx="922" cy="680" rx="16" ry="9" fill="#F4B3A8" opacity=".55"/>
+      <!-- naricita y boca -->
+      <path d="M850 672 L864 672 L857 680Z" fill="#F4B3A8"/>
+      <path d="M845 686 Q851 693 857 686 Q863 693 869 686" fill="none" stroke="#C9C2D6" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- ===== Gatito naranja (adelante, a la izquierda) ===== -->
+  <g id="gatito-naranja">
+    <ellipse cx="700" cy="735" rx="150" ry="82" fill="#F2A65A"/>
+    <path d="M700 660 Q712 700 700 735 M750 662 Q762 700 752 738" fill="none" stroke="#D9803A" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+    <g transform="rotate(6 650 660)">
+      <path d="M575 625 L585 540 Q589 529 600 535 L650 580Z" fill="#F2A65A" stroke="#F2A65A" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M700 580 L752 533 Q762 526 765 538 L760 625Z" fill="#F2A65A" stroke="#F2A65A" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M594 604 L598 556 L632 586Z" fill="#F4B3A8"/>
+      <path d="M720 586 L752 556 L748 604Z" fill="#F4B3A8"/>
+      <ellipse cx="668" cy="665" rx="112" ry="90" fill="#F2A65A"/>
+      <!-- rayitas -->
+      <g stroke="#D9803A" stroke-width="9" stroke-linecap="round">
+        <line x1="652" y1="580" x2="655" y2="604"/>
+        <line x1="670" y1="577" x2="670" y2="604"/>
+        <line x1="688" y1="580" x2="685" y2="604"/>
+      </g>
+      <!-- ojitos cerrados -->
+      <path d="M610 662 Q625 676 640 662" fill="none" stroke="#5A3A28" stroke-width="6" stroke-linecap="round"/>
+      <path d="M696 662 Q711 676 726 662" fill="none" stroke="#5A3A28" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="603" cy="692" rx="17" ry="10" fill="#F08A8A" opacity=".5"/>
+      <ellipse cx="734" cy="692" rx="17" ry="10" fill="#F08A8A" opacity=".5"/>
+      <path d="M661 684 L675 684 L668 692Z" fill="#E8735A"/>
+      <path d="M656 698 Q662 705 668 698 Q674 705 680 698" fill="none" stroke="#7A4A2E" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <!-- patitas sobre la nube -->
+    <ellipse cx="625" cy="742" rx="38" ry="24" fill="#F6B672" stroke="#D9803A" stroke-width="4"/>
+    <ellipse cx="712" cy="746" rx="38" ry="24" fill="#F6B672" stroke="#D9803A" stroke-width="4"/>
+    <g stroke="#D9803A" stroke-width="4" stroke-linecap="round">
+      <line x1="617" y1="735" x2="617" y2="750"/><line x1="633" y1="735" x2="633" y2="750"/>
+      <line x1="704" y1="739" x2="704" y2="754"/><line x1="720" y1="739" x2="720" y2="754"/>
+    </g>
+  </g>
+
+  <!-- Corazoncito y zzz -->
+  <path d="M770 500 C770 482 792 476 800 492 C808 476 830 482 830 500 C830 522 800 536 800 542 C800 536 770 522 770 500Z" fill="#E8735A"/>
+  <g fill="#FFFFFF" opacity=".85" font-family="Comic Sans MS, Chalkboard, sans-serif" font-weight="700">
+    <text x="575" y="500" font-size="40">z</text>
+    <text x="540" y="458" font-size="30">z</text>
+    <text x="515" y="425" font-size="22">z</text>
+  </g>
+
+  <!-- Nube donde duermen (se funde con el fondo crema de la app) -->
+  <g fill="#F7F2EC">
+    <circle cx="460" cy="820" r="90"/>
+    <circle cx="590" cy="822" r="75"/>
+    <circle cx="720" cy="830" r="80"/>
+    <circle cx="850" cy="805" r="80"/>
+    <circle cx="980" cy="790" r="85"/>
+    <circle cx="1080" cy="800" r="70"/>
+    <circle cx="330" cy="850" r="80"/>
+    <circle cx="190" cy="870" r="80"/>
+    <circle cx="60" cy="860" r="85"/>
+    <rect x="0" y="815" width="1080" height="90"/>
+  </g>
+  <!-- sombrita suave bajo los gatitos -->
+  <g fill="#E9E1D6" opacity=".7">
+  </g>
+</svg>
