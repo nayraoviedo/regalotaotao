@@ -42,6 +42,7 @@ dependencies:
   http: ^1.6.0
   shared_preferences: ^2.5.6
   web: ^1.1.2
+  image_picker: ^1.2.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -71,6 +72,8 @@ flutter:
     - assets/images/
     # Criaturas de los naipes de la pregunta del día (ver carta_style.dart).
     - assets/criaturas/
+    # Formas y stickers de las notas (ver assets/notas/LEEME.md).
+    - assets/notas/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:
