@@ -64,6 +64,7 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         PushService.instance.init(firebaseUser.uid);
+        UserService.instance.syncFromAuth(firebaseUser);
 
         return StreamBuilder<AppUser?>(
           stream: UserService.instance.watchUser(firebaseUser.uid),

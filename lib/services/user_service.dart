@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/app_user.dart';
 import 'db.dart';
@@ -14,8 +15,35 @@ class UserService {
           .snapshots()
           .map((doc) => doc.exists ? AppUser.fromDoc(doc) : null);
 
+  final _synced = <String>{};
+
+  /// Copia al perfil la foto y el correo de la cuenta (por ejemplo, la foto
+  /// de Google). Se llama una vez por sesión.
+  Future<void> syncFromAuth(User user) async {
+    if (!_synced.add(user.uid)) return;
+    final data = <String, dynamic>{
+      if (user.photoURL != null) 'photoUrl': user.photoURL,
+      if (user.email != null) 'email': user.email,
+    };
+    if (data.isEmpty) return;
+    try {
+      // update (no set): si el perfil aún no existe, no lo crea a medias.
+      await Db.user(user.uid).update(data);
+    } catch (_) {
+      _synced.remove(user.uid);
+    }
+  }
+
+  Future<void> updateName(String uid, String name) =>
+      Db.user(uid).update({'name': name});
+
   /// Crea el perfil con un código de pareja único, si todavía no existe.
-  Future<void> ensureProfile(String uid, String name) async {
+  Future<void> ensureProfile(
+    String uid,
+    String name, {
+    String? photoUrl,
+    String? email,
+  }) async {
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = _randomCode();
       final codeRef = Db.pairCodes.doc(code);
@@ -28,6 +56,8 @@ class UserService {
           tx.set(codeRef, {'uid': uid});
           tx.set(Db.user(uid), {
             'name': name,
+            'photoUrl': photoUrl,
+            'email': email,
             'pairCode': code,
             'coupleId': null,
             'fcmTokens': <String>[],

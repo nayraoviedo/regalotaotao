@@ -3,12 +3,14 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../models/mood.dart';
-import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
 import '../../services/mood_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
+import '../../theme.dart';
 import '../../widgets/mood_image.dart';
+import '../../widgets/user_avatar.dart';
+import '../profile/profile_screen.dart';
 import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
 import '../mood/mood_screen.dart';
@@ -99,12 +101,24 @@ class _HomeBody extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${me.name} 💞 $partnerName'),
+        title: const Text(
+          'Taotao',
+          style: TextStyle(fontFamily: AppTheme.manuscrita, fontSize: 30),
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
-            onPressed: AuthService.instance.signOut,
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => _open(
+                context,
+                ProfileScreen(me: me, partner: partner, couple: couple),
+              ),
+              child: Tooltip(
+                message: 'Mi perfil',
+                child: UserAvatar(me, size: 38),
+              ),
+            ),
           ),
         ],
       ),
@@ -112,23 +126,58 @@ class _HomeBody extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.favorite),
-              title: Text(
-                days == null
-                    ? 'Elige la fecha en que empezaron'
-                    : '$days días juntos',
-              ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
               onTap: () => _open(context, TogetherScreen(couple: couple)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CoupleAvatars(me: me, partner: partner),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${me.name} 💞 $partnerName',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.azul,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            days == null
+                                ? 'Elige la fecha de nuestro aniversario'
+                                : '$days días juntos',
+                            style: const TextStyle(color: AppTheme.gris),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: AppTheme.gris),
+                  ],
+                ),
+              ),
             ),
           ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: _MoodCard(title: 'Tú', coupleId: couple.id, uid: me.uid),
+                child: _MoodCard(
+                  user: me,
+                  title: '${me.name} (tú)',
+                  coupleId: couple.id,
+                  uid: me.uid,
+                ),
               ),
+              const SizedBox(width: 8),
               Expanded(
                 child: _MoodCard(
+                  user: partner,
                   title: partnerName,
                   coupleId: couple.id,
                   uid: partnerUid,
@@ -194,11 +243,13 @@ class _Feature {
 
 class _MoodCard extends StatelessWidget {
   const _MoodCard({
+    required this.user,
     required this.title,
     required this.coupleId,
     required this.uid,
   });
 
+  final AppUser? user;
   final String title;
   final String coupleId;
   final String uid;
@@ -214,7 +265,20 @@ class _MoodCard extends StatelessWidget {
             final entry = snap.data;
             return Column(
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    UserAvatar(user, size: 28, border: false),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 if (entry == null)
                   const SizedBox(
