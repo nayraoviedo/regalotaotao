@@ -23,6 +23,12 @@ class AuthService {
     await UserService.instance.createProfile(cred.user!.uid, name);
   }
 
+  /// Envía el correo para restablecer la contraseña (en español).
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.setLanguageCode('es');
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
   Future<void> signOut() => _auth.signOut();
 
   /// Traduce los errores más comunes de Firebase Auth.
@@ -37,6 +43,10 @@ class AuthService {
           return 'Correo o contraseña incorrectos.';
         case 'email-already-in-use':
           return 'Ya existe una cuenta con ese correo.';
+        case 'missing-email':
+          return 'Escribe tu correo.';
+        case 'too-many-requests':
+          return 'Demasiados intentos. Espera un momento y vuelve a probar.';
         case 'weak-password':
           return 'La contraseña debe tener al menos 6 caracteres.';
       }
