@@ -1,13 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Couple {
-  Couple({required this.id, required this.members, this.startDate});
+  Couple({
+    required this.id,
+    required this.members,
+    this.startDate,
+    this.endedAt,
+  });
 
   final String id;
   final List<String> members;
 
   /// Fecha en que empezaron a estar juntos (para el contador y aniversario).
   final DateTime? startDate;
+
+  /// Cuándo se desvincularon (null si siguen juntos). Los datos se guardan
+  /// por si vuelven a vincularse.
+  final DateTime? endedAt;
+  bool get ended => endedAt != null;
 
   String partnerOf(String uid) =>
       members.firstWhere((m) => m != uid, orElse: () => '');
@@ -35,6 +45,7 @@ class Couple {
       id: doc.id,
       members: List<String>.from(d['members'] as List? ?? const []),
       startDate: (d['startDate'] as Timestamp?)?.toDate(),
+      endedAt: (d['endedAt'] as Timestamp?)?.toDate(),
     );
   }
 }

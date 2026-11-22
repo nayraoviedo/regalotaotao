@@ -14,6 +14,7 @@ import '../profile/profile_screen.dart';
 import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
 import '../mood/mood_screen.dart';
+import '../notes/cartas/avioncito.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_screen.dart';
 import '../together/together_screen.dart';
@@ -38,7 +39,21 @@ class HomeScreen extends StatelessWidget {
           stream: UserService.instance.watchUser(partnerUid),
           builder: (context, partnerSnap) {
             final partner = partnerSnap.data;
-            return _HomeBody(me: me, partner: partner, couple: couple);
+            return LlegadaDeCartas(
+              uid: me.uid,
+              coupleId: couple.id,
+              onVer: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => NotesScreen(
+                    me: me,
+                    coupleId: couple.id,
+                    partnerUid: partnerUid,
+                    initialTab: NotesScreen.tabCartas,
+                  ),
+                ),
+              ),
+              child: _HomeBody(me: me, partner: partner, couple: couple),
+            );
           },
         );
       },
@@ -80,7 +95,7 @@ class _HomeBody extends StatelessWidget {
       _Feature(
         'Notas',
         Icons.sticky_note_2,
-        () => NotesScreen(me: me, coupleId: couple.id),
+        () => NotesScreen(me: me, coupleId: couple.id, partnerUid: partnerUid),
       ),
       _Feature(
         'Pregunta del día',

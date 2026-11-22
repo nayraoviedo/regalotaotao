@@ -51,6 +51,7 @@ beforeEach(() => {
     "couples/c1/missYou/falso": { from: "beto", to: "beto" },
     "couples/c1/pomodoros/p1": { invitedBy: "ana", invitee: "beto", minutes: 50, status: "pending" },
     "couples/c1/achievements/a1": { uid: "ana", kind: "tarea", rewardId: "r1", rewardTitle: "Un helado" },
+    "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
 });
@@ -136,6 +137,15 @@ test("invitación de pomodoro y premio", async () => {
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te invita a concentrarse 50 min",
     "Ana terminó una tarea y eligió: Un helado",
+  ]);
+});
+
+test("carta nueva avisa a la pareja, solo si la escribió quien llama", async () => {
+  assert.equal((await call({ kind: "letter", coupleId: "c1", docId: "l1" }, await idToken("beto"))).status, 403);
+  const r = await call({ kind: "letter", coupleId: "c1", docId: "l1" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.body), [
+    "Ana te mandó un avioncito: ábrelo cuando estés triste",
   ]);
 });
 

@@ -15,7 +15,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Vinculación por código de pareja | ✅ |
 | Reglas de seguridad (solo la pareja ve sus datos) | ✅ con pruebas |
 | Ánimo del día, visible para la pareja | ✅ (con emojis provisionales) |
-| Mindfulness: respiración guiada, sugerida solo si el ánimo es estrés, tristeza, ansiedad o enojo | ✅ |
+| Mindfulness: respiración guiada, sugerida solo si el ánimo es estrés, tristeza, ansiedad, enojo, decepción, desánimo o mañas | ✅ |
 | Pomodoro solo (enfoque y descanso, con tareas) | ✅ |
 | Pomodoro en pareja: uno invita y el otro acepta | ✅ |
 | Premios: al completar un pomodoro o una tarea eliges un premio de la lista de la pareja, y la otra persona lo ve y lo marca como entregado | ✅ |
@@ -177,16 +177,26 @@ Guarda tus PNG (fondo transparente, cuadrados, idealmente 256×256) en
 | Archivo | Ánimo | ¿Sugiere mindfulness? |
 | --- | --- | --- |
 | `feliz.png` | Feliz | No |
-| `enamorado.png` | Con amor | No |
-| `tranquilo.png` | En calma | No |
-| `cansado.png` | Con sueño | No |
-| `estresado.png` | Con estrés | Sí |
+| `ilusionado.png` | Con ilusión | No |
+| `contento.png` | Contento | No |
+| `en_paz.png` | En paz | No |
+| `normal.png` | Normal | No |
+| `cansado.png` | Cansado | No |
 | `triste.png` | Triste | Sí |
 | `ansioso.png` | Con ansiedad | Sí |
-| `enojado.png` | Con enojo | Sí |
+| `enojado.png` | Enojado | Sí |
+| `decepcionado.png` | Decepcionado | Sí |
+| `estresado.png` | Estresado | Sí |
+| `con_sueno.png` | Con sueño | No |
+| `sorprendido.png` | Sorprendido | No |
+| `apagado.png` | Apagado | Sí |
+| `manoso.png` | Mañoso | Sí |
+| `empachado.png` | Empachado | No |
 
-Mientras un archivo no exista, la app muestra un emoji en su lugar. Para
-cambiar los nombres o agregar ánimos, edita `lib/models/mood.dart`.
+Mientras un archivo no exista, la app dibuja un bloblito de color con carita
+en su lugar. Deja un poco de aire alrededor del dibujo: se muestra en un
+cuadrado de unos 84 px en la cuadrícula y de 56 px en el inicio. Para cambiar
+los textos, el orden o agregar ánimos, edita `lib/models/mood.dart`.
 
 ## El dibujo del pomodoro
 
@@ -197,6 +207,28 @@ transparente, más ancho que alto (idealmente 900×560). La parte de abajo
 del dibujo queda un poco escondida detrás de la tarjeta del temporizador,
 así que deja el personaje más bien arriba y centrado. Los colores de esa
 pantalla están en `lib/screens/pomodoro/pomodoro_style.dart`.
+
+## Cartas "Ábrelo cuando…" y el papel de las notas
+
+En **Notas → Cartas** cada uno le escribe cartas a su pareja para un momento
+("cuando estés triste", "cuando me extrañes"…). Llegan con un avioncito de
+papel y se ven como sobres con sello; por dentro, las cartas y las notas se
+ven como papel crema con cuadrícula o renglones celestes y destellos.
+
+Todos los dibujos son opcionales y se cambian poniendo un PNG con fondo
+transparente en `assets/images/` con estos nombres (si no existen, la app
+dibuja uno simple):
+
+| Archivo | Dónde aparece |
+|---|---|
+| `avioncito.png` | El avioncito que llega volando (600×400, mirando a la derecha) |
+| `sello.png` | El sello de todos los sobres (300×300, redondo) |
+| `sello_triste.png`, `sello_extranes.png`, … | Sello para un motivo en especial (ver `lib/screens/notes/cartas/cartas_style.dart`) |
+| `papel_arriba.png` | Dibujito en la esquina de arriba de la hoja (300×300) |
+| `papel_abajo.png` | Dibujito en la esquina de abajo de la hoja (300×300) |
+
+Para que también llegue la notificación push de carta nueva, vuelve a
+publicar el Worker (`cd worker && npx wrangler deploy`).
 
 ## Cómo está organizado
 

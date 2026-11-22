@@ -92,28 +92,45 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (send != true || !mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     final address = email.text.trim();
-    if (address.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Escribe tu correo.')),
+    if (address.isEmpty || !address.contains('@')) {
+      await _notice(
+        'Falta tu correo',
+        'Escribe el correo con el que creaste tu cuenta.',
       );
       return;
     }
     try {
       await AuthService.instance.sendPasswordReset(address);
-      messenger.showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 6),
-          content: Text(
-            'Si hay una cuenta con $address, te llegará un correo '
-            'para cambiar tu contraseña. Revisa también la carpeta de spam.',
-          ),
-        ),
+      await _notice(
+        'Revisa tu correo 💌',
+        'Si $address tiene una cuenta con contraseña, te enviamos un enlace '
+            'para crear una nueva.\n\n'
+            'Puede tardar unos minutos. Si no lo ves, busca en la carpeta de '
+            'spam o "Promociones". Si creaste tu cuenta con Google, no '
+            'necesitas contraseña: entra con el botón de Google.',
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(AuthService.message(e))));
+      await _notice('No se pudo enviar', AuthService.message(e));
     }
+  }
+
+  /// Aviso con botón "Entendido", para que no pase desapercibido.
+  Future<void> _notice(String title, String text) {
+    if (!mounted) return Future.value();
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(text),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

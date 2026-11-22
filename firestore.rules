@@ -21,6 +21,8 @@ service cloud.firestore {
     function isMember(coupleId) {
       return signedIn() && me() in coupleDoc(coupleId).data.members;
     }
+    // Una pareja desvinculada guarda sus recuerdos con `endedAt`.
+    function ended(couple) { return couple.get('endedAt', null) != null; }
     function isPartnerOf(uid) {
       let myCouple = userDoc(me()).data.get('coupleId', null);
       return myCouple != null && uid in coupleDoc(myCouple).data.members;
@@ -53,6 +55,26 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/couples/$(request.resource.data.coupleId))
         && coupleAfter(request.resource.data.coupleId).data.members.hasAll([me(), uid]);
 
+      // Volver a vincularse con la misma persona: se reabre el espacio de
+      // pareja que tenían (con sus notas, cartas, etc.).
+      allow update: if signedIn() && me() != uid
+        && resource.data.coupleId == null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['coupleId'])
+        && ended(coupleDoc(request.resource.data.coupleId).data)
+        && !ended(coupleAfter(request.resource.data.coupleId).data)
+        && coupleAfter(request.resource.data.coupleId).data.members.hasAll([me(), uid]);
+
+      // Desvincularse: quien termina la pareja también quita el coupleId de
+      // la otra persona, en el mismo batch en que marca la pareja con endedAt.
+      allow update: if signedIn() && me() != uid
+        && resource.data.coupleId != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['coupleId'])
+        && request.resource.data.coupleId == null
+        && me() in coupleDoc(resource.data.coupleId).data.members
+        && ended(coupleAfter(resource.data.coupleId).data);
+
       // Notas privadas: solo su dueño.
       match /privateNotes/{noteId} {
         allow read, write: if signedIn() && me() == uid;
@@ -81,8 +103,18 @@ service cloud.firestore {
         && request.resource.data.members[0] != request.resource.data.members[1]
         && getAfter(/databases/$(database)/documents/users/$(me())).data.coupleId == coupleId;
 
+      // Mientras está activa, cualquiera de los dos la edita (también para
+      // desvincularse, marcando endedAt). Ya desvinculada, solo se puede
+      // reabrir, y quien la reabre vuelve a apuntar a ella en el mismo batch.
       allow update: if signedIn() && me() in resource.data.members
-        && request.resource.data.members == resource.data.members;
+        && request.resource.data.members == resource.data.members
+        && (
+          (!ended(resource.data)
+            && (!ended(request.resource.data)
+                || request.resource.data.endedBy == me()))
+          || (!ended(request.resource.data)
+            && getAfter(/databases/$(database)/documents/users/$(me())).data.coupleId == coupleId)
+        );
 
       allow delete: if false;
 
@@ -99,6 +131,30 @@ service cloud.firestore {
           && request.resource.data.authorId == me();
         allow update, delete: if isMember(coupleId)
           && resource.data.authorId == me();
+      }
+
+      // Cartas "Ábrelo cuando…": cada uno escribe para su pareja. Quien la
+      // recibe solo puede marcarla como abierta; quien la escribió, borrarla.
+      match /letters/{letterId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me()
+          && request.resource.data.to != me()
+          && request.resource.data.to in coupleDoc(coupleId).data.members
+          && request.resource.data.openedAt == null
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 5000
+          && request.resource.data.cuando is string
+          && request.resource.data.cuando.size() > 0
+          && request.resource.data.cuando.size() <= 60;
+        allow update: if isMember(coupleId)
+          && me() == resource.data.to
+          && resource.data.openedAt == null
+          && request.resource.data.openedAt is timestamp
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['openedAt']);
+        allow delete: if isMember(coupleId) && me() == resource.data.from;
       }
 
       // Pomodoro en pareja: uno invita, solo la otra persona puede aceptar.
@@ -158,10 +214,21 @@ service cloud.firestore {
         function previousAnswers() {
           return resource == null ? {} : resource.data.get('answers', {});
         }
+        // Naipe que salió hoy: se elige una vez y ya no cambia.
+        function previousCard() {
+          return resource == null ? null : resource.data.get('carta', null);
+        }
+        function keepsCard() {
+          return previousCard() == null
+            || (request.resource.data.get('carta', null) == previousCard()
+                && request.resource.data.get('question', null)
+                     == resource.data.get('question', null));
+        }
         allow read: if isMember(coupleId);
         allow create, update: if isMember(coupleId)
-          && request.resource.data.answers.diff(previousAnswers())
-               .affectedKeys().hasOnly([me()]);
+          && request.resource.data.get('answers', {}).diff(previousAnswers())
+               .affectedKeys().hasOnly([me()])
+          && keepsCard();
       }
 
       // Cosas por hacer juntos.
