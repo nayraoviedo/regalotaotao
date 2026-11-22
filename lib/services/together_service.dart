@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/bucket_item.dart';
 import 'db.dart';
+import 'notify_service.dart';
 
 /// Pregunta del día, lista de cosas por hacer juntos y "te extraño".
 class TogetherService {
@@ -81,13 +82,17 @@ class TogetherService {
       Db.coupleSub(coupleId, 'bucketList').doc(id).delete();
 
   // ---- Te extraño ----
-  /// Crea un documento; la Cloud Function `onMissYou` envía la notificación.
+  /// Crea un documento y le pide al Worker que avise a la pareja.
   Future<void> sendMissYou(
     String coupleId, {
     required String from,
     required String to,
-  }) => Db.coupleSub(
-    coupleId,
-    'missYou',
-  ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
+  }) async {
+    final ref = await Db.coupleSub(coupleId, 'missYou').add({
+      'from': from,
+      'to': to,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.missYou, coupleId, ref.id);
+  }
 }

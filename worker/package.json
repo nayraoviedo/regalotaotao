@@ -1,0 +1,14 @@
+{
+  "name": "taotao-notificaciones",
+  "description": "Worker de Cloudflare que envía las notificaciones push de Taotao",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail",
+    "test": "node --test test/notify.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

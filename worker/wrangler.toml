@@ -1,0 +1,7 @@
+# Configuración del Worker de notificaciones de Taotao.
+# La clave de la cuenta de servicio NO va aquí: se guarda como secreto con
+#   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT
+# (ver README.md, sección "Notificaciones push").
+name = "taotao-notificaciones"
+main = "src/index.js"
+compatibility_date = "2025-06-01"

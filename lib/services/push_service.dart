@@ -10,7 +10,8 @@ Future<void> _onBackgroundMessage(RemoteMessage message) async {
 }
 
 /// Notificaciones push (FCM). Guarda el token del dispositivo en el perfil
-/// para que las Cloud Functions puedan avisar a la pareja.
+/// para que el Worker de notificaciones (carpeta worker/) pueda avisar a la
+/// pareja.
 class PushService {
   PushService._();
   static final instance = PushService._();
@@ -29,9 +30,9 @@ class PushService {
     try {
       final fm = FirebaseMessaging.instance;
       await fm.requestPermission();
-      // getToken/onTokenRefresh siguen funcionando con firebase-admin
-      // (sendEachForMulticast). Migrar a register()/onRegistered cuando
-      // las Cloud Functions envíen por FID.
+      // getToken/onTokenRefresh siguen funcionando con FCM HTTP v1, que es
+      // lo que usa el Worker. Migrar a register()/onRegistered cuando el
+      // Worker envíe por FID.
       // ignore: deprecated_member_use
       final token = await fm.getToken();
       if (token != null) await _saveToken(uid, token);

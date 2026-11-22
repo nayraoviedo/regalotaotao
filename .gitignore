@@ -47,7 +47,13 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
-# Node (Cloud Functions y pruebas de reglas)
+# Node (Worker de notificaciones y pruebas de reglas)
 node_modules/
 firebase-debug.log
 firestore-debug.log
+
+# Worker de Cloudflare: nunca subir claves
+.wrangler/
+.dev.vars
+*service-account*.json
+*firebase-adminsdk*.json

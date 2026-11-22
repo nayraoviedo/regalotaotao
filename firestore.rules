@@ -169,7 +169,7 @@ service cloud.firestore {
         allow read, write: if isMember(coupleId);
       }
 
-      // "Te extraño": dispara una notificación (ver functions/).
+      // "Te extraño": la app le pide al Worker (worker/) que avise a la pareja.
       match /missYou/{id} {
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)

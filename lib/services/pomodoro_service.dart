@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/pomodoro_session.dart';
 import 'db.dart';
+import 'notify_service.dart';
 
 class PomodoroService {
   PomodoroService._();
@@ -16,14 +17,17 @@ class PomodoroService {
     required String from,
     required String to,
     int minutes = 25,
-  }) => _col(coupleId).add({
-    'invitedBy': from,
-    'invitee': to,
-    'minutes': minutes,
-    'status': PomodoroStatus.pending.name,
-    'startedAt': null,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
+  }) async {
+    final ref = await _col(coupleId).add({
+      'invitedBy': from,
+      'invitee': to,
+      'minutes': minutes,
+      'status': PomodoroStatus.pending.name,
+      'startedAt': null,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.pomodoroInvite, coupleId, ref.id);
+  }
 
   /// Solo la persona invitada puede aceptar (lo aseguran las reglas).
   Future<void> accept(String coupleId, String sessionId) => _col(coupleId)

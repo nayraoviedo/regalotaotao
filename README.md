@@ -23,7 +23,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Notas compartidas + notas privadas que se pueden compartir | ✅ |
 | Pregunta del día (ves la respuesta de tu pareja después de responder) | ✅ |
 | Lista de cosas por hacer juntos | ✅ |
-| Botón "Te extraño" con notificación push | ✅ (necesita desplegar las Cloud Functions) |
+| Botón "Te extraño" con notificación push | ✅ (necesita el Worker gratis de Cloudflare, ver abajo) |
 
 ## Requisitos
 
@@ -66,15 +66,74 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 
 ### Notificaciones push ("Te extraño", invitaciones de pomodoro y premios)
 
-Las notificaciones las envían las Cloud Functions de la carpeta `functions/`.
-Firebase pide el plan **Blaze** (pago por uso) para desplegar funciones; con
-el uso de una pareja el costo normalmente es cero, pero conviene poner una
-alerta de presupuesto.
+Todo Taotao funciona en el plan gratis **Spark** de Firebase. Las
+notificaciones las envía un pequeño servidor gratis en **Cloudflare Workers**
+(carpeta `worker/`), así no hace falta el plan Blaze ni tarjeta.
 
-```bash
-cd functions && npm install && cd ..
-firebase deploy --only functions
-```
+Cómo funciona: cuando tocas "Te extraño" (o invitas a un pomodoro, o eliges
+un premio), la app guarda el documento en Firestore y le avisa al Worker. El
+Worker comprueba quién eres con tu sesión de Firebase, revisa que el aviso
+vaya para **tu pareja** y recién ahí manda la notificación. Nadie puede usarlo
+para mandar avisos a otras personas.
+
+Hazlo una sola vez, desde una terminal en la carpeta del proyecto:
+
+1. **Crea tu cuenta de Cloudflare.** Entra a
+   [dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up) y
+   regístrate con tu correo. Es gratis y no pide tarjeta.
+2. **Instala lo del Worker e inicia sesión:**
+   ```bash
+   cd worker
+   npm install
+   npx wrangler login
+   ```
+   Se abre el navegador; toca *Allow* para darle permiso a Wrangler (la
+   herramienta de Cloudflare). Vuelve a la terminal cuando diga que ya está.
+3. **Descarga la clave de la cuenta de servicio de Firebase.** En la
+   [consola de Firebase](https://console.firebase.google.com) abre tu
+   proyecto → ⚙️ *Configuración del proyecto* → pestaña *Cuentas de
+   servicio* → *Generar nueva clave privada* → *Generar clave*. Se descarga
+   un archivo `.json`.
+   > 🔒 Ese archivo es como la llave maestra de tu base de datos. **No lo
+   > pongas dentro de la carpeta del proyecto, no lo subas a GitHub y no lo
+   > compartas con nadie** (ni lo pegues en un chat). Déjalo en Descargas.
+4. **Guarda la clave como secreto del Worker.** Sigue dentro de `worker/` y
+   cambia la ruta por la de tu archivo:
+   - Mac o Linux:
+     ```bash
+     npx wrangler secret put FIREBASE_SERVICE_ACCOUNT < ~/Downloads/NOMBRE-DEL-ARCHIVO.json
+     ```
+   - Windows (PowerShell):
+     ```powershell
+     Get-Content "$HOME\Downloads\NOMBRE-DEL-ARCHIVO.json" -Raw | npx wrangler secret put FIREBASE_SERVICE_ACCOUNT
+     ```
+   Si te pregunta si quieres crear el Worker `taotao-notificaciones`, responde
+   que sí (`Y`). Cuando diga *Success*, ya puedes **borrar el archivo `.json`**
+   de Descargas: Cloudflare lo guardó cifrado.
+5. **Publica el Worker:**
+   ```bash
+   npx wrangler deploy
+   ```
+   La primera vez te pide elegir un subdominio `workers.dev` (por ejemplo tu
+   nombre). Al terminar muestra una dirección como
+   `https://taotao-notificaciones.tu-nombre.workers.dev`. Ábrela en el
+   navegador: si ves `{"ok":true,...}`, está funcionando.
+6. **Pon esa dirección en la app.** Abre `lib/push_config.dart` y pégala
+   entre las comillas, sin `/` al final:
+   ```dart
+   const notificationsUrl = 'https://taotao-notificaciones.tu-nombre.workers.dev';
+   ```
+   Luego `flutter pub get` y vuelve a correr la app en los dos teléfonos.
+7. **Prueba:** inicia sesión con las dos cuentas en dos dispositivos y toca
+   "Te extraño". Si no llega, mira qué pasa en el Worker con:
+   ```bash
+   cd worker && npx wrangler tail
+   ```
+
+El plan gratis de Cloudflare permite 100.000 pedidos por día, muchísimo más
+de lo que usa una pareja. Si algún día cambias el código de `worker/`, vuelve
+a correr `npx wrangler deploy`. Las pruebas del Worker se corren con
+`cd worker && npm test`.
 
 - **iOS:** en Xcode activa *Push Notifications* y *Background Modes → Remote
   notifications*, y sube tu clave APNs en *Configuración del proyecto →
@@ -150,7 +209,7 @@ lib/
   screens/             una carpeta por pantalla
   widgets/             piezas reutilizables
 firestore.rules        reglas de seguridad
-functions/             Cloud Functions (notificaciones push)
+worker/                Worker de Cloudflare (envía las notificaciones push)
 firestore-tests/       pruebas de las reglas con el emulador
 ```
 
@@ -169,7 +228,7 @@ couples/{coupleId}               members (los dos uid), startDate
   achievements/{id}              pomodoros y tareas cumplidas + premio elegido
   dailyAnswers/{aaaa-mm-dd}      respuestas a la pregunta del día
   bucketList/{id}                cosas por hacer juntos
-  missYou/{id}                   "te extraño" (dispara la notificación)
+  missYou/{id}                   "te extraño" (el Worker envía el aviso)
 ```
 
 ## Pruebas
@@ -177,4 +236,5 @@ couples/{coupleId}               members (los dos uid), startDate
 ```bash
 flutter test                                # pruebas de la app
 cd firestore-tests && npm install && npm test   # pruebas de las reglas (necesita Java)
+cd worker && npm install && npm test           # pruebas del Worker de notificaciones
 ```
