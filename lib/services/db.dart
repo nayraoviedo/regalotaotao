@@ -1,0 +1,38 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Rutas de Firestore en un solo lugar.
+///
+/// users/{uid}                       perfil (nombre, código, coupleId, tokens)
+/// users/{uid}/privateNotes/{id}     notas privadas
+/// pairCodes/{code}                  código -> uid (para vincularse)
+/// couples/{coupleId}                espacio de pareja (members, startDate)
+///   moods/{uid}                     ánimo actual de cada uno
+///   notes/{id}                      notas compartidas
+///   pomodoros/{id}                  invitaciones de pomodoro
+///   dailyAnswers/{yyyy-MM-dd}       respuestas a la pregunta del día
+///   bucketList/{id}                 cosas por hacer juntos
+///   missYou/{id}                    "te extraño" (dispara la notificación)
+class Db {
+  static final _fs = FirebaseFirestore.instance;
+
+  static CollectionReference<Map<String, dynamic>> get users =>
+      _fs.collection('users');
+  static DocumentReference<Map<String, dynamic>> user(String uid) =>
+      users.doc(uid);
+  static CollectionReference<Map<String, dynamic>> privateNotes(String uid) =>
+      user(uid).collection('privateNotes');
+
+  static CollectionReference<Map<String, dynamic>> get pairCodes =>
+      _fs.collection('pairCodes');
+
+  static CollectionReference<Map<String, dynamic>> get couples =>
+      _fs.collection('couples');
+  static DocumentReference<Map<String, dynamic>> couple(String id) =>
+      couples.doc(id);
+  static CollectionReference<Map<String, dynamic>> coupleSub(
+    String coupleId,
+    String name,
+  ) => couple(coupleId).collection(name);
+
+  static FirebaseFirestore get instance => _fs;
+}

@@ -1,0 +1,36 @@
+import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
+import { doc, setDoc, getDoc, updateDoc, writeBatch, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import fs from 'fs';
+const env = await initializeTestEnvironment({ projectId: 'demo-taotao', firestore: { rules: fs.readFileSync("../firestore.rules",'utf8'), host:'127.0.0.1', port:8080 } });
+const db = (u) => env.authenticatedContext(u).firestore();
+const ok=(n,p)=>assertSucceeds(p).then(()=>console.log('OK  ',n),e=>{console.log('FAIL',n,e.message);process.exitCode=1});
+const no=(n,p)=>assertFails(p).then(()=>console.log('OK  ',n),e=>{console.log('FAIL',n,'(debía fallar)');process.exitCode=1});
+async function profile(u, code){ const d=db(u); const b=writeBatch(d); b.set(doc(d,'pairCodes',code),{uid:u}); b.set(doc(d,'users',u),{name:u,pairCode:code,coupleId:null,fcmTokens:[]}); return b.commit(); }
+function link(me, partner, id){ const d=db(me); const b=writeBatch(d); b.set(doc(d,'couples',id),{members:[me,partner],startDate:null}); b.update(doc(d,'users',me),{coupleId:id}); b.update(doc(d,'users',partner),{coupleId:id}); return b.commit(); }
+await ok('crear perfil A', profile('A','AAAAAA'));
+await ok('crear perfil B', profile('B','BBBBBB'));
+await ok('crear perfil C', profile('C','CCCCCC'));
+await ok('leer código ajeno', getDoc(doc(db('A'),'pairCodes','BBBBBB')));
+await no('A no lee perfil de B antes de vincularse', getDoc(doc(db('A'),'users','B')));
+await ok('A se vincula con B', link('A','B','c1'));
+await ok('A lee perfil de B', getDoc(doc(db('A'),'users','B')));
+await no('C no lee perfil de B', getDoc(doc(db('C'),'users','B')));
+await no('C no puede robar a B', link('C','B','c2'));
+await no('C no lee la pareja', getDoc(doc(db('C'),'couples','c1')));
+await ok('B lee la pareja', getDoc(doc(db('B'),'couples','c1')));
+await ok('A guarda su ánimo', setDoc(doc(db('A'),'couples/c1/moods/A'),{mood:'feliz'}));
+await no('A no cambia el ánimo de B', setDoc(doc(db('A'),'couples/c1/moods/B'),{mood:'triste'}));
+await ok('B ve el ánimo de A', getDoc(doc(db('B'),'couples/c1/moods/A')));
+await no('C no ve el ánimo', getDoc(doc(db('C'),'couples/c1/moods/A')));
+await ok('A nota privada', setDoc(doc(db('A'),'users/A/privateNotes/n1'),{authorId:'A',text:'x'}));
+await no('B no lee nota privada de A', getDoc(doc(db('B'),'users/A/privateNotes/n1')));
+await ok('A invita pomodoro', setDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
+await no('A no puede aceptar su propia invitación', updateDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{status:'accepted'}));
+await ok('B acepta', updateDoc(doc(db('B'),'couples/c1/pomodoros/p1'),{status:'accepted',startedAt:serverTimestamp()}));
+await ok('A responde pregunta', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{A:'hola'}},{merge:true}));
+await ok('B responde pregunta', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{B:'chau'}},{merge:true}));
+await no('B no cambia la respuesta de A', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{answers:{A:'otra'}},{merge:true}));
+await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'A',to:'B'}));
+await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
+await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
+await env.cleanup();
