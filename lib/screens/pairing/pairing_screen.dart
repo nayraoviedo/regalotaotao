@@ -19,6 +19,16 @@ class _PairingScreenState extends State<PairingScreen> {
   bool _loading = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    // Si la pareja se desvinculó mientras tenías otra pantalla abierta
+    // (por ejemplo, Notas), se cierran para volver aquí.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+    });
+  }
+
   Future<void> _link() async {
     if (_code.text.trim().isEmpty) return;
     setState(() {

@@ -36,13 +36,25 @@ class CoupleService {
       throw PairingException('Ese es tu propio código 😅');
     }
 
-    final coupleRef = Db.couples.doc();
-    final batch = Db.instance.batch()
-      ..set(coupleRef, {
+    // Si ya estuvieron vinculados antes, se reabre su espacio de pareja
+    // para que recuperen sus notas, cartas, fecha de aniversario, etc.
+    final previous = await _previousCouple(myUid, partnerUid);
+    final coupleRef = previous ?? Db.couples.doc();
+    final batch = Db.instance.batch();
+    if (previous != null) {
+      batch.update(coupleRef, {
+        'endedAt': null,
+        'endedBy': null,
+        'reopenedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      batch.set(coupleRef, {
         'members': [myUid, partnerUid],
         'createdAt': FieldValue.serverTimestamp(),
         'startDate': null,
-      })
+      });
+    }
+    batch
       ..update(Db.user(myUid), {'coupleId': coupleRef.id})
       ..update(Db.user(partnerUid), {'coupleId': coupleRef.id});
     try {
@@ -53,6 +65,45 @@ class CoupleService {
       }
       rethrow;
     }
+  }
+
+  /// El espacio de pareja desvinculado más reciente entre los dos, si hay.
+  Future<DocumentReference<Map<String, dynamic>>?> _previousCouple(
+    String myUid,
+    String partnerUid,
+  ) async {
+    try {
+      final snap = await Db.couples
+          .where('members', arrayContains: myUid)
+          .get();
+      final old =
+          snap.docs
+              .map(Couple.fromDoc)
+              .where((c) => c.ended && c.members.contains(partnerUid))
+              .toList()
+            ..sort((a, b) => b.endedAt!.compareTo(a.endedAt!));
+      return old.isEmpty ? null : Db.couple(old.first.id);
+    } catch (_) {
+      // Si no se puede buscar, simplemente empiezan un espacio nuevo.
+      return null;
+    }
+  }
+
+  /// Desvincula a los dos: marca la pareja como terminada y quita el
+  /// coupleId de ambos perfiles en un solo batch. No borra nada: si vuelven
+  /// a vincularse entre ellos, recuperan todo.
+  Future<void> unlink({required String myUid, required Couple couple}) async {
+    final partnerUid = couple.partnerOf(myUid);
+    final batch = Db.instance.batch()
+      ..update(Db.couple(couple.id), {
+        'endedAt': FieldValue.serverTimestamp(),
+        'endedBy': myUid,
+      })
+      ..update(Db.user(myUid), {'coupleId': null});
+    if (partnerUid.isNotEmpty) {
+      batch.update(Db.user(partnerUid), {'coupleId': null});
+    }
+    await batch.commit();
   }
 
   Future<void> setStartDate(String coupleId, DateTime date) =>

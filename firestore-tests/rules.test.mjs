@@ -1,5 +1,5 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, updateDoc, writeBatch, collection, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, updateDoc, writeBatch, collection, addDoc, serverTimestamp, deleteDoc, query, where } from 'firebase/firestore';
 import fs from 'fs';
 const env = await initializeTestEnvironment({ projectId: 'demo-taotao', firestore: { rules: fs.readFileSync("../firestore.rules",'utf8'), host:'127.0.0.1', port:8080 } });
 const db = (u) => env.authenticatedContext(u).firestore();
@@ -62,4 +62,23 @@ await ok('B abre la carta', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{open
 await no('B no la vuelve a cerrar', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{openedAt:null}));
 await no('B no borra la carta de A', deleteDoc(doc(db('B'),'couples/c1/letters/k1')));
 await ok('A borra su carta', deleteDoc(doc(db('A'),'couples/c1/letters/k1')));
+// ---------- Desvincularse y volver a vincularse ----------
+function unlink(me, partner, id){ const d=db(me); const b=writeBatch(d); b.update(doc(d,'couples',id),{endedAt:serverTimestamp(),endedBy:me}); b.update(doc(d,'users',me),{coupleId:null}); b.update(doc(d,'users',partner),{coupleId:null}); return b.commit(); }
+function reopen(me, partner, id){ const d=db(me); const b=writeBatch(d); b.update(doc(d,'couples',id),{endedAt:null,endedBy:null}); b.update(doc(d,'users',me),{coupleId:id}); b.update(doc(d,'users',partner),{coupleId:id}); return b.commit(); }
+await no('C no desvincula a A y B', unlink('C','B','c1'));
+await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db('A'),'users','B'),{coupleId:null}));
+await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples','c1'),{endedAt:serverTimestamp(),endedBy:'B'}));
+await ok('A se desvincula de B', unlink('A','B','c1'));
+await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));
+await no('A ya no lee el perfil de B', getDoc(doc(db('A'),'users','B')));
+await no('B no edita la pareja terminada', updateDoc(doc(db('B'),'couples','c1'),{startDate:serverTimestamp()}));
+await no('B no reabre la pareja sin volver a apuntar a ella', updateDoc(doc(db('B'),'couples','c1'),{endedAt:null}));
+await ok('A busca sus parejas anteriores', getDocs(query(collection(db('A'),'couples'),where('members','array-contains','A'))));
+await no('C no busca las parejas de A', getDocs(query(collection(db('C'),'couples'),where('members','array-contains','A'))));
+await no('C no reabre la pareja de A y B', reopen('C','B','c1'));
+await ok('B vuelve a vincularse con A y recupera todo', reopen('B','A','c1'));
+await ok('A vuelve a ver su carta… y su ánimo', getDoc(doc(db('A'),'couples/c1/moods/A')));
+await ok('A se desvincula otra vez', unlink('A','B','c1'));
+await ok('A puede vincularse con C', link('A','C','c3'));
+await no('B no puede reabrir con A mientras A está con C', reopen('B','A','c1'));
 await env.cleanup();

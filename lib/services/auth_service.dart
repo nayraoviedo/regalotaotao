@@ -55,6 +55,16 @@ class AuthService {
         'canceled',
       };
       if (cancelled.contains(e.code)) return false;
+      // Cuando Google no está activado en Firebase, a veces llega como
+      // internal-error con este texto.
+      final msg = e.message ?? '';
+      if (msg.contains('CONFIGURATION_NOT_FOUND') ||
+          msg.contains('OPERATION_NOT_ALLOWED')) {
+        throw FirebaseAuthException(
+          code: 'operation-not-allowed',
+          message: msg,
+        );
+      }
       rethrow;
     }
   }
@@ -84,6 +94,18 @@ class AuthService {
               'ventanas emergentes e intenta de nuevo.';
         case 'operation-not-allowed':
           return 'Este método de inicio de sesión no está activado en Firebase.';
+        case 'unauthorized-domain':
+          return 'Esta dirección no está autorizada en Firebase. Agrégala en '
+              'Authentication > Configuración > Dominios autorizados.';
+        case 'web-storage-unsupported':
+        case 'internal-error':
+          return 'El navegador bloqueó el inicio con Google. Si usas Brave, '
+              'baja los escudos (el león) para esta página o permite las '
+              'cookies de terceros, y vuelve a intentar.';
+        case 'network-request-failed':
+          return 'No hay conexión. Revisa tu internet e intenta de nuevo.';
+        case 'user-disabled':
+          return 'Esta cuenta está desactivada.';
         case 'account-exists-with-different-credential':
           return 'Ya tienes una cuenta con ese correo. Entra con tu contraseña.';
         case 'missing-email':
@@ -93,7 +115,8 @@ class AuthService {
         case 'weak-password':
           return 'La contraseña debe tener al menos 6 caracteres.';
       }
-      return e.message ?? 'Ocurrió un error.';
+      // Mostramos el código para poder saber qué pasó.
+      return 'Ocurrió un error (${e.code}).';
     }
     return 'Ocurrió un error: $e';
   }
