@@ -12,6 +12,7 @@ import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/text_prompt.dart';
+import '../../widgets/user_avatar.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
 
@@ -191,7 +192,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
               const SizedBox(height: 28),
               _RewardFeed(
                 coupleId: _coupleId,
-                myUid: widget.me.uid,
+                me: widget.me,
+                partner: _partner,
                 partnerName: _partnerName,
                 onEditRewards: () => editRewards(
                   context,
@@ -1125,20 +1127,25 @@ class _AddTaskButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Premios elegidos: los míos y los de mi pareja.
+// Premios elegidos: qué escogió cada uno, con su foto y su nombre.
+// Solo se escoge un premio por sesión completada.
 
 class _RewardFeed extends StatelessWidget {
   const _RewardFeed({
     required this.coupleId,
-    required this.myUid,
+    required this.me,
+    required this.partner,
     required this.partnerName,
     required this.onEditRewards,
   });
 
   final String coupleId;
-  final String myUid;
+  final AppUser me;
+  final AppUser? partner;
   final String partnerName;
   final VoidCallback onEditRewards;
+
+  String get myUid => me.uid;
 
   String _what(Achievement a, bool mine) {
     final quien = mine ? 'Completaste' : '$partnerName completó';
@@ -1154,12 +1161,15 @@ class _RewardFeed extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = RewardService.instance;
     return StreamBuilder<List<Achievement>>(
-      stream: service.watchRecent(coupleId),
+      stream: service.watchRecent(coupleId, limit: 40),
       builder: (context, snap) {
-        final items = (snap.data ?? const <Achievement>[])
+        final all = snap.data ?? const <Achievement>[];
+        final items = all
             .where((a) => a.hasReward || a.uid == myUid)
             .take(10)
             .toList();
+        final mios = all.where((a) => a.uid == myUid && a.hasReward).toList();
+        final suyos = all.where((a) => a.uid != myUid && a.hasReward).toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1182,12 +1192,38 @@ class _RewardFeed extends StatelessWidget {
                 ),
               ],
             ),
+            const Text(
+              'Un premio por cada sesión completada.',
+              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _WhoChose(
+                    user: me,
+                    label: 'Tú escogiste',
+                    picks: mios,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _WhoChose(
+                    user: partner,
+                    label: '$partnerName escogió',
+                    picks: suyos,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   'Cuando uno de los dos complete un pomodoro o una tarea, '
-                  'aquí aparece el premio que eligió.',
+                  'aquí aparece el premio que escogió.',
                   style: TextStyle(color: PomodoroStyle.gris),
                 ),
               ),
@@ -1195,6 +1231,7 @@ class _RewardFeed extends StatelessWidget {
               _RewardTile(
                 achievement: a,
                 mine: a.uid == myUid,
+                user: a.uid == myUid ? me : partner,
                 what: _what(a, a.uid == myUid),
                 partnerName: partnerName,
                 onChoose: () => celebrateAndChooseReward(
@@ -1213,10 +1250,95 @@ class _RewardFeed extends StatelessWidget {
   }
 }
 
+/// Resumen de una persona: su foto, su nombre y los últimos premios que
+/// escogió.
+class _WhoChose extends StatelessWidget {
+  const _WhoChose({
+    required this.user,
+    required this.label,
+    required this.picks,
+  });
+
+  final AppUser? user;
+  final String label;
+  final List<Achievement> picks;
+
+  @override
+  Widget build(BuildContext context) {
+    final ultimos = picks.take(3).toList();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: PomodoroStyle.tarjeta(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              UserAvatar(user, size: 34, border: false),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: PomodoroStyle.azul,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (ultimos.isEmpty)
+            const Text(
+              'Nada todavía',
+              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+          for (final a in ultimos)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    a.delivered ? Icons.check_circle : Icons.card_giftcard,
+                    size: 15,
+                    color: a.delivered
+                        ? PomodoroStyle.hoja
+                        : PomodoroStyle.amarillo,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      a.rewardTitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: PomodoroStyle.azul,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (picks.length > ultimos.length)
+            Text(
+              'y ${picks.length - ultimos.length} más',
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 12),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RewardTile extends StatelessWidget {
   const _RewardTile({
     required this.achievement,
     required this.mine,
+    required this.user,
     required this.what,
     required this.partnerName,
     required this.onChoose,
@@ -1225,6 +1347,7 @@ class _RewardTile extends StatelessWidget {
 
   final Achievement achievement;
   final bool mine;
+  final AppUser? user;
   final String what;
   final String partnerName;
   final VoidCallback onChoose;
@@ -1233,11 +1356,12 @@ class _RewardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = achievement;
+    final quien = mine ? 'Tú' : partnerName;
     Widget? action;
     String status;
     if (!a.hasReward) {
       status = 'Sin premio todavía';
-      action = TextButton(onPressed: onChoose, child: const Text('Elegir'));
+      action = TextButton(onPressed: onChoose, child: const Text('Escoger'));
     } else if (a.delivered) {
       status = mine ? '¡$partnerName ya te lo dio! 💛' : 'Ya se lo diste 💛';
     } else if (mine) {
@@ -1257,28 +1381,14 @@ class _RewardTile extends StatelessWidget {
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: a.hasReward
-                  ? PomodoroStyle.amarillo.withValues(alpha: 0.3)
-                  : PomodoroStyle.pastilla,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              a.hasReward ? Icons.card_giftcard : Icons.hourglass_empty,
-              color: PomodoroStyle.azul,
-              size: 20,
-            ),
-          ),
+          UserAvatar(user, size: 40, border: false),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1292,12 +1402,22 @@ class _RewardTile extends StatelessWidget {
                   ),
                 ),
                 if (a.hasReward)
-                  Text(
-                    a.rewardTitle!,
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: mine ? 'Escogiste ' : '$quien escogió ',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        TextSpan(
+                          text: a.rewardTitle!,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
                     style: const TextStyle(
                       color: PomodoroStyle.azul,
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 Text(

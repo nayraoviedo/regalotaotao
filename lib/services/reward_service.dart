@@ -5,6 +5,12 @@ import '../models/reward.dart';
 import 'db.dart';
 import 'notify_service.dart';
 
+/// Ya se había elegido un premio para esa sesión.
+class RewardAlreadyChosen implements Exception {
+  RewardAlreadyChosen(this.rewardTitle);
+  final String rewardTitle;
+}
+
 /// Premios de la pareja, lo que cada uno cumplió y las tareas del pomodoro.
 class RewardService {
   RewardService._();
@@ -71,15 +77,27 @@ class RewardService {
     return docId;
   }
 
+  /// Guarda el premio elegido para un logro. Solo se puede elegir UNO por
+  /// sesión completada: si ya tenía premio, lanza [RewardAlreadyChosen] y no
+  /// cambia nada (las reglas de Firestore también lo impiden).
   Future<void> chooseReward(
     String coupleId,
     String achievementId,
     Reward reward,
   ) async {
-    await _achievements(coupleId).doc(achievementId).update({
-      'rewardId': reward.id,
-      'rewardTitle': reward.title,
-      'rewardChosenAt': FieldValue.serverTimestamp(),
+    final ref = _achievements(coupleId).doc(achievementId);
+    await Db.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final d = snap.data();
+      if (d == null) throw StateError('No existe ese logro');
+      if (d['rewardId'] != null) {
+        throw RewardAlreadyChosen(d['rewardTitle'] as String? ?? '');
+      }
+      tx.update(ref, {
+        'rewardId': reward.id,
+        'rewardTitle': reward.title,
+        'rewardChosenAt': FieldValue.serverTimestamp(),
+      });
     });
     NotifyService.instance.send(NotifyKind.reward, coupleId, achievementId);
   }

@@ -21,13 +21,18 @@ Future<void> celebrateAndChooseReward(
     motivo: motivo,
   );
   if (reward == null) return;
-  await RewardService.instance.chooseReward(coupleId, achievementId, reward);
+  String aviso;
+  try {
+    await RewardService.instance.chooseReward(coupleId, achievementId, reward);
+    aviso = 'Elegiste "${reward.title}". Tu pareja ya lo puede ver 💛';
+  } on RewardAlreadyChosen catch (e) {
+    aviso = e.rewardTitle.isEmpty
+        ? 'Ya elegiste un premio para esta sesión.'
+        : 'Ya elegiste "${e.rewardTitle}" para esta sesión. '
+              'Solo se puede uno por sesión.';
+  }
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Elegiste "${reward.title}". Tu pareja ya lo puede ver 💛'),
-    ),
-  );
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(aviso)));
 }
 
 /// Hoja para elegir un premio de la lista de la pareja.
@@ -75,7 +80,7 @@ Future<Reward?> pickReward(
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$motivo. Elige tu premio:',
+                  '$motivo. Elige tu premio (solo uno por sesión):',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: PomodoroStyle.gris),
                 ),
