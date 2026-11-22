@@ -922,14 +922,19 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     if (s == null) {
       return Column(
         children: [
-          _Pills(
-            left: '25 min',
-            right: '45 min',
-            rightSelected: _minutes == 45,
-            onChanged: (v) => setState(() => _minutes = v ? 45 : 25),
+          const Text(
+            '¿Cuánto tiempo quieren pasar juntos?',
+            style: TextStyle(
+              color: PomodoroStyle.azul,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 20),
-          Text(_fmt(Duration(minutes: _minutes)), style: _timerStyle),
+          const SizedBox(height: 12),
+          _MinutesPicker(
+            minutes: _minutes,
+            onChanged: (m) => setState(() => _minutes = m),
+          ),
           _message('Concéntrense juntos y al final cada uno elige su premio'),
           const SizedBox(height: 8),
           SizedBox(
@@ -1035,6 +1040,80 @@ class _CoupleTimerState extends State<_CoupleTimer> {
             label: const Text('Salir de la sesión'),
             onPressed: widget.onStop,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Elegir los minutos de la sesión juntos antes de invitar: atajos rápidos
+/// y botones − / + de 5 en 5 (entre 5 y 60, lo que permiten las reglas).
+class _MinutesPicker extends StatelessWidget {
+  const _MinutesPicker({required this.minutes, required this.onChanged});
+
+  final int minutes;
+  final ValueChanged<int> onChanged;
+
+  static const _min = 5;
+  static const _max = 60;
+  static const _atajos = [15, 25, 30, 45, 60];
+
+  @override
+  Widget build(BuildContext context) {
+    Widget paso(IconData icon, int delta) {
+      final next = minutes + delta;
+      final ok = next >= _min && next <= _max;
+      return IconButton.filledTonal(
+        onPressed: ok ? () => onChanged(next) : null,
+        style: IconButton.styleFrom(
+          backgroundColor: PomodoroStyle.pastilla,
+          foregroundColor: PomodoroStyle.azul,
+        ),
+        icon: Icon(icon),
+      );
+    }
+
+    return Column(
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final m in _atajos)
+              ChoiceChip(
+                label: Text('$m min'),
+                selected: minutes == m,
+                onSelected: (_) => onChanged(m),
+                showCheckmark: false,
+                shape: const StadiumBorder(),
+                side: BorderSide.none,
+                backgroundColor: Colors.white.withValues(alpha: 0.7),
+                selectedColor: PomodoroStyle.azul,
+                labelStyle: TextStyle(
+                  color: minutes == m ? Colors.white : PomodoroStyle.azul,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            paso(Icons.remove, -5),
+            const SizedBox(width: 8),
+            Flexible(
+              child: FittedBox(
+                child: Text(
+                  _fmt(Duration(minutes: minutes)),
+                  style: _timerStyle,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            paso(Icons.add, 5),
+          ],
         ),
       ],
     );
