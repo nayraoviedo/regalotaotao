@@ -101,6 +101,30 @@ service cloud.firestore {
           && resource.data.authorId == me();
       }
 
+      // Cartas "Ábrelo cuando…": cada uno escribe para su pareja. Quien la
+      // recibe solo puede marcarla como abierta; quien la escribió, borrarla.
+      match /letters/{letterId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me()
+          && request.resource.data.to != me()
+          && request.resource.data.to in coupleDoc(coupleId).data.members
+          && request.resource.data.openedAt == null
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 5000
+          && request.resource.data.cuando is string
+          && request.resource.data.cuando.size() > 0
+          && request.resource.data.cuando.size() <= 60;
+        allow update: if isMember(coupleId)
+          && me() == resource.data.to
+          && resource.data.openedAt == null
+          && request.resource.data.openedAt is timestamp
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['openedAt']);
+        allow delete: if isMember(coupleId) && me() == resource.data.from;
+      }
+
       // Pomodoro en pareja: uno invita, solo la otra persona puede aceptar.
       match /pomodoros/{sessionId} {
         allow read: if isMember(coupleId);
