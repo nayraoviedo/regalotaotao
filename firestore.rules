@@ -1,0 +1,142 @@
+rules_version = '2';
+
+// Reglas de seguridad de Taotao.
+// Idea principal: todo lo de la pareja vive en couples/{coupleId} y solo
+// las dos personas que están en `members` pueden leerlo o escribirlo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+    function coupleDoc(coupleId) {
+      return get(/databases/$(database)/documents/couples/$(coupleId));
+    }
+    function coupleAfter(coupleId) {
+      return getAfter(/databases/$(database)/documents/couples/$(coupleId));
+    }
+    function isMember(coupleId) {
+      return signedIn() && me() in coupleDoc(coupleId).data.members;
+    }
+    function isPartnerOf(uid) {
+      let myCouple = userDoc(me()).data.get('coupleId', null);
+      return myCouple != null && uid in coupleDoc(myCouple).data.members;
+    }
+
+    // ---------- Perfiles ----------
+    match /users/{uid} {
+      allow read: if signedIn() && (me() == uid || isPartnerOf(uid));
+
+      allow create: if signedIn() && me() == uid
+        && request.resource.data.coupleId == null;
+
+      // La propia persona puede editar su perfil. Si cambia coupleId,
+      // tiene que ser a null o a un espacio de pareja del que forma parte.
+      allow update: if signedIn() && me() == uid
+        && request.resource.data.pairCode == resource.data.pairCode
+        && (
+          request.resource.data.coupleId == resource.data.coupleId
+          || request.resource.data.coupleId == null
+          || uid in coupleAfter(request.resource.data.coupleId).data.members
+        );
+
+      // Vincularse: quien ingresa el código marca coupleId en el perfil de
+      // la otra persona, solo si esa persona no tiene pareja todavía y en el
+      // mismo batch se está creando el espacio de pareja con los dos.
+      allow update: if signedIn() && me() != uid
+        && resource.data.coupleId == null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['coupleId'])
+        && !exists(/databases/$(database)/documents/couples/$(request.resource.data.coupleId))
+        && coupleAfter(request.resource.data.coupleId).data.members.hasAll([me(), uid]);
+
+      // Notas privadas: solo su dueño.
+      match /privateNotes/{noteId} {
+        allow read, write: if signedIn() && me() == uid;
+      }
+    }
+
+    // ---------- Códigos de pareja ----------
+    match /pairCodes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == me();
+      allow update, delete: if false;
+    }
+
+    // ---------- Espacio de pareja ----------
+    match /couples/{coupleId} {
+      allow read: if signedIn() && me() in resource.data.members;
+
+      allow create: if signedIn()
+        && request.resource.data.members.size() == 2
+        && me() in request.resource.data.members
+        && request.resource.data.members[0] != request.resource.data.members[1]
+        && getAfter(/databases/$(database)/documents/users/$(me())).data.coupleId == coupleId;
+
+      allow update: if signedIn() && me() in resource.data.members
+        && request.resource.data.members == resource.data.members;
+
+      allow delete: if false;
+
+      // Ánimo: cada uno escribe solo el suyo.
+      match /moods/{uid} {
+        allow read: if isMember(coupleId);
+        allow write: if isMember(coupleId) && me() == uid;
+      }
+
+      // Notas compartidas: las leen los dos, cada uno edita las suyas.
+      match /notes/{noteId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.authorId == me();
+        allow update, delete: if isMember(coupleId)
+          && resource.data.authorId == me();
+      }
+
+      // Pomodoro en pareja: uno invita, solo la otra persona puede aceptar.
+      match /pomodoros/{sessionId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.invitedBy == me()
+          && request.resource.data.invitee != me()
+          && request.resource.data.invitee in coupleDoc(coupleId).data.members
+          && request.resource.data.status == 'pending';
+        allow update: if isMember(coupleId)
+          && request.resource.data.invitedBy == resource.data.invitedBy
+          && request.resource.data.invitee == resource.data.invitee
+          && (
+            (request.resource.data.status in ['accepted', 'declined']
+              && resource.data.status == 'pending'
+              && me() == resource.data.invitee)
+            || request.resource.data.status in ['cancelled', 'finished']
+          );
+      }
+
+      // Pregunta del día: cada uno solo escribe su propia respuesta.
+      match /dailyAnswers/{day} {
+        function previousAnswers() {
+          return resource == null ? {} : resource.data.get('answers', {});
+        }
+        allow read: if isMember(coupleId);
+        allow create, update: if isMember(coupleId)
+          && request.resource.data.answers.diff(previousAnswers())
+               .affectedKeys().hasOnly([me()]);
+      }
+
+      // Cosas por hacer juntos.
+      match /bucketList/{itemId} {
+        allow read, write: if isMember(coupleId);
+      }
+
+      // "Te extraño": dispara una notificación (ver functions/).
+      match /missYou/{id} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me();
+      }
+    }
+  }
+}
