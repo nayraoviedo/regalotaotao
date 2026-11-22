@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// couples/{coupleId}                espacio de pareja (members, startDate)
 ///   moods/{uid}                     ánimo actual de cada uno
 ///   notes/{id}                      notas compartidas
+///   letters/{id}                    cartas "Ábrelo cuando…"
 ///   pomodoros/{id}                  invitaciones de pomodoro
 ///   rewards/{id}                    lista de premios (la editan los dos)
 ///   achievements/{id}               pomodoros/tareas cumplidas y premio elegido

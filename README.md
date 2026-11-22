@@ -208,6 +208,28 @@ del dibujo queda un poco escondida detrás de la tarjeta del temporizador,
 así que deja el personaje más bien arriba y centrado. Los colores de esa
 pantalla están en `lib/screens/pomodoro/pomodoro_style.dart`.
 
+## Cartas "Ábrelo cuando…" y el papel de las notas
+
+En **Notas → Cartas** cada uno le escribe cartas a su pareja para un momento
+("cuando estés triste", "cuando me extrañes"…). Llegan con un avioncito de
+papel y se ven como sobres con sello; por dentro, las cartas y las notas se
+ven como papel crema con cuadrícula o renglones celestes y destellos.
+
+Todos los dibujos son opcionales y se cambian poniendo un PNG con fondo
+transparente en `assets/images/` con estos nombres (si no existen, la app
+dibuja uno simple):
+
+| Archivo | Dónde aparece |
+|---|---|
+| `avioncito.png` | El avioncito que llega volando (600×400, mirando a la derecha) |
+| `sello.png` | El sello de todos los sobres (300×300, redondo) |
+| `sello_triste.png`, `sello_extranes.png`, … | Sello para un motivo en especial (ver `lib/screens/notes/cartas/cartas_style.dart`) |
+| `papel_arriba.png` | Dibujito en la esquina de arriba de la hoja (300×300) |
+| `papel_abajo.png` | Dibujito en la esquina de abajo de la hoja (300×300) |
+
+Para que también llegue la notificación push de carta nueva, vuelve a
+publicar el Worker (`cd worker && npx wrangler deploy`).
+
 ## Cómo está organizado
 
 ```

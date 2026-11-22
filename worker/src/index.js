@@ -2,11 +2,11 @@
 //
 // Reemplaza a las Cloud Functions para no necesitar el plan Blaze de
 // Firebase. La app lo llama justo después de crear un "te extraño", una
-// invitación de pomodoro o de elegir un premio:
+// invitación de pomodoro, una carta "Ábrelo cuando…" o de elegir un premio:
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward",
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter",
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -100,6 +100,15 @@ const KINDS = {
     message: (name, d) => ({
       title: "🎁 Premio elegido",
       body: `${name} ${d.kind === "tarea" ? "terminó una tarea" : "completó un pomodoro"} y eligió: ${d.rewardTitle}`,
+    }),
+  },
+  letter: {
+    collection: "letters",
+    check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
+    dedupeKey: () => "enviado",
+    message: (name, d) => ({
+      title: "✉️ Te llegó una carta",
+      body: `${name} te mandó un avioncito: ábrelo cuando ${String(d.cuando || "lo necesites").slice(0, 60)}`,
     }),
   },
 };

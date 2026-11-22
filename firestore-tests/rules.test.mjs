@@ -1,5 +1,5 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, updateDoc, writeBatch, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, writeBatch, collection, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import fs from 'fs';
 const env = await initializeTestEnvironment({ projectId: 'demo-taotao', firestore: { rules: fs.readFileSync("../firestore.rules",'utf8'), host:'127.0.0.1', port:8080 } });
 const db = (u) => env.authenticatedContext(u).firestore();
@@ -51,4 +51,15 @@ await no('A no cambia un premio ya entregado', updateDoc(doc(db('A'),'couples/c1
 await no('C no ve los logros', getDoc(doc(db('C'),'couples/c1/achievements/l1')));
 await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
 await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
+await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Te quiero',papel:'cuadricula',openedAt:null}));
+await no('A no se escribe a sí misma', setDoc(doc(db('A'),'couples/c1/letters/k2'),{from:'A',to:'A',cuando:'x',text:'hola',openedAt:null}));
+await no('A no firma como B', setDoc(doc(db('A'),'couples/c1/letters/k3'),{from:'B',to:'A',cuando:'x',text:'hola',openedAt:null}));
+await no('A no manda cartas ya abiertas', setDoc(doc(db('A'),'couples/c1/letters/k4'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:serverTimestamp()}));
+await no('C no lee las cartas', getDoc(doc(db('C'),'couples/c1/letters/k1')));
+await no('A no marca abierta la carta que escribió', updateDoc(doc(db('A'),'couples/c1/letters/k1'),{openedAt:serverTimestamp()}));
+await no('B no cambia el texto', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{text:'otro'}));
+await ok('B abre la carta', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{openedAt:serverTimestamp()}));
+await no('B no la vuelve a cerrar', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{openedAt:null}));
+await no('B no borra la carta de A', deleteDoc(doc(db('B'),'couples/c1/letters/k1')));
+await ok('A borra su carta', deleteDoc(doc(db('A'),'couples/c1/letters/k1')));
 await env.cleanup();
