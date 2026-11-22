@@ -21,7 +21,11 @@ class AuthService {
       password: password,
     );
     await cred.user!.updateDisplayName(name);
-    await UserService.instance.ensureProfile(cred.user!.uid, name);
+    await UserService.instance.ensureProfile(
+      cred.user!.uid,
+      name,
+      email: email,
+    );
   }
 
   /// Inicia sesión con Google. En web abre una ventana emergente; en
@@ -36,7 +40,12 @@ class AuthService {
           : await _auth.signInWithProvider(provider);
       final user = cred.user!;
       final name = user.displayName ?? user.email?.split('@').first ?? 'Yo';
-      await UserService.instance.ensureProfile(user.uid, name);
+      await UserService.instance.ensureProfile(
+        user.uid,
+        name,
+        photoUrl: user.photoURL,
+        email: user.email,
+      );
       return true;
     } on FirebaseAuthException catch (e) {
       const cancelled = {
