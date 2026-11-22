@@ -1,1 +1,11 @@
-{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git","firebase-debug.log"]}],"emulators":{"firestore":{"port":8080}},"flutter":{"platforms":{"android":{"default":{"projectId":"taotao-bd5ee","appId":"1:1094425418741:android:a953af405148792f8e9ebc","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"taotao-bd5ee","configurations":{"android":"1:1094425418741:android:a953af405148792f8e9ebc","ios":"1:1094425418741:ios:a16daee960ace0538e9ebc","web":"1:1094425418741:web:e37a49eecf6d85d28e9ebc"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080
+    }
+  }
+}

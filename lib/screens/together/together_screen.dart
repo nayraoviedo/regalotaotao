@@ -45,7 +45,7 @@ class TogetherScreen extends StatelessWidget {
                 children: [
                   if (c.startDate == null)
                     const Text(
-                      'Elige la fecha en que empezaron 💕',
+                      'Elige la fecha de nuestro aniversario 💕',
                       textAlign: TextAlign.center,
                     )
                   else ...[
@@ -67,10 +67,13 @@ class TogetherScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.edit_calendar),
-                    label: const Text('Cambiar fecha'),
+                    label: Text(
+                      c.startDate == null ? 'Elegir fecha' : 'Cambiar fecha',
+                    ),
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
+                        helpText: 'Elige la fecha de nuestro aniversario',
                         initialDate: c.startDate ?? DateTime.now(),
                         firstDate: DateTime(1950),
                         lastDate: DateTime.now(),
@@ -97,6 +100,6 @@ class TogetherScreen extends StatelessWidget {
     if (daysLeft == 0) {
       return '¡Hoy cumplen $years ${years == 1 ? 'año' : 'años'}! 🎉';
     }
-    return 'Faltan $daysLeft días para su aniversario número $years';
+    return 'Faltan $daysLeft días para nuestro aniversario número $years';
   }
 }

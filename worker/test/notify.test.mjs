@@ -1,0 +1,169 @@
+// Pruebas del Worker con un "Google falso" (sin internet).
+// Correr con: npm test
+import { test, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import worker from "../src/index.js";
+
+const PROJECT = "proyecto-prueba";
+const alg = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) };
+const saKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+const idKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+const otherKeys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+
+const pkcs8 = Buffer.from(await crypto.subtle.exportKey("pkcs8", saKeys.privateKey)).toString("base64");
+const env = {
+  FIREBASE_SERVICE_ACCOUNT: JSON.stringify({
+    project_id: PROJECT,
+    client_email: "sa@proyecto-prueba.iam.gserviceaccount.com",
+    private_key: `-----BEGIN PRIVATE KEY-----\n${pkcs8.match(/.{1,64}/g).join("\n")}\n-----END PRIVATE KEY-----\n`,
+  }),
+};
+const jwk = { ...(await crypto.subtle.exportKey("jwk", idKeys.publicKey)), kid: "k1", alg: "RS256", use: "sig" };
+
+const b64url = (b) => Buffer.from(b).toString("base64url");
+async function idToken(uid, { key = idKeys.privateKey, aud = PROJECT, exp = 3600 } = {}) {
+  const now = Math.floor(Date.now() / 1000);
+  const h = b64url(JSON.stringify({ alg: "RS256", kid: "k1" }));
+  const p = b64url(JSON.stringify({ sub: uid, aud, iss: `https://securetoken.google.com/${aud}`, iat: now - 10, exp: now + exp }));
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(`${h}.${p}`));
+  return `${h}.${p}.${b64url(new Uint8Array(sig))}`;
+}
+
+// ---- Firestore y FCM falsos ----
+let docs, sent, updateCounter;
+const enc = (v) =>
+  v === null ? { nullValue: null }
+  : Array.isArray(v) ? { arrayValue: { values: v.map(enc) } }
+  : typeof v === "number" ? { integerValue: String(v) }
+  : { stringValue: v };
+const prefix = `projects/${PROJECT}/databases/(default)/documents/`;
+const stamp = () => new Date(Date.now() + updateCounter++).toISOString();
+
+beforeEach(() => {
+  updateCounter = 0;
+  sent = [];
+  docs = {
+    "couples/c1": { members: ["ana", "beto"] },
+    "couples/c2": { members: ["carla", "dani"] },
+    "users/ana": { name: "Ana", fcmTokens: [] },
+    "users/beto": { name: "Beto", fcmTokens: ["tok-bueno", "tok-viejo"] },
+    "couples/c1/missYou/m1": { from: "ana", to: "beto" },
+    "couples/c1/missYou/falso": { from: "beto", to: "beto" },
+    "couples/c1/pomodoros/p1": { invitedBy: "ana", invitee: "beto", minutes: 50, status: "pending" },
+    "couples/c1/achievements/a1": { uid: "ana", kind: "tarea", rewardId: "r1", rewardTitle: "Un helado" },
+  };
+  for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
+});
+
+globalThis.fetch = async (url, init = {}) => {
+  url = String(url);
+  const json = (status, body) => new Response(JSON.stringify(body), { status });
+  if (url.includes("securetoken@system")) return json(200, { keys: [jwk] });
+  if (url === "https://oauth2.googleapis.com/token") {
+    const assertion = new URLSearchParams(init.body).get("assertion");
+    const [h, p, s] = assertion.split(".");
+    const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", saKeys.publicKey, Buffer.from(s, "base64url"), new TextEncoder().encode(`${h}.${p}`));
+    return ok ? json(200, { access_token: "acceso", expires_in: 3600 }) : json(400, { error: "firma" });
+  }
+  if (init.headers?.Authorization !== "Bearer acceso") return json(401, {});
+  if (url.startsWith("https://fcm.googleapis.com/")) {
+    const { message } = JSON.parse(init.body);
+    if (message.token === "tok-viejo") {
+      return json(404, { error: { message: "Requested entity was not found.", details: [{ errorCode: "UNREGISTERED" }] } });
+    }
+    sent.push(message);
+    return json(200, { name: "ok" });
+  }
+  const fsBase = `https://firestore.googleapis.com/v1/${prefix}`;
+  if (url.endsWith(":commit")) {
+    for (const w of JSON.parse(init.body).writes) {
+      const path = (w.update?.name || w.transform.document).slice(prefix.length);
+      const doc = docs[path];
+      if (w.currentDocument && doc.updateTime !== w.currentDocument.updateTime) {
+        return json(400, { error: { status: "FAILED_PRECONDITION" } });
+      }
+      if (w.update) for (const [k, v] of Object.entries(w.update.fields)) doc.data[k] = v.stringValue;
+      if (w.transform) {
+        const t = w.transform.fieldTransforms[0];
+        const drop = t.removeAllFromArray.values.map((v) => v.stringValue);
+        doc.data[t.fieldPath] = doc.data[t.fieldPath].filter((x) => !drop.includes(x));
+      }
+      doc.updateTime = stamp();
+    }
+    return json(200, {});
+  }
+  if (url.startsWith(fsBase)) {
+    const doc = docs[url.slice(fsBase.length)];
+    if (!doc) return json(404, {});
+    const fields = Object.fromEntries(Object.entries(doc.data).map(([k, v]) => [k, enc(v)]));
+    return json(200, { fields, updateTime: doc.updateTime });
+  }
+  throw new Error(`fetch inesperado: ${url}`);
+};
+
+async function call(body, token) {
+  const res = await worker.fetch(
+    new Request("https://w.example/notify", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify(body),
+    }),
+    env,
+  );
+  return { status: res.status, body: await res.json() };
+}
+
+test("te extraño llega a la pareja y borra el token viejo", async () => {
+  const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.equal(r.body.enviados, 1);
+  assert.deepEqual(sent.map((m) => [m.token, m.notification.body]), [["tok-bueno", "Ana te está extrañando"]]);
+  assert.deepEqual(docs["users/beto"].data.fcmTokens, ["tok-bueno"]);
+});
+
+test("no se envía dos veces el mismo aviso", async () => {
+  const t = await idToken("ana");
+  await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, t);
+  const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, t);
+  assert.equal(r.body.yaEnviado, true);
+  assert.equal(sent.length, 1);
+});
+
+test("invitación de pomodoro y premio", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "pomodoroInvite", coupleId: "c1", docId: "p1" }, t)).status, 200);
+  assert.equal((await call({ kind: "reward", coupleId: "c1", docId: "a1" }, t)).status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.body), [
+    "Ana te invita a concentrarse 50 min",
+    "Ana terminó una tarea y eligió: Un helado",
+  ]);
+});
+
+test("sin token o con token falso: 401", async () => {
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" })).status, 401);
+  const falso = await idToken("ana", { key: otherKeys.privateKey });
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, falso)).status, 401);
+  const otroProyecto = await idToken("ana", { aud: "otro" });
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, otroProyecto)).status, 401);
+  const vencido = await idToken("ana", { exp: -100 });
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, vencido)).status, 401);
+  assert.equal(sent.length, 0);
+});
+
+test("no se puede avisar a alguien que no es tu pareja", async () => {
+  // carla no es miembro de c1
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("carla"))).status, 403);
+  // beto no creó m1
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("beto"))).status, 403);
+  // documento con destinatario que no es la pareja
+  assert.equal((await call({ kind: "missYou", coupleId: "c1", docId: "falso" }, await idToken("beto"))).status, 403);
+  // ids raros
+  assert.equal((await call({ kind: "missYou", coupleId: "../users", docId: "m1" }, await idToken("ana"))).status, 400);
+  assert.equal(sent.length, 0);
+});
+
+test("documentos viejos no se envían", async () => {
+  docs["couples/c1/missYou/m1"].updateTime = new Date(Date.now() - 3600_000).toISOString();
+  const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("ana"));
+  assert.equal(r.status, 410);
+});

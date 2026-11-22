@@ -39,6 +39,8 @@ dependencies:
   firebase_auth: ^7.1.0
   cloud_firestore: ^7.2.0
   firebase_messaging: ^17.1.0
+  http: ^1.6.0
+  shared_preferences: ^2.5.6
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,7 +65,15 @@ flutter:
 
   # Dibujos del ánimo (PNG con fondo transparente).
   assets:
+    - assets/images/pomodoro.png
     - assets/moods/
+    - assets/images/
+
+  # Letra manuscrita para los saludos (SIL Open Font License).
+  fonts:
+    - family: Manuscrita
+      fonts:
+        - asset: assets/fonts/DancingScript-Bold.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

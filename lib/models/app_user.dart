@@ -6,6 +6,8 @@ class AppUser {
     required this.name,
     required this.pairCode,
     this.coupleId,
+    this.photoUrl,
+    this.email,
   });
 
   final String uid;
@@ -17,6 +19,13 @@ class AppUser {
   /// Id del espacio de pareja. `null` mientras no esté vinculado.
   final String? coupleId;
 
+  /// Foto de perfil (la de Google, si entró con Google).
+  final String? photoUrl;
+  final String? email;
+
+  String get initial =>
+      name.isEmpty ? '?' : String.fromCharCode(name.runes.first).toUpperCase();
+
   factory AppUser.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
     return AppUser(
@@ -24,6 +33,8 @@ class AppUser {
       name: d['name'] as String? ?? '',
       pairCode: d['pairCode'] as String? ?? '',
       coupleId: d['coupleId'] as String?,
+      photoUrl: d['photoUrl'] as String?,
+      email: d['email'] as String?,
     );
   }
 }
