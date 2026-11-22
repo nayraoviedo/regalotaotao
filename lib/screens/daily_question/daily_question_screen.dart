@@ -3,9 +3,14 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../services/together_service.dart';
+import 'carta_style.dart';
+import 'naipes.dart';
 
-/// Una pregunta al día para los dos. La respuesta de tu pareja se
-/// muestra cuando tú también respondiste.
+/// Una pregunta al día para los dos, en forma de naipe.
+///
+/// El primero que entra baraja el mazo y sale un naipe al azar. El otro ve
+/// el mismo naipe, así los dos responden la misma pregunta. La respuesta
+/// de tu pareja se muestra cuando tú también respondiste.
 class DailyQuestionScreen extends StatefulWidget {
   const DailyQuestionScreen({
     super.key,
@@ -21,57 +26,237 @@ class DailyQuestionScreen extends StatefulWidget {
 
 class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
   final _answer = TextEditingController();
+  final _mazo = GlobalKey<MazoState>();
+  late final _stream = _service.watchToday(widget.couple.id);
+
+  /// La carta ya se mostró en esta pantalla (después de la animación).
+  bool _revelada = false;
+  bool _enviando = false;
+
+  TogetherService get _service => TogetherService.instance;
+
+  @override
+  void dispose() {
+    _answer.dispose();
+    super.dispose();
+  }
+
+  void _sacar(DailyCard hoy) {
+    final carta = hoy.drawn
+        ? Future.value(hoy.card!)
+        : _service.drawToday(widget.couple.id, widget.me.uid);
+    carta.catchError((_) {
+      _mazo.currentState?.reiniciar();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo sacar la carta. Intenta de nuevo.'),
+          ),
+        );
+      }
+      return -1;
+    });
+    _mazo.currentState?.barajar(carta);
+  }
+
+  Future<void> _responder() async {
+    final text = _answer.text.trim();
+    if (text.isEmpty || _enviando) return;
+    setState(() => _enviando = true);
+    try {
+      await _service.answerToday(widget.couple.id, widget.me.uid, text);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final service = TogetherService.instance;
-    final question = TogetherService.questionFor(DateTime.now());
-    final partnerUid = widget.couple.partnerOf(widget.me.uid);
-    final theme = Theme.of(context);
-
     return Scaffold(
+      backgroundColor: CartaStyle.crema,
       appBar: AppBar(title: const Text('Pregunta del día')),
-      body: StreamBuilder<Map<String, String>>(
-        stream: service.watchTodayAnswers(widget.couple.id),
+      body: StreamBuilder<DailyCard>(
+        stream: _stream,
         builder: (context, snap) {
-          final answers = snap.data ?? const {};
-          final mine = answers[widget.me.uid];
-          final theirs = answers[partnerUid];
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Text(question, style: theme.textTheme.headlineSmall),
-              const SizedBox(height: 24),
-              if (mine == null) ...[
-                TextField(
-                  controller: _answer,
-                  maxLines: 4,
-                  decoration: const InputDecoration(labelText: 'Tu respuesta'),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () {
-                    final text = _answer.text.trim();
-                    if (text.isEmpty) return;
-                    service.answerToday(widget.couple.id, widget.me.uid, text);
-                  },
-                  child: const Text('Responder'),
-                ),
-              ] else ...[
-                Text('Tú', style: theme.textTheme.titleSmall),
-                Text(mine),
-                const SizedBox(height: 16),
-                Text('Tu pareja', style: theme.textTheme.titleSmall),
-                Text(theirs ?? 'Todavía no respondió ⏳'),
-              ],
-              if (mine == null && theirs != null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: Text('Tu pareja ya respondió. Responde para verlo 👀'),
-                ),
-            ],
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final hoy = snap.data!;
+          final mine = hoy.answers[widget.me.uid];
+          // Si yo la saqué o ya respondí, voy directo a la carta.
+          final mostrarCarta =
+              hoy.drawn &&
+              (_revelada || hoy.drawnBy == widget.me.uid || mine != null);
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 550),
+            switchInCurve: Curves.easeOutBack,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween(
+                  begin: const Offset(0, -0.15),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            child: mostrarCarta ? _vistaCarta(hoy, mine) : _vistaMazo(hoy),
           );
         },
+      ),
+    );
+  }
+
+  Widget _vistaMazo(DailyCard hoy) {
+    final yaSalio = hoy.drawn;
+    return LayoutBuilder(
+      key: const ValueKey('mazo'),
+      builder: (context, box) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: box.maxHeight - 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                yaSalio
+                    ? 'Tu pareja ya sacó\nla carta de hoy'
+                    : 'La carta de hoy',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: CartaStyle.azul,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                yaSalio
+                    ? 'Dale la vuelta para ver qué pregunta les tocó.'
+                    : 'Baraja el mazo y saca un naipe al azar. '
+                          'Los dos responderán la misma pregunta.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: CartaStyle.gris, fontSize: 15),
+              ),
+              const SizedBox(height: 48),
+              Mazo(
+                key: _mazo,
+                onTerminado: () => setState(() => _revelada = true),
+              ),
+              const SizedBox(height: 48),
+              FilledButton.icon(
+                onPressed: () => _sacar(hoy),
+                icon: const Icon(Icons.style),
+                label: Text(yaSalio ? 'Ver la carta' : 'Barajar y sacar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _vistaCarta(DailyCard hoy, String? mine) {
+    final total = TogetherService.questions.length;
+    final carta = hoy.card!;
+    final pregunta = carta < total
+        ? TogetherService.questions[carta]
+        : (hoy.question ?? '');
+    final theirs = hoy.answers[widget.couple.partnerOf(widget.me.uid)];
+
+    return ListView(
+      key: const ValueKey('carta'),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+      children: [
+        CartaColgante(carta: carta, pregunta: pregunta, total: total),
+        const SizedBox(height: 28),
+        if (mine == null) ...[
+          if (theirs != null)
+            const _Aviso('Tu pareja ya respondió. Responde para verlo 👀'),
+          TextField(
+            controller: _answer,
+            maxLines: 4,
+            minLines: 2,
+            decoration: const InputDecoration(hintText: 'Tu respuesta…'),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _enviando ? null : _responder,
+            child: const Text('Responder'),
+          ),
+        ] else ...[
+          _Respuesta(quien: 'Tú', texto: mine),
+          const SizedBox(height: 12),
+          _Respuesta(
+            quien: 'Tu pareja',
+            texto: theirs ?? 'Todavía no respondió ⏳',
+            pendiente: theirs == null,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _Aviso extends StatelessWidget {
+  const _Aviso(this.texto);
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Text(
+      texto,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: CartaStyle.azul,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+class _Respuesta extends StatelessWidget {
+  const _Respuesta({
+    required this.quien,
+    required this.texto,
+    this.pendiente = false,
+  });
+  final String quien;
+  final String texto;
+  final bool pendiente;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: pendiente ? CartaStyle.cieloClaro : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: pendiente ? null : CartaStyle.sombra(0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            quien,
+            style: const TextStyle(
+              color: CartaStyle.gris,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            texto,
+            style: TextStyle(
+              color: CartaStyle.azul,
+              fontSize: 16,
+              fontStyle: pendiente ? FontStyle.italic : FontStyle.normal,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -68,6 +68,8 @@ flutter:
     - assets/images/pomodoro.png
     - assets/moods/
     - assets/images/
+    # Criaturas de los naipes de la pregunta del día (ver carta_style.dart).
+    - assets/criaturas/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:

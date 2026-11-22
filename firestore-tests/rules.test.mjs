@@ -30,6 +30,10 @@ await ok('B acepta', updateDoc(doc(db('B'),'couples/c1/pomodoros/p1'),{status:'a
 await ok('A responde pregunta', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{A:'hola'}},{merge:true}));
 await ok('B responde pregunta', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{B:'chau'}},{merge:true}));
 await no('B no cambia la respuesta de A', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{answers:{A:'otra'}},{merge:true}));
+await ok('A saca el naipe de hoy', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2026-11-22'),{carta:3,question:'q3',drawnBy:'A'},{merge:true}));
+await no('B no cambia el naipe', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-22'),{carta:5,question:'q5',drawnBy:'B'},{merge:true}));
+await ok('B responde el naipe', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-22'),{answers:{B:'sí'}},{merge:true}));
+await no('C no saca naipe', setDoc(doc(db('C'),'couples/c1/dailyAnswers/2026-11-23'),{carta:1,question:'q1',drawnBy:'C'},{merge:true}));
 await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'A',to:'B'}));
 await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
