@@ -39,6 +39,7 @@ class Achievement {
     required this.uid,
     required this.kind,
     this.taskTitle,
+    this.sessionId,
     this.rewardTitle,
     this.delivered = false,
     this.createdAt,
@@ -53,6 +54,9 @@ class Achievement {
   /// [pomodoro] o [tarea].
   final String kind;
   final String? taskTitle;
+
+  /// Pomodoro en pareja del que salió este logro (null si fue solo).
+  final String? sessionId;
   final String? rewardTitle;
   final bool delivered;
   final DateTime? createdAt;
@@ -66,6 +70,7 @@ class Achievement {
       uid: d['uid'] as String? ?? '',
       kind: d['kind'] as String? ?? pomodoro,
       taskTitle: d['taskTitle'] as String?,
+      sessionId: d['sessionId'] as String?,
       rewardTitle: d['rewardTitle'] as String?,
       delivered: d['delivered'] as bool? ?? false,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
