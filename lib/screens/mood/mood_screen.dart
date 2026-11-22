@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../models/mood.dart';
 import '../../services/mood_service.dart';
+import '../../theme.dart';
 import '../../widgets/mood_image.dart';
 import '../mindfulness/mindfulness_screen.dart';
 
@@ -18,14 +19,37 @@ class MoodScreen extends StatefulWidget {
 
 class _MoodScreenState extends State<MoodScreen> {
   final _note = TextEditingController();
+  MoodType? _elegido;
+  bool _guardando = false;
 
-  Future<void> _save(MoodType mood) async {
-    await MoodService.instance.setMood(
-      widget.coupleId,
-      widget.me.uid,
-      mood,
-      note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-    );
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final mood = _elegido;
+    if (mood == null || _guardando) return;
+    setState(() => _guardando = true);
+    try {
+      await MoodService.instance.setMood(
+        widget.coupleId,
+        widget.me.uid,
+        mood,
+        note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _guardando = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar. Intenta de nuevo.'),
+          ),
+        );
+      }
+      return;
+    }
     if (!mounted) return;
 
     if (mood.suggestMindfulness) {
@@ -62,44 +86,136 @@ class _MoodScreenState extends State<MoodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final elegido = _elegido;
     return Scaffold(
-      appBar: AppBar(title: const Text('¿Cómo te sientes hoy?')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _note,
-            decoration: const InputDecoration(
-              labelText: 'Algo que contar (opcional)',
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 0.8,
-            children: [
-              for (final mood in MoodType.all)
-                InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _save(mood),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      appBar: AppBar(),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                children: [
+                  const Text(
+                    'En este momento,\n¿cómo te sientes?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppTheme.manuscrita,
+                      fontSize: 30,
+                      height: 1.3,
+                      color: AppTheme.azul,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 0.9,
                     children: [
-                      MoodImage(mood),
-                      const SizedBox(height: 4),
-                      Text(
-                        mood.label,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                      for (final mood in MoodType.all)
+                        _MoodTile(
+                          mood: mood,
+                          selected: mood.id == elegido?.id,
+                          dimmed: elegido != null && mood.id != elegido.id,
+                          onTap: () => setState(() => _elegido = mood),
+                        ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              child: elegido == null
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _note,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              hintText: '¿Algo que contar? (opcional)',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: _guardando ? null : _save,
+                            child: Text(
+                              _guardando
+                                  ? 'Guardando…'
+                                  : 'Hoy me siento: ${elegido.label.toLowerCase()}',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MoodTile extends StatelessWidget {
+  const _MoodTile({
+    required this.mood,
+    required this.selected,
+    required this.dimmed,
+    required this.onTap,
+  });
+
+  final MoodType mood;
+  final bool selected;
+  final bool dimmed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: mood.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: dimmed ? 0.45 : 1,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutBack,
+                scale: selected ? 1.15 : 1,
+                child: MoodImage(mood, size: 84),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                mood.label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: AppTheme.manuscrita,
+                  fontSize: 19,
+                  color: AppTheme.azul,
+                  decoration: selected ? TextDecoration.underline : null,
+                  decorationColor: AppTheme.amarillo,
+                  decorationThickness: 2,
                 ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
