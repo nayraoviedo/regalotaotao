@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taotao/models/couple.dart';
 import 'package:taotao/models/mood.dart';
+import 'package:taotao/screens/daily_question/carta_style.dart';
 import 'package:taotao/services/together_service.dart';
 
 void main() {
@@ -33,5 +34,29 @@ void main() {
     final a = TogetherService.questionFor(DateTime(2026, 5, 3, 1));
     final b = TogetherService.questionFor(DateTime(2026, 5, 3, 23));
     expect(a, b);
+  });
+
+  test('el naipe guardado se lee, y los días viejos se buscan por texto', () {
+    final nuevo = DailyCard.fromData({
+      'carta': 4,
+      'drawnBy': 'a',
+      'answers': {'a': 'hola'},
+    }, deck: TogetherService.questions);
+    expect(nuevo.card, 4);
+    expect(nuevo.answers['a'], 'hola');
+
+    final viejo = DailyCard.fromData({
+      'question': TogetherService.questions[2],
+    }, deck: TogetherService.questions);
+    expect(viejo.card, 2);
+
+    expect(DailyCard.fromData(null).drawn, isFalse);
+  });
+
+  test('cada naipe tiene una criatura del 1 al total', () {
+    for (var i = 0; i < TogetherService.questions.length; i++) {
+      final n = CartaStyle.criaturaDe(i);
+      expect(n, inInclusiveRange(1, CartaStyle.totalCriaturas));
+    }
   });
 }
