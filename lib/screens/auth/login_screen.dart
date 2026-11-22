@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../branding.dart';
 import '../../services/auth_service.dart';
+import '../../theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +34,20 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await AuthService.instance.signIn(_email.text.trim(), _password.text);
       }
+    } catch (e) {
+      setState(() => _error = AuthService.message(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.signInWithGoogle();
     } catch (e) {
       setState(() => _error = AuthService.message(e));
     } finally {
@@ -106,40 +122,55 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Taotao 💞',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displaySmall,
+                  // Ilustración: cámbiala reemplazando assets/images/login.png
+                  Image.asset(
+                    Branding.login,
+                    height: 170,
+                    errorBuilder: (_, _, _) => const SizedBox(height: 170),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _isRegister ? 'Crea tu cuenta' : 'Inicia sesión',
+                    _isRegister ? '¡Hola!' : '¡Hola de nuevo!',
                     textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: AppTheme.manuscrita,
+                      fontSize: 46,
+                      color: AppTheme.azul,
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   if (_isRegister) ...[
+                    const _Label('nombre'),
                     TextField(
                       controller: _name,
-                      decoration: const InputDecoration(labelText: 'Tu nombre'),
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(hintText: 'Tu nombre'),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                   ],
+                  const _Label('correo'),
                   TextField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: 'Correo'),
+                    autofillHints: const [AutofillHints.email],
+                    decoration: const InputDecoration(
+                      hintText: 'tucorreo@ejemplo.com',
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  const _Label('contraseña'),
                   TextField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Contraseña'),
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => _loading ? null : _submit(),
+                    decoration: const InputDecoration(hintText: '••••••••'),
                   ),
                   if (!_isRegister)
                     Align(
@@ -148,36 +179,131 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _loading ? null : _forgotPassword,
                         child: const Text('¿Olvidaste tu contraseña?'),
                       ),
-                    ),
+                    )
+                  else
+                    const SizedBox(height: 16),
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
                     Text(
                       _error!,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
+                    const SizedBox(height: 12),
                   ],
-                  const SizedBox(height: 20),
                   FilledButton(
                     onPressed: _loading ? null : _submit,
                     child: _loading
                         ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : Text(_isRegister ? 'Crear cuenta' : 'Entrar'),
                   ),
-                  TextButton(
-                    onPressed: () => setState(() => _isRegister = !_isRegister),
-                    child: Text(
-                      _isRegister
-                          ? 'Ya tengo cuenta'
-                          : '¿No tienes cuenta? Regístrate',
+                  const SizedBox(height: 28),
+                  const _OrDivider(),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: _GoogleButton(onPressed: _loading ? null : _google),
+                  ),
+                  const SizedBox(height: 36),
+                  Text(
+                    _isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppTheme.gris),
+                  ),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => setState(() {
+                        _isRegister = !_isRegister;
+                        _error = null;
+                      }),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _isRegister ? 'Inicia sesión' : 'Regístrate',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const Icon(Icons.chevron_right, size: 20),
+                        ],
+                      ),
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+    ),
+  );
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    const line = Expanded(child: Divider(color: Color(0xFFD9D4CC)));
+    return const Row(
+      children: [
+        line,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('o continúa con', style: TextStyle(color: AppTheme.gris)),
+        ),
+        line,
+      ],
+    );
+  }
+}
+
+/// Botón redondo blanco con la "G" de Google.
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Continuar con Google',
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(side: BorderSide(color: Color(0xFFE4DFD7))),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: const SizedBox(
+            width: 52,
+            height: 52,
+            child: Center(
+              child: Text(
+                'G',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF4285F4),
+                ),
               ),
             ),
           ),

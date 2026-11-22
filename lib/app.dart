@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'models/app_user.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
 import 'services/auth_service.dart';
 import 'services/push_service.dart';
@@ -24,9 +25,24 @@ class TaotaoApp extends StatelessWidget {
 }
 
 /// Decide qué pantalla mostrar:
-/// sin sesión -> Login, sin pareja -> Vincular, con pareja -> Inicio.
-class AuthGate extends StatelessWidget {
+/// primera vez -> Bienvenida, sin sesión -> Login, sin pareja -> Vincular, con pareja -> Inicio.
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool? _onboardingSeen;
+
+  @override
+  void initState() {
+    super.initState();
+    OnboardingScreen.alreadySeen().then((seen) {
+      if (mounted) setState(() => _onboardingSeen = seen);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +53,15 @@ class AuthGate extends StatelessWidget {
           return const _Loading();
         }
         final firebaseUser = authSnap.data;
-        if (firebaseUser == null) return const LoginScreen();
+        if (firebaseUser == null) {
+          if (_onboardingSeen == null) return const _Loading();
+          if (_onboardingSeen == false) {
+            return OnboardingScreen(
+              onDone: () => setState(() => _onboardingSeen = true),
+            );
+          }
+          return const LoginScreen();
+        }
 
         PushService.instance.init(firebaseUser.uid);
 

@@ -14,13 +14,15 @@ class UserService {
           .snapshots()
           .map((doc) => doc.exists ? AppUser.fromDoc(doc) : null);
 
-  /// Crea el perfil con un código de pareja único.
-  Future<void> createProfile(String uid, String name) async {
+  /// Crea el perfil con un código de pareja único, si todavía no existe.
+  Future<void> ensureProfile(String uid, String name) async {
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = _randomCode();
       final codeRef = Db.pairCodes.doc(code);
       try {
         await Db.instance.runTransaction((tx) async {
+          final profile = await tx.get(Db.user(uid));
+          if (profile.exists) return;
           final existing = await tx.get(codeRef);
           if (existing.exists) throw _CodeTaken();
           tx.set(codeRef, {'uid': uid});

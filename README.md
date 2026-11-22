@@ -10,7 +10,8 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 
 | Función | Estado |
 | --- | --- |
-| Registro e inicio de sesión (correo y contraseña) | ✅ |
+| Registro e inicio de sesión (correo y contraseña, o Google) | ✅ |
+| Pantallas de bienvenida (la primera vez) | ✅ |
 | Vinculación por código de pareja | ✅ |
 | Reglas de seguridad (solo la pareja ve sus datos) | ✅ con pruebas |
 | Ánimo del día, visible para la pareja | ✅ (con emojis provisionales) |
@@ -79,6 +80,34 @@ firebase deploy --only functions
   Cloud Messaging* de Firebase.
 - **Web:** hace falta una clave VAPID y un `firebase-messaging-sw.js`; se puede
   agregar más adelante.
+
+## Tus ilustraciones del login y la bienvenida
+
+Las imágenes del inicio de sesión y de las 3 pantallas de bienvenida están en
+`assets/images/`. Para poner tus propios dibujos, **reemplaza el archivo con
+el mismo nombre** (PNG con fondo transparente, cuadrado, idealmente 800×800):
+
+| Archivo | Dónde aparece |
+| --- | --- |
+| `login.png` | Arriba del "¡Hola de nuevo!" en el inicio de sesión |
+| `onboarding_1.png` | Bienvenida, pantalla 1 (fondo azul) |
+| `onboarding_2.png` | Bienvenida, pantalla 2 (fondo crema) |
+| `onboarding_3.png` | Bienvenida, pantalla 3 (fondo azul) |
+
+Después de cambiar una imagen, detén la app y vuelve a correr `flutter run`
+(el *hot reload* no siempre recoge imágenes nuevas). Los textos de la
+bienvenida están en `lib/screens/onboarding/onboarding_screen.dart` y los
+colores en `lib/theme.dart`.
+
+La bienvenida se muestra solo la primera vez. Para volver a verla en Chrome,
+abre la app en una ventana de incógnito.
+
+### Inicio de sesión con Google
+
+El botón "G" del login usa el proveedor de Google de Firebase. Actívalo en
+*Authentication → Sign-in method → Google*. En web funciona directo; para
+Android hay que agregar la huella SHA-1 de tu app en *Configuración del
+proyecto* de Firebase.
 
 ## Tus dibujos del ánimo
 

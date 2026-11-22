@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import 'user_service.dart';
 
@@ -20,7 +21,33 @@ class AuthService {
       password: password,
     );
     await cred.user!.updateDisplayName(name);
-    await UserService.instance.createProfile(cred.user!.uid, name);
+    await UserService.instance.ensureProfile(cred.user!.uid, name);
+  }
+
+  /// Inicia sesión con Google. En web abre una ventana emergente; en
+  /// Android/iOS usa el flujo de Firebase en el navegador del sistema.
+  /// Devuelve false si la persona cerró la ventana sin elegir cuenta.
+  Future<bool> signInWithGoogle() async {
+    final provider = GoogleAuthProvider()
+      ..setCustomParameters({'prompt': 'select_account'});
+    try {
+      final cred = kIsWeb
+          ? await _auth.signInWithPopup(provider)
+          : await _auth.signInWithProvider(provider);
+      final user = cred.user!;
+      final name = user.displayName ?? user.email?.split('@').first ?? 'Yo';
+      await UserService.instance.ensureProfile(user.uid, name);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      const cancelled = {
+        'popup-closed-by-user',
+        'cancelled-popup-request',
+        'web-context-canceled',
+        'canceled',
+      };
+      if (cancelled.contains(e.code)) return false;
+      rethrow;
+    }
   }
 
   /// Envía el correo para restablecer la contraseña (en español).
@@ -43,6 +70,13 @@ class AuthService {
           return 'Correo o contraseña incorrectos.';
         case 'email-already-in-use':
           return 'Ya existe una cuenta con ese correo.';
+        case 'popup-blocked':
+          return 'El navegador bloqueó la ventana de Google. Permite las '
+              'ventanas emergentes e intenta de nuevo.';
+        case 'operation-not-allowed':
+          return 'Este método de inicio de sesión no está activado en Firebase.';
+        case 'account-exists-with-different-credential':
+          return 'Ya tienes una cuenta con ese correo. Entra con tu contraseña.';
         case 'missing-email':
           return 'Escribe tu correo.';
         case 'too-many-requests':
