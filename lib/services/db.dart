@@ -4,11 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///
 /// users/{uid}                       perfil (nombre, código, coupleId, tokens)
 /// users/{uid}/privateNotes/{id}     notas privadas
+/// users/{uid}/pomodoroTasks/{id}    tareas propias del pomodoro
 /// pairCodes/{code}                  código -> uid (para vincularse)
 /// couples/{coupleId}                espacio de pareja (members, startDate)
 ///   moods/{uid}                     ánimo actual de cada uno
 ///   notes/{id}                      notas compartidas
 ///   pomodoros/{id}                  invitaciones de pomodoro
+///   rewards/{id}                    lista de premios (la editan los dos)
+///   achievements/{id}               pomodoros/tareas cumplidas y premio elegido
 ///   dailyAnswers/{yyyy-MM-dd}       respuestas a la pregunta del día
 ///   bucketList/{id}                 cosas por hacer juntos
 ///   missYou/{id}                    "te extraño" (dispara la notificación)

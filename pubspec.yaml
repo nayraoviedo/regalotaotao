@@ -64,6 +64,7 @@ flutter:
 
   # Dibujos del ánimo (PNG con fondo transparente).
   assets:
+    - assets/images/pomodoro.png
     - assets/moods/
     - assets/images/
 

@@ -33,4 +33,18 @@ await no('B no cambia la respuesta de A', setDoc(doc(db('B'),'couples/c1/dailyAn
 await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'A',to:'B'}));
 await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
+await ok('A agrega un premio', setDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo',createdBy:'A'}));
+await ok('B cambia el premio', updateDoc(doc(db('B'),'couples/c1/rewards/r1'),{title:'Un abrazo largo'}));
+await no('C no ve los premios', getDoc(doc(db('C'),'couples/c1/rewards/r1')));
+await ok('A guarda un logro', setDoc(doc(db('A'),'couples/c1/achievements/l1'),{uid:'A',kind:'pomodoro',taskTitle:null,rewardId:null,rewardTitle:null,delivered:false}));
+await no('A no crea logros a nombre de B', setDoc(doc(db('A'),'couples/c1/achievements/l2'),{uid:'B',kind:'pomodoro',delivered:false}));
+await no('B no elige el premio de A', updateDoc(doc(db('B'),'couples/c1/achievements/l1'),{rewardId:'r1',rewardTitle:'Un abrazo largo'}));
+await ok('A elige su premio', updateDoc(doc(db('A'),'couples/c1/achievements/l1'),{rewardId:'r1',rewardTitle:'Un abrazo largo'}));
+await ok('B ve el premio de A', getDoc(doc(db('B'),'couples/c1/achievements/l1')));
+await no('A no se marca su premio como entregado', updateDoc(doc(db('A'),'couples/c1/achievements/l1'),{delivered:true}));
+await ok('B marca el premio como entregado', updateDoc(doc(db('B'),'couples/c1/achievements/l1'),{delivered:true}));
+await no('A no cambia un premio ya entregado', updateDoc(doc(db('A'),'couples/c1/achievements/l1'),{rewardTitle:'Otro'}));
+await no('C no ve los logros', getDoc(doc(db('C'),'couples/c1/achievements/l1')));
+await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
+await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
 await env.cleanup();
