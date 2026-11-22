@@ -45,7 +45,8 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
     final carta = hoy.drawn
         ? Future.value(hoy.card!)
         : _service.drawToday(widget.couple.id, widget.me.uid);
-    carta.catchError((_) {
+    _mazo.currentState?.barajar(carta).catchError((Object e) {
+      debugPrint('No se pudo sacar la carta: $e');
       _mazo.currentState?.reiniciar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,9 +55,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
           ),
         );
       }
-      return -1;
     });
-    _mazo.currentState?.barajar(carta);
   }
 
   Future<void> _responder() async {

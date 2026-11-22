@@ -80,6 +80,8 @@ class TogetherService {
         'carta': card,
         'question': questions[card],
         'drawnBy': uid,
+        // Las reglas revisan `answers`; en un día nuevo va vacío.
+        if (!snap.exists) 'answers': <String, String>{},
       }, SetOptions(merge: true));
       return card;
     });
