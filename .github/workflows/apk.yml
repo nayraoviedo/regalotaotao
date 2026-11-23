@@ -3,7 +3,7 @@
 # (pestaña Actions → "APK de prueba" → Run workflow).
 #
 # El APK queda para descargar en la página de la corrida (sección Artifacts).
-# En los push a main, además se publica en la versión "apk-de-prueba"
+# En main (push o a mano), además se publica en la versión "apk-de-prueba"
 # (pestaña Releases), que es más fácil de bajar desde el celular.
 #
 # La configuración de Firebase NO está en el repo. Se toma de los secrets:
@@ -109,8 +109,8 @@ jobs:
           path: ${{ steps.nombre.outputs.archivo }}
           retention-days: 14
 
-      - name: Publicar en Releases (solo main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Publicar en Releases (solo main, también a mano)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
