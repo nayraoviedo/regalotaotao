@@ -28,7 +28,28 @@ class RachaService {
       }, SetOptions(merge: true));
 
   /// Racha en vivo de [yo] y [pareja].
-  Stream<Racha> watch(String coupleId, String yo, String pareja) {
+  Stream<Racha> watch(String coupleId, String yo, String pareja) =>
+      _watch(_dias(coupleId), _leer, yo, pareja);
+
+  /// Racha de la pregunta del día: días seguidos en que los dos
+  /// respondieron. Sale directo de `dailyAnswers`, no guarda nada aparte.
+  Stream<Racha> watchPreguntas(String coupleId, String yo, String pareja) =>
+      _watch(
+        Db.coupleSub(coupleId, 'dailyAnswers'),
+        _leerRespuestas,
+        yo,
+        pareja,
+      );
+
+  Stream<Racha> _watch(
+    CollectionReference<Map<String, dynamic>> dias,
+    Map<String, Set<String>> Function(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>>,
+    )
+    leer,
+    String yo,
+    String pareja,
+  ) {
     // Días más viejos que los que se escuchan en vivo (se leen una vez).
     final viejos = <String, Set<String>>{};
     var hayMasViejos = true;
@@ -36,7 +57,7 @@ class RachaService {
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? sub;
 
     Future<void> emitir(QuerySnapshot<Map<String, dynamic>> q) async {
-      final enVivo = _leer(q.docs);
+      final enVivo = leer(q.docs);
       Racha calcular() =>
           Racha.calcular({...viejos, ...enVivo}, yo: yo, pareja: pareja);
       var racha = calcular();
@@ -45,12 +66,12 @@ class RachaService {
       while (q.docs.length == _enVivo && hayMasViejos) {
         final claves = [...viejos.keys, ...enVivo.keys]..sort();
         if (racha.inicio != claves.first) break;
-        final mas = await _dias(coupleId)
+        final mas = await dias
             .orderBy(FieldPath.documentId, descending: true)
             .startAfter([claves.first])
             .limit(100)
             .get();
-        viejos.addAll(_leer(mas.docs));
+        viejos.addAll(leer(mas.docs));
         hayMasViejos = mas.docs.length == 100;
         racha = calcular();
       }
@@ -59,7 +80,7 @@ class RachaService {
 
     ctrl = StreamController<Racha>(
       onListen: () {
-        sub = _dias(coupleId)
+        sub = dias
             .orderBy(FieldPath.documentId, descending: true)
             .limit(_enVivo)
             .snapshots()
@@ -80,12 +101,29 @@ class RachaService {
       },
   };
 
+  static Map<String, Set<String>> _leerRespuestas(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) => {
+    for (final d in docs)
+      d.id: {
+        for (final e in ((d.data()['answers'] as Map?) ?? const {}).entries)
+          if (e.value is String && (e.value as String).trim().isNotEmpty)
+            e.key as String,
+      },
+  };
+
   // ---- Premios de la racha (se guardan como logros del pomodoro) ----
 
   /// Id del logro de [uid] al llegar a [meta] días en la racha que empezó
   /// el día [inicio]. Así cada racha da su premio una sola vez.
-  static String logroId(int meta, String inicio, String uid) =>
-      'racha${meta}_${inicio}_$uid';
+  /// [tipo] es [Achievement.racha] (ánimo o pregunta) o
+  /// [Achievement.preguntas] (solo la pregunta del día).
+  static String logroId(
+    int meta,
+    String inicio,
+    String uid, {
+    String tipo = Achievement.racha,
+  }) => '$tipo${meta}_${inicio}_$uid';
 
   /// ¿Ya se guardó (y celebró) este premio?
   Future<bool> yaCelebrado(String coupleId, String id) async =>
@@ -97,16 +135,19 @@ class RachaService {
     String uid, {
     required int meta,
     required String inicio,
+    String tipo = Achievement.racha,
   }) async {
-    final id = logroId(meta, inicio, uid);
+    final id = logroId(meta, inicio, uid, tipo: tipo);
     final ref = Db.coupleSub(coupleId, 'achievements').doc(id);
     await Db.instance.runTransaction((tx) async {
       final snap = await tx.get(ref);
       if (snap.exists) return;
       tx.set(ref, {
         'uid': uid,
-        'kind': Achievement.racha,
-        'taskTitle': 'Racha de $meta días',
+        'kind': tipo,
+        'taskTitle': tipo == Achievement.preguntas
+            ? '$meta días respondiendo la pregunta'
+            : 'Racha de $meta días',
         'meta': meta,
         'inicio': inicio,
         'sessionId': null,
