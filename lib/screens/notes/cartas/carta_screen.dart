@@ -4,8 +4,10 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../models/carta.dart';
+import '../../../models/celebracion.dart';
 import '../../../services/cartas_service.dart';
 import '../../../services/pescaditos_service.dart';
+import 'carta_pastel.dart';
 import 'carta_sorpresa.dart';
 import '../../../theme.dart';
 import 'avioncito.dart';
@@ -372,6 +374,8 @@ class EscribirCartaScreen extends StatefulWidget {
     this.sorpresa = false,
     this.casita,
     this.onEnviarSorpresa,
+    this.especial,
+    this.onEnviarEspecial,
   });
 
   final String uid;
@@ -386,6 +390,12 @@ class EscribirCartaScreen extends StatefulWidget {
   final Stream<EstadoCasita>? casita;
   final Future<void> Function(String texto, Papel papel)? onEnviarSorpresa;
 
+  /// Carta de cumpleaños o de aniversario (con pastel).
+  final Celebracion? especial;
+
+  /// Para pruebas: qué hacer al mandar la carta especial, sin Firebase.
+  final Future<void> Function(String texto, Regalos regalos)? onEnviarEspecial;
+
   @override
   State<EscribirCartaScreen> createState() => _EscribirCartaScreenState();
 }
@@ -396,7 +406,14 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   final _texto = TextEditingController();
   Papel _papel = Papel.cuadricula;
   bool _enviando = false;
-  late bool _sorpresa = widget.sorpresa;
+  late bool _sorpresa = widget.especial == null && widget.sorpresa;
+  late Pastel? _pastel = Pastel.inicial(widget.especial ?? Celebracion.cumple);
+  // En el aniversario, el ramo de rosas viene elegido.
+  late Ramo? _ramo = widget.especial == Celebracion.aniversario
+      ? Ramo.rojo
+      : null;
+  final _regalitos = <Regalito>{};
+  Celebracion? get _especial => widget.especial;
   int? _pescaditos;
   StreamSubscription<EstadoCasita>? _casita;
 
@@ -440,7 +457,8 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
 
   Future<void> _enviar() async {
     final texto = _texto.text.trim();
-    final cuando = _sorpresa ? Carta.cuandoSorpresa : _cuando;
+    final cuando =
+        _especial?.cuando ?? (_sorpresa ? Carta.cuandoSorpresa : _cuando);
     String? falta;
     if (_sorpresa && (_pescaditos ?? 0) < _precio) {
       falta =
@@ -471,15 +489,40 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
         if (mounted) Navigator.of(context).pop();
         return;
       }
-      await CartasService.instance.enviar(
-        widget.coupleId,
-        from: widget.uid,
-        to: widget.partnerUid,
-        motivo: _motivo?.id ?? 'otro',
-        cuando: cuando,
-        text: texto,
-        papel: _papel,
-      );
+      if (_especial case final esp?) {
+        final regalos = (
+          pastel: _pastel,
+          ramo: _ramo,
+          regalitos: [
+            for (final r in Regalito.values)
+              if (_regalitos.contains(r)) r,
+          ],
+        );
+        await (widget.onEnviarEspecial?.call(texto, regalos) ??
+            CartasService.instance.enviar(
+              widget.coupleId,
+              from: widget.uid,
+              to: widget.partnerUid,
+              motivo: esp.id,
+              cuando: cuando,
+              text: texto,
+              papel: _papel,
+              especial: esp,
+              pastel: regalos.pastel,
+              ramo: regalos.ramo,
+              regalitos: regalos.regalitos,
+            ));
+      } else {
+        await CartasService.instance.enviar(
+          widget.coupleId,
+          from: widget.uid,
+          to: widget.partnerUid,
+          motivo: _motivo?.id ?? 'otro',
+          cuando: cuando,
+          text: texto,
+          papel: _papel,
+        );
+      }
       if (!mounted) return;
       await mostrarEnvio(context);
       if (mounted) Navigator.of(context).pop();
@@ -549,11 +592,61 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_sorpresa ? 'Carta sorpresa' : 'Nueva carta')),
+      appBar: AppBar(
+        title: Text(
+          _especial?.titulo ?? (_sorpresa ? 'Carta sorpresa' : 'Nueva carta'),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
         children: [
-          if (widget.coupleId.isNotEmpty) ...[
+          if (_especial != null) ...[
+            const Text(
+              'Elige su pastel',
+              style: TextStyle(
+                fontFamily: AppTheme.manuscrita,
+                fontSize: 26,
+                color: CartasStyle.azul,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElegirPastel(
+              elegido: _pastel,
+              onElegir: (p) => setState(() => _pastel = p),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Un ramo de flores',
+              style: TextStyle(
+                fontFamily: AppTheme.manuscrita,
+                fontSize: 26,
+                color: CartasStyle.azul,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElegirRamo(
+              elegido: _ramo,
+              onElegir: (r) => setState(() => _ramo = r),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Y regalitos',
+              style: TextStyle(
+                fontFamily: AppTheme.manuscrita,
+                fontSize: 26,
+                color: CartasStyle.azul,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElegirRegalitos(
+              elegidos: _regalitos,
+              onTocar: (r) => setState(
+                () => _regalitos.contains(r)
+                    ? _regalitos.remove(r)
+                    : _regalitos.add(r),
+              ),
+            ),
+          ] else if (widget.coupleId.isNotEmpty) ...[
             OpcionSorpresa(
               activa: _sorpresa,
               pescaditos: _pescaditos,
@@ -561,7 +654,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
             ),
             const SizedBox(height: 14),
           ],
-          if (!_sorpresa) ..._motivos(),
+          if (!_sorpresa && _especial == null) ..._motivos(),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -589,7 +682,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: Text(
-                      _sorpresa
+                      _especial != null
+                          ? _especial!.etiqueta
+                          : _sorpresa
                           ? 'Carta sorpresa ✨'
                           : _cuando.isEmpty
                           ? 'Ábrelo cuando…'
@@ -640,9 +735,21 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Doodle(_sorpresa ? Icons.auto_awesome : Icons.send),
+              : Doodle(
+                  _especial != null
+                      ? Icons.cake
+                      : _sorpresa
+                      ? Icons.auto_awesome
+                      : Icons.send,
+                ),
           label: Text(
-            _sorpresa ? 'Mandar con los gatitos' : 'Enviar en avioncito',
+            _especial != null
+                ? (_pastel == null && _ramo == null && _regalitos.isEmpty
+                      ? 'Mandar la carta'
+                      : 'Mandar regalos y carta')
+                : _sorpresa
+                ? 'Mandar con los gatitos'
+                : 'Enviar en avioncito',
           ),
         ),
       ),

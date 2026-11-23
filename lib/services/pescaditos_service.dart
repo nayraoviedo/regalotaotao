@@ -228,6 +228,9 @@ class PescaditosService {
         if (aprobada) 'propuesta': FieldValue.delete(),
         // Con esto se llenó la alcancía.
         if (d['meta'] == cosa.id) 'meta': FieldValue.delete(),
+        // Las semillas empiezan a crecer al comprarlas.
+        if (cosa.semilla)
+          'sembrado.${cosa.id}': DateTime.now().millisecondsSinceEpoch,
         if (regalo != null)
           'regalos.${cosa.id}': regalo.toMap()
         else ...{

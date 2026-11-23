@@ -226,6 +226,18 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('no se paga la carta de otro', sorpresa('A','s1',-30,85,{from:'B',to:'A'}));
   await ok('A manda una carta sorpresa con 30 pescaditos', sorpresa('A','s1',-30,85));
   await ok('B abre la carta sorpresa', updateDoc(doc(db('B'),'couples/c1/letters/s1'),{openedAt:serverTimestamp()}));
+  // Cartas de cumpleaños y aniversario, con pastel (gratis).
+  const especial = (id, extra) => setDoc(doc(db('A'),'couples/c1/letters',id),{from:'A',to:'B',motivo:'cumple',cuando:'sea tu cumpleaños',text:'¡Feliz cumple!',papel:'cuadricula',openedAt:null,...extra});
+  await ok('A manda una carta de cumpleaños con pastel', especial('k1',{especial:'cumple',pastel:'gatito'}));
+  await ok('y una de aniversario', especial('k2',{especial:'aniversario',pastel:'corazon'}));
+  await no('no hay cartas de otra cosa', especial('k3',{especial:'boda',pastel:'fresa'}));
+  await no('ni pasteles que no existen', especial('k4',{especial:'cumple',pastel:'pizza'}));
+  await ok('con ramo de flores y regalitos', especial('k5',{especial:'aniversario',ramo:'lila',regalitos:['peluche','chocolates']}));
+  await no('ni ramos de colores que no hay', especial('k6',{especial:'aniversario',ramo:'negro'}));
+  await no('ni regalitos que no existen', especial('k7',{especial:'cumple',regalitos:['auto']}));
+  await ok('se guarda cuándo sembraron', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:{tomatera:1764000000000}},{merge:true}));
+  await no('lo sembrado es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:'hoy'},{merge:true}));
+  await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
   await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
 }

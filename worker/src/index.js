@@ -109,6 +109,29 @@ const NOMBRES_CASITA = {
   cuarto_dormitorio: "el dormitorio",
   cuarto_jardin: "el jardín",
   cuarto_bano: "el baño",
+  cuarto_juegos: "el cuarto de juegos",
+  cuarto_huerto: "el huerto",
+  pared_juegos_arcoiris: "una pared arcoíris",
+  pared_juegos_estrellas: "una pared de estrellas",
+  piso_juegos_madera: "piso de madera clara",
+  movil_estrellas: "un móvil de estrellas",
+  globo_aerostatico: "una lámpara de globo",
+  estante_peluches: "un estante con peluches",
+  estante_bloques: "bloques ABC",
+  rascador_torre: "una torre rascador",
+  tobogan: "un tobogán",
+  piscina_pelotas: "una piscina de pelotas",
+  tipi: "una carpita tipi",
+  ratoncitos: "ratoncitos de juguete",
+  cubos: "cubitos de colores",
+  espantapajaros: "un espantapájaros gatito",
+  girasoles: "semillas de girasoles gigantes",
+  tomatera: "semillas de tomate",
+  maiz: "semillas de maíz",
+  zanahorias: "semillas de zanahoria",
+  fresas: "semillas de fresa",
+  lechugas: "semillas de lechuga",
+  calabazas: "semillas de calabaza",
   bebe_naranja: "un gatito bebé naranja",
   bebe_ragdoll: "un gatito bebé ragdoll",
   bebe_atigrado: "un gatito bebé gris atigrado",
@@ -156,8 +179,11 @@ const NOMBRES_CASITA = {
   arbol_cerezo: "un cerezo en flor",
   farol: "un farol",
   casita_pajaros: "una casita de pájaros",
-  flores_tulipanes: "tulipanes",
-  flores_girasoles: "girasoles",
+  flores_tulipanes: "semillas de tulipán",
+  flores_girasoles: "semillas de girasol",
+  flores_margaritas: "semillas de margarita",
+  flores_rosas: "semillas de rosa",
+  flores_lavanda: "semillas de lavanda",
   banca_madera: "una banca",
   columpio: "un columpio",
   estanque_peces: "un estanque con peces",
@@ -349,7 +375,12 @@ const KINDS = {
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
     dedupeKey: () => "enviado",
     message: (name, d) =>
-      d.sorpresa === true
+      d.especial === "cumple" || d.especial === "aniversario"
+        ? {
+            title: d.especial === "cumple" ? "🎂 ¡Feliz cumpleaños!" : "💞 ¡Feliz aniversario!",
+            body: `${name} te mandó ${regalosEspeciales(d)} de ${d.especial === "cumple" ? "cumpleaños" : "aniversario"}`,
+          }
+        : d.sorpresa === true
         ? {
             title: "✨ ¡Carta sorpresa!",
             body: `${name} te mandó una carta sorpresa: los gatitos te la están llevando`,
@@ -360,6 +391,18 @@ const KINDS = {
           },
   },
 };
+
+// "un pastel, un ramo de flores y una carta", para el aviso.
+function regalosEspeciales(d) {
+  const n = Array.isArray(d.regalitos) ? d.regalitos.length : 0;
+  const cosas = [
+    ...(d.pastel ? ["un pastel"] : []),
+    ...(d.ramo ? ["un ramo de flores"] : []),
+    ...(n === 1 ? ["un regalito"] : n > 1 ? [`${n} regalitos`] : []),
+    "una carta",
+  ];
+  return cosas.length === 1 ? cosas[0] : `${cosas.slice(0, -1).join(", ")} y ${cosas.at(-1)}`;
+}
 
 async function handleNotify(sa, uid, kind, coupleId, docId) {
   const spec = KINDS[kind];

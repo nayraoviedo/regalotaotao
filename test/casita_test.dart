@@ -62,7 +62,7 @@ void main() {
           expect(Catalogo.porId(id)!.gratis, isTrue);
         }
       }
-      expect(Catalogo.cosas.where((c) => c.gratis).length, 10);
+      expect(Catalogo.cosas.where((c) => c.gratis).length, 12);
     });
   });
 
@@ -346,11 +346,37 @@ void main() {
       expect(otraHora.toSet().length, greaterThan(1));
     });
 
+    test('con cuarto de juegos, los bebés andan ahí más seguido', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': [
+          'cuarto_cocina',
+          'cuarto_juegos',
+          ...Catalogo.bebes.map((b) => b.id),
+        ],
+      });
+      final cuenta = {for (final c in Cuarto.values) c: 0};
+      final hora = DateTime(2026, 11, 23, 12);
+      for (var m = 0; m < 24 * 60; m += 15) {
+        final t = hora.add(Duration(minutes: m));
+        var total = 0;
+        for (final c in Cuarto.values) {
+          final n = e.bebesEn(c, t).length;
+          cuenta[c] = cuenta[c]! + n;
+          total += n;
+        }
+        expect(total, 6); // cada bebé en un solo cuarto
+      }
+      expect(cuenta[Cuarto.juegos]!, greaterThan(cuenta[Cuarto.sala]! * 2));
+      expect(cuenta[Cuarto.huerto], 0); // cerrado
+    });
+
     test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
-      expect(CasaEnCorte.queCuarto(120, 100), Cuarto.dormitorio);
-      expect(CasaEnCorte.queCuarto(200, 200), Cuarto.cocina);
-      expect(CasaEnCorte.queCuarto(40, 200), Cuarto.jardin);
-      expect(CasaEnCorte.queCuarto(167, 30), isNull); // el techo
+      expect(CasaEnCorte.queCuarto(200, 190), Cuarto.dormitorio);
+      expect(CasaEnCorte.queCuarto(280, 280), Cuarto.cocina);
+      expect(CasaEnCorte.queCuarto(120, 280), Cuarto.jardin);
+      expect(CasaEnCorte.queCuarto(40, 280), Cuarto.huerto);
+      expect(CasaEnCorte.queCuarto(250, 100), Cuarto.juegos);
+      expect(CasaEnCorte.queCuarto(250, 30), isNull); // el techo
       expect(File(CasaEnCorte.marco).existsSync(), isTrue);
       expect(File(CasaEnCorte.fachada).existsSync(), isTrue);
       final conCama = EstadoCasita.fromMap({
@@ -373,6 +399,65 @@ void main() {
         conCama.capas(Cuarto.sala, true, Momento.dia, 0, false, null, false),
         isNot(contains('assets/casita/gatito_naranja.png')),
       );
+    });
+
+    test('las semillas crecen en dos días', () {
+      final sembrado = DateTime(2026, 11, 23, 9);
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_huerto', 'tomatera', 'espantapajaros'],
+        'puestos': {'tomatera': 'tomatera', 'fondoHuerto': 'espantapajaros'},
+        'sembrado': {'tomatera': sembrado.millisecondsSinceEpoch},
+      });
+      final tomate = Catalogo.porId('tomatera')!;
+      expect(tomate.semilla, isTrue);
+      String a(String n) => 'assets/casita/$n.png';
+      List<String> capas(DateTime t) =>
+          e.capas(Cuarto.huerto, true, Momento.dia, 0, false, t);
+      expect(e.etapa(tomate, sembrado.add(const Duration(hours: 5))), 0);
+      expect(
+        capas(sembrado.add(const Duration(hours: 5))),
+        contains(a('brote_tomatera')),
+      );
+      expect(
+        capas(sembrado.add(const Duration(hours: 30))),
+        contains(a('planta_tomatera')),
+      );
+      final listo = capas(sembrado.add(const Duration(days: 3)));
+      expect(listo, contains(a('tomatera')));
+      expect(listo, isNot(contains(a('planta_tomatera'))));
+      // Lo que no es semilla se ve igual desde el principio.
+      expect(capas(sembrado), contains(a('espantapajaros')));
+      // Sin fecha de siembra (de antes), ya está crecido.
+      expect(EstadoCasita.vacio.etapa(tomate), 2);
+      // Todas las etapas tienen dibujo, y cada semilla es de huerto o jardín.
+      for (final c in Catalogo.cosas.where((c) => c.semilla)) {
+        expect(c.lugar!.cuarto, anyOf(Cuarto.huerto, Cuarto.jardin));
+        for (final n in ['brote', 'planta']) {
+          expect(
+            File(a('${n}_${c.lugar!.name}')).existsSync(),
+            isTrue,
+            reason: c.id,
+          );
+        }
+        expect(File(c.asset).existsSync(), isTrue, reason: c.id);
+      }
+    });
+
+    test('en el huerto no se repite la palabra', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_huerto'],
+      });
+      for (var m = 0; m < 20 * 60; m += 30) {
+        final t = DateTime(2026, 11, 23, 8).add(Duration(minutes: m));
+        if (e.escena(t) == Escena.huerto) {
+          expect(
+            CasaView.queHacen(e, t),
+            'Los gatitos están regando el huerto en el jardín',
+          );
+          return;
+        }
+      }
+      fail('nunca riegan el huerto');
     });
 
     test('escenas de pareja según la hora', () {
@@ -883,11 +968,11 @@ void main() {
       );
       expect(find.text('Los gatitos están en la sala'), findsOneWidget);
       // Los cuartos cerrados tienen candado.
-      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(5));
       final casa = t.getRect(find.byType(CasaEnCorte));
       final s = casa.width / CasaEnCorte.ancho;
-      await t.tapAt(casa.topLeft + Offset(200 * s, 200 * s));
-      await t.tapAt(casa.topLeft + Offset(120 * s, 200 * s));
+      await t.tapAt(casa.topLeft + Offset(280 * s, 280 * s));
+      await t.tapAt(casa.topLeft + Offset(200 * s, 280 * s));
       expect(tocados, [Cuarto.cocina, Cuarto.sala]);
     });
 

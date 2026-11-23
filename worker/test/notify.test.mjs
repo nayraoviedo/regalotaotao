@@ -55,6 +55,7 @@ beforeEach(() => {
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
+    "couples/c1/letters/l3": { from: "ana", to: "beto", cuando: "sea tu cumpleaños", especial: "cumple", pastel: "fresa", ramo: "rosa", regalitos: ["peluche", "globos"], openedAt: null },
     "couples/c1/letters/l2": { from: "ana", to: "beto", cuando: "te llegue esta sorpresa", sorpresa: true, openedAt: null },
     "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
     "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
@@ -193,6 +194,15 @@ test("la carta sorpresa avisa distinto", async () => {
   const r = await call({ kind: "letter", coupleId: "c1", docId: "l2" }, await idToken("ana"));
   assert.equal(r.status, 200);
   assert.deepEqual(sent.map((m) => m.notification.title), ["✨ ¡Carta sorpresa!"]);
+});
+
+test("la carta de cumpleaños llega con pastel", async () => {
+  const r = await call({ kind: "letter", coupleId: "c1", docId: "l3" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.title), ["🎂 ¡Feliz cumpleaños!"]);
+  assert.deepEqual(sent.map((m) => m.notification.body), [
+    "Ana te mandó un pastel, un ramo de flores, 2 regalitos y una carta de cumpleaños",
+  ]);
 });
 
 test("sin token o con token falso: 401", async () => {

@@ -70,6 +70,7 @@ class Casita {
     'lampara_papel',
     'velador_lampara',
     'farol',
+    'globo_aerostatico',
   };
 
   /// Tamaño de la foto pixelada del cuadro y dónde va (en la sala).
@@ -103,6 +104,8 @@ enum Escena {
   lectura(Cuarto.dormitorio, 'leyendo un cuento'),
   burbujas(Cuarto.bano, 'jugando con burbujas'),
   picnic(Cuarto.jardin, 'de picnic'),
+  pelotas(Cuarto.juegos, 'jugando con pelotitas'),
+  huerto(Cuarto.huerto, 'regando el huerto'),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
   medianoche(Cuarto.cocina, 'comiendo a medianoche');
@@ -125,7 +128,9 @@ enum Cuarto {
   cocina('Cocina', 200, base: 'cuarto_cocina'),
   dormitorio('Dormitorio', 250, base: 'cuarto_dormitorio'),
   jardin('Jardín', 300, base: 'cuarto_jardin', marco: 'marco_jardin'),
-  bano('Baño', 220, base: 'cuarto_bano');
+  bano('Baño', 220, base: 'cuarto_bano'),
+  juegos('Cuarto de juegos', 240, base: 'cuarto_juegos'),
+  huerto('Huerto', 260, base: 'cuarto_huerto', marco: 'marco_jardin');
 
   const Cuarto(this.nombre, this.precio, {this.base, this.marco = 'marco'});
 
@@ -246,7 +251,34 @@ enum Lugar {
   tina('Tina', ZonaCasita(42, 38, 37, 28), cuarto: Cuarto.bano),
   tapete('Tapete', ZonaCasita(17, 84, 46, 14), cuarto: Cuarto.bano),
   arenero('Arenero', ZonaCasita(2, 77, 19, 21), cuarto: Cuarto.bano),
-  patito('Juguetes', ZonaCasita(62, 77, 17, 21), cuarto: Cuarto.bano);
+  patito('Juguetes', ZonaCasita(62, 77, 17, 21), cuarto: Cuarto.bano),
+
+  // Cuarto de juegos (en el ático)
+  paredJuegos(
+    'Pared',
+    ZonaCasita(2, 14, 76, 46),
+    cuarto: Cuarto.juegos,
+    inicial: 'pared_juegos_nubes',
+    fijo: true,
+  ),
+  pisoJuegos(
+    'Piso',
+    ZonaCasita(2, 60, 76, 40),
+    cuarto: Cuarto.juegos,
+    inicial: 'piso_juegos_goma',
+    fijo: true,
+  ),
+  colgante('Colgante', ZonaCasita(12, 14, 22, 26), cuarto: Cuarto.juegos),
+  estante('Estante', ZonaCasita(49, 17, 30, 18), cuarto: Cuarto.juegos),
+  torre('Para trepar', ZonaCasita(2, 26, 21, 64), cuarto: Cuarto.juegos),
+  pelotero('Rincón', ZonaCasita(56, 46, 23, 44), cuarto: Cuarto.juegos),
+  juguetes('Juguetes', ZonaCasita(23, 85, 36, 14), cuarto: Cuarto.juegos),
+
+  // Huerto
+  fondoHuerto('Al fondo', ZonaCasita(24, 16, 34, 42), cuarto: Cuarto.huerto),
+  tomatera('Plantas altas', ZonaCasita(2, 30, 21, 60), cuarto: Cuarto.huerto),
+  bancal('Bancal', ZonaCasita(59, 66, 20, 30), cuarto: Cuarto.huerto),
+  surco('Surco', ZonaCasita(21, 86, 38, 13), cuarto: Cuarto.huerto);
 
   const Lugar(
     this.nombre,
@@ -323,6 +355,7 @@ class Cosa {
     this.fiesta,
     this.deEpoca = false,
     this.especial,
+    this.semilla = false,
   }) : assert(
          (lugar != null ? 1 : 0) +
                  (parte != null ? 1 : 0) +
@@ -350,6 +383,10 @@ class Cosa {
 
   /// Ropa de época o de otras culturas (va en su propia vitrina).
   final bool deEpoca;
+
+  /// Semillas: se siembran y crecen en unos días (ver
+  /// [EstadoCasita.etapa]).
+  final bool semilla;
 
   /// ¿Se puede comprar [hoy]? (lo de temporada, solo en su fecha).
   bool aLaVenta(DateTime hoy, {DateTime? inicioPareja}) =>
@@ -458,6 +495,8 @@ class Catalogo {
     Cosa('cuarto_dormitorio', 'Dormitorio', 250, cuarto: Cuarto.dormitorio),
     Cosa('cuarto_jardin', 'Jardín', 300, cuarto: Cuarto.jardin),
     Cosa('cuarto_bano', 'Baño', 220, cuarto: Cuarto.bano),
+    Cosa('cuarto_juegos', 'Cuarto de juegos', 240, cuarto: Cuarto.juegos),
+    Cosa('cuarto_huerto', 'Huerto', 260, cuarto: Cuarto.huerto),
 
     // Cocina
     Cosa('repisa_frascos', 'Repisa con frascos', 40, lugar: Lugar.repisa),
@@ -488,8 +527,41 @@ class Catalogo {
     Cosa('arbol_cerezo', 'Cerezo en flor', 140, lugar: Lugar.arbol),
     Cosa('farol', 'Farol', 50, lugar: Lugar.farol),
     Cosa('casita_pajaros', 'Casita de pájaros', 60, lugar: Lugar.farol),
-    Cosa('flores_tulipanes', 'Tulipanes', 40, lugar: Lugar.flores),
-    Cosa('flores_girasoles', 'Girasoles', 40, lugar: Lugar.flores),
+    Cosa(
+      'flores_tulipanes',
+      'Semillas de tulipán',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_girasoles',
+      'Semillas de girasol',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_margaritas',
+      'Semillas de margarita',
+      20,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_rosas',
+      'Semillas de rosa',
+      30,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_lavanda',
+      'Semillas de lavanda',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
     Cosa('banca_madera', 'Banca', 70, lugar: Lugar.asiento),
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
@@ -530,6 +602,88 @@ class Catalogo {
     Cosa('tapete_huellitas', 'Tapete de huellitas', 45, lugar: Lugar.tapete),
     Cosa('patito_hule', 'Patito de hule', 25, lugar: Lugar.patito),
     Cosa('balde_juguetes', 'Balde con barquito', 35, lugar: Lugar.patito),
+
+    // Cuarto de juegos
+    Cosa('pared_juegos_nubes', 'Pared de nubes', 0, lugar: Lugar.paredJuegos),
+    Cosa(
+      'pared_juegos_arcoiris',
+      'Pared arcoíris',
+      50,
+      lugar: Lugar.paredJuegos,
+    ),
+    Cosa(
+      'pared_juegos_estrellas',
+      'Pared de estrellas',
+      50,
+      lugar: Lugar.paredJuegos,
+    ),
+    Cosa(
+      'piso_juegos_goma',
+      'Piso de rompecabezas',
+      0,
+      lugar: Lugar.pisoJuegos,
+    ),
+    Cosa(
+      'piso_juegos_madera',
+      'Piso de madera clara',
+      40,
+      lugar: Lugar.pisoJuegos,
+    ),
+    Cosa('movil_estrellas', 'Móvil de estrellas', 40, lugar: Lugar.colgante),
+    Cosa('globo_aerostatico', 'Lámpara de globo', 70, lugar: Lugar.colgante),
+    Cosa('estante_peluches', 'Estante con peluches', 50, lugar: Lugar.estante),
+    Cosa('estante_bloques', 'Bloques ABC', 40, lugar: Lugar.estante),
+    Cosa('rascador_torre', 'Torre rascador', 100, lugar: Lugar.torre),
+    Cosa('tobogan', 'Tobogán', 110, lugar: Lugar.torre),
+    Cosa('piscina_pelotas', 'Piscina de pelotas', 120, lugar: Lugar.pelotero),
+    Cosa('tipi', 'Carpita tipi', 90, lugar: Lugar.pelotero),
+    Cosa('ratoncitos', 'Ratoncitos de juguete', 25, lugar: Lugar.juguetes),
+    Cosa('cubos', 'Cubitos de colores', 25, lugar: Lugar.juguetes),
+
+    // Huerto
+    Cosa(
+      'espantapajaros',
+      'Espantapájaros gatito',
+      80,
+      lugar: Lugar.fondoHuerto,
+    ),
+    Cosa(
+      'girasoles',
+      'Semillas de girasoles gigantes',
+      35,
+      lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa(
+      'tomatera',
+      'Semillas de tomate',
+      30,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('maiz', 'Semillas de maíz', 30, lugar: Lugar.tomatera, semilla: true),
+    Cosa(
+      'zanahorias',
+      'Semillas de zanahoria',
+      25,
+      lugar: Lugar.bancal,
+      semilla: true,
+    ),
+    Cosa('fresas', 'Semillas de fresa', 30, lugar: Lugar.bancal, semilla: true),
+    Cosa(
+      'lechugas',
+      'Semillas de lechuga',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'calabazas',
+      'Semillas de calabaza',
+      25,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
 
     // ---- Más para la sala ----
     Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
@@ -1014,6 +1168,7 @@ class EstadoCasita {
     this.meta,
     this.propuesta,
     this.nombres = const {},
+    this.sembrado = const {},
   });
 
   static const vacio = EstadoCasita();
@@ -1047,6 +1202,20 @@ class EstadoCasita {
   /// Nombres de los gatitos bebés: `{calico: 'Mochi'}`.
   final Map<String, String> nombres;
 
+  /// Cuándo se sembró cada semilla (id de la [Cosa] → milisegundos).
+  final Map<String, int> sembrado;
+
+  /// Cuánto tarda en crecer una semilla: brote, plantita y lista.
+  static const diaDeCrecer = Duration(days: 1);
+
+  /// 0 = brote, 1 = plantita, 2 = ya creció (o no es semilla).
+  int etapa(Cosa c, [DateTime? ahora]) {
+    final desde = sembrado[c.id];
+    if (!c.semilla || desde == null) return 2;
+    final pasado = (ahora ?? DateTime.now()).millisecondsSinceEpoch - desde;
+    return (pasado ~/ diaDeCrecer.inMilliseconds).clamp(0, 2);
+  }
+
   /// Los bebés que adoptaron, en el orden del catálogo.
   List<Cosa> get bebes => [
     for (final c in Catalogo.bebes)
@@ -1064,9 +1233,14 @@ class EstadoCasita {
     final rato =
         (ahora ?? DateTime.now()).millisecondsSinceEpoch ~/
         const Duration(minutes: 15).inMilliseconds;
+    // Si tienen cuarto de juegos, la mitad de las veces andan ahí.
+    Cuarto dondeAnda(int i) =>
+        abierto(Cuarto.juegos) && _azar(i + 50, rato) % 2 == 0
+        ? Cuarto.juegos
+        : abiertos[_azar(i, rato) % abiertos.length];
     return [
       for (final (i, b) in bebes.indexed)
-        if (abiertos[_azar(i, rato) % abiertos.length] == cuarto) b,
+        if (dondeAnda(i) == cuarto) b,
     ];
   }
 
@@ -1120,6 +1294,10 @@ class EstadoCasita {
       },
       meta: d['meta'] as String?,
       nombres: strings(d['bebes']),
+      sembrado: {
+        for (final e in ((d['sembrado'] as Map?) ?? const {}).entries)
+          if (e.value is num) e.key as String: (e.value as num).toInt(),
+      },
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -1276,9 +1454,15 @@ class EstadoCasita {
     bool conGatitos = true,
   ]) {
     final bebes = bebesEn(cuarto, ahora);
-    String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
-        ? Casita.asset('${c.id}_2')
-        : c.asset;
+    String dibujo(Cosa c) => switch (etapa(c, ahora)) {
+      // Lo sembrado se ve chiquito hasta que crece.
+      0 => Casita.asset('brote_${c.lugar!.name}'),
+      1 => Casita.asset('planta_${c.lugar!.name}'),
+      _ =>
+        Casita.animadas.contains(c.id) && tick % 4 >= 2
+            ? Casita.asset('${c.id}_2')
+            : c.asset,
+    };
     final enLaTina = banando && conMuebles && sePuedenBanar(cuarto);
     // Las escenas solo con la hora de verdad (sin [ahora] quedan quietos).
     final escena = conMuebles && ahora != null && !enLaTina

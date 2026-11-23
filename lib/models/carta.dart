@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'celebracion.dart';
+
 /// Una carta "Ábrelo cuando…" que una persona le escribe a su pareja.
 ///
 /// Vive en couples/{coupleId}/letters/{id}. Quien la recibe solo puede
@@ -16,6 +18,10 @@ class Carta {
     this.createdAt,
     this.openedAt,
     this.sorpresa = false,
+    this.especial,
+    this.pastel,
+    this.ramo,
+    this.regalitos = const [],
   });
 
   final String id;
@@ -36,14 +42,29 @@ class Carta {
   /// con los gatitos y se abre al momento.
   final bool sorpresa;
 
+  /// Carta de cumpleaños o de aniversario: llega con un [pastel] con
+  /// velitas para soplar.
+  final Celebracion? especial;
+  final Pastel? pastel;
+
+  /// Ramo de flores y regalitos que vienen con la carta especial.
+  final Ramo? ramo;
+  final List<Regalito> regalitos;
+
+  /// ¿Trae algo (pastel, ramo o regalitos)?
+  bool get conRegalos => pastel != null || ramo != null || regalitos.isNotEmpty;
+
   /// Motivo y "cuándo" de las cartas sorpresa.
   static const motivoSorpresa = 'sorpresa';
   static const cuandoSorpresa = 'te llegue esta sorpresa';
 
   bool get abierta => openedAt != null;
 
-  String get etiqueta =>
-      sorpresa ? 'Carta sorpresa ✨' : 'Ábrelo cuando $cuando';
+  String get etiqueta => switch (especial) {
+    final c? => c.etiqueta,
+    null when sorpresa => 'Carta sorpresa ✨',
+    null => 'Ábrelo cuando $cuando',
+  };
 
   factory Carta.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
       Carta.fromData(doc.id, doc.data() ?? {});
@@ -59,6 +80,10 @@ class Carta {
     createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     openedAt: (d['openedAt'] as Timestamp?)?.toDate(),
     sorpresa: d['sorpresa'] == true,
+    especial: Celebracion.deId(d['especial'] as String?),
+    pastel: d['pastel'] == null ? null : Pastel.deId(d['pastel'] as String?),
+    ramo: Ramo.deId(d['ramo'] as String?),
+    regalitos: Regalito.deIds(d['regalitos']),
   );
 }
 

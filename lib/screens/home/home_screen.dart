@@ -22,6 +22,9 @@ import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
 import '../mood/mood_screen.dart';
 import '../notes/cartas/avioncito.dart';
+import '../notes/cartas/carta_pastel.dart';
+import '../notes/cartas/carta_screen.dart';
+import '../../services/cartas_service.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_screen.dart';
 import '../together/gatitos.dart';
@@ -59,6 +62,7 @@ class HomeScreen extends StatelessWidget {
             return LlegadaDeCartas(
               uid: me.uid,
               coupleId: couple.id,
+              partnerName: partner?.name,
               onVer: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => NotesScreen(
@@ -388,6 +392,21 @@ class _HomeBodyState extends State<_HomeBody> {
               uid: me.uid,
               partnerUid: partnerUid,
               partnerName: partnerName,
+            ),
+            celebracion: CelebracionesHoy(
+              uid: me.uid,
+              partnerName: partnerName,
+              cumplePareja: partner?.cumple,
+              inicioPareja: couple.startDate,
+              cartas: CartasService.instance.watch(couple.id),
+              onMandar: (c) => _open(
+                EscribirCartaScreen(
+                  uid: me.uid,
+                  partnerUid: partnerUid,
+                  coupleId: couple.id,
+                  especial: c,
+                ),
+              ),
             ),
             invitacionPomodoro: InvitacionPomodoroInicio(
               coupleId: couple.id,

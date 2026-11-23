@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../models/carta.dart';
 import '../../../services/cartas_service.dart';
+import '../../../services/user_service.dart';
 import '../../../theme.dart';
+import 'carta_pastel.dart';
 import 'carta_screen.dart';
 import 'carta_sorpresa.dart';
 import 'cartas_style.dart';
@@ -389,10 +391,14 @@ class LlegadaDeCartas extends StatefulWidget {
     required this.coupleId,
     required this.onVer,
     required this.child,
+    this.partnerName,
   });
 
   final String uid;
   final String coupleId;
+
+  /// Para "{nombre} te mandó un pastel".
+  final String? partnerName;
 
   /// Qué hacer si toca "Ver mis cartas".
   final VoidCallback onVer;
@@ -432,6 +438,20 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
     super.dispose();
   }
 
+  /// Al abrir la app la carta puede llegar antes que el perfil de la
+  /// pareja: se busca su nombre para no decir "Tu pareja".
+  Future<String?> _nombreDe(String uid) async {
+    try {
+      final u = await UserService.instance
+          .watchUser(uid)
+          .first
+          .timeout(const Duration(seconds: 3));
+      return (u == null || u.name.isEmpty) ? null : u.name;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _revisar(List<Carta> cartas) async {
     if (_mostrando || !mounted) return;
     final prefs = await SharedPreferences.getInstance();
@@ -448,9 +468,16 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
       ...nuevas.map((c) => c.id),
     ]);
     if (!mounted) return;
-    // Las sorpresas llegan con los gatitos y se abren ahí mismo.
-    for (final carta in nuevas.where((c) => c.sorpresa)) {
-      final abrir = await mostrarLlegadaSorpresa(context, carta);
+    // Las sorpresas llegan con los gatitos, y las de cumpleaños o
+    // aniversario con un pastel; se abren ahí mismo.
+    for (final carta in nuevas.where((c) => c.sorpresa || c.especial != null)) {
+      final de = carta.especial == null
+          ? null
+          : widget.partnerName ?? await _nombreDe(carta.from);
+      if (!mounted) return;
+      final abrir = carta.especial != null
+          ? await mostrarLlegadaPastel(context, carta, de: de)
+          : await mostrarLlegadaSorpresa(context, carta);
       if (!mounted) return;
       if (abrir) {
         await Navigator.of(context).push(
@@ -466,7 +493,9 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
         if (!mounted) return;
       }
     }
-    final normales = [...nuevas.where((c) => !c.sorpresa)];
+    final normales = [
+      ...nuevas.where((c) => !c.sorpresa && c.especial == null),
+    ];
     if (normales.isEmpty) {
       _mostrando = false;
       return;

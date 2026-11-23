@@ -182,9 +182,11 @@ class _CasitaViewState extends State<CasitaView> {
   static const _catEpoca = '_epoca';
   static const _catEspecial = '_especial';
   static const _catBebes = '_bebes';
+  static const _catSemillas = '_semillas';
 
   List<String> _categoriasDe(Cuarto cuarto) => [
     if (_fiestas.isNotEmpty) _catFiesta,
+    if (_semillasDe(cuarto).isNotEmpty) _catSemillas,
     for (final l in _ordenDe(cuarto))
       if (_cosasDe(l.name).isNotEmpty) l.name,
     _catRopa,
@@ -201,6 +203,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catEpoca => 'De época',
     _catEspecial => '✨ Especiales',
     _catBebes => '🐾 Adoptar',
+    _catSemillas => '🌱 Semillas',
     _ => Lugar.deId(cat)?.nombre ?? cat,
   };
 
@@ -224,10 +227,18 @@ class _CasitaViewState extends State<CasitaView> {
       _catEpoca => Catalogo.ropa.where((c) => c.deEpoca),
       _catEspecial => Catalogo.especiales,
       _catBebes => Catalogo.bebes,
-      _ => Catalogo.de(Lugar.deId(cat)!),
+      _catSemillas => _semillasDe(_cuarto),
+      // Las semillas van en su propia vitrina.
+      _ => Catalogo.de(Lugar.deId(cat)!).where((c) => !c.semilla),
     };
     return todas.where(visible).toList();
   }
+
+  /// Las semillas que se siembran en [cuarto] (huerto y jardín).
+  static List<Cosa> _semillasDe(Cuarto cuarto) => [
+    for (final c in Catalogo.cosas)
+      if (c.semilla && c.lugar?.cuarto == cuarto) c,
+  ];
 
   /// Orden de las categorías de la tienda: lo más vistoso primero.
   static List<Lugar> _ordenDe(Cuarto cuarto) => cuarto == Cuarto.sala
@@ -275,6 +286,21 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.paredBano,
             Lugar.pisoBano,
           ],
+          Cuarto.juegos => const [
+            Lugar.pelotero,
+            Lugar.torre,
+            Lugar.estante,
+            Lugar.colgante,
+            Lugar.juguetes,
+            Lugar.paredJuegos,
+            Lugar.pisoJuegos,
+          ],
+          Cuarto.huerto => const [
+            Lugar.fondoHuerto,
+            Lugar.tomatera,
+            Lugar.bancal,
+            Lugar.surco,
+          ],
           _ => const [
             Lugar.arbol,
             Lugar.asiento,
@@ -302,6 +328,13 @@ class _CasitaViewState extends State<CasitaView> {
     _finDelBano?.cancel();
     super.dispose();
   }
+
+  /// Lo sembrado en este cuarto que todavía no termina de crecer.
+  List<String> get _creciendo => [
+    for (final l in _cuarto.lugares)
+      if (_estado.puesto(l) case final c? when _estado.etapa(c, _hoy) < 2)
+        c.nombre.replaceFirst(RegExp(r'^Semillas de '), '').toLowerCase(),
+  ];
 
   void _verCuarto(Cuarto c) => setState(() {
     _cuarto = c;
@@ -867,6 +900,15 @@ class _CasitaViewState extends State<CasitaView> {
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
+          if (_estado.abierto(_cuarto) && _creciendo.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '🌱 Están creciendo: ${_creciendo.join(', ')}. '
+              'Cada semilla tarda dos días en crecer.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+          ],
           if (_estado.abierto(_cuarto) && _estado.sePuedenBanar(_cuarto)) ...[
             const SizedBox(height: 8),
             Center(
