@@ -9,6 +9,8 @@
 # La configuración de Firebase NO está en el repo. Se toma de los secrets:
 #   FIREBASE_OPTIONS_DART  → el contenido completo de tu lib/firebase_options.dart
 #   GOOGLE_SERVICES_JSON   → (opcional) tu android/app/google-services.json
+#   ANDROID_DEBUG_KEYSTORE → (para Entrar con Google) la llave de firma fija en
+#                            base64. La crea scripts/llave-android.sh.
 # Si faltan, el APK igual se arma, pero al abrirlo dirá que falta configurar
 # Firebase. Ver README.md, sección "Probar en el celular sin SDK".
 name: APK de prueba
@@ -50,6 +52,7 @@ jobs:
     env:
       FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
       GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      ANDROID_DEBUG_KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,9 +67,20 @@ jobs:
           channel: stable
           cache: true
 
-      # La llave de firma "debug" se guarda entre corridas para que cada APK
-      # nuevo se pueda instalar encima del anterior sin desinstalar.
+      # Firma del APK. Con el secret ANDROID_DEBUG_KEYSTORE la llave es
+      # siempre la misma, y sus huellas (SHA-1/SHA-256) quedan registradas en
+      # Firebase: sin eso "Entrar con Google" falla con invalid-cert-hash.
+      # Sin el secret, se recuerda la llave de la corrida anterior (sirve para
+      # instalar encima, pero GitHub la borra si pasa una semana sin usarse).
+      - name: Poner la llave de firma fija
+        if: env.ANDROID_DEBUG_KEYSTORE != ''
+        run: |
+          mkdir -p ~/.android
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
+          echo "✅ Llave de firma tomada del secret."
+
       - name: Recordar la llave de firma de prueba
+        if: env.ANDROID_DEBUG_KEYSTORE == ''
         uses: actions/cache@v4
         with:
           path: ~/.android/debug.keystore
@@ -89,6 +103,25 @@ jobs:
 
       - name: Armar el APK (debug)
         run: flutter build apk --debug
+
+      - name: Mostrar las huellas de la firma
+        run: |
+          huellas=$(keytool -list -v -keystore ~/.android/debug.keystore \
+            -storepass android -alias androiddebugkey | grep -E 'SHA(1|256):' || true)
+          echo "$huellas"
+          {
+            echo "### Huellas de la firma del APK"
+            echo
+            echo "Deben estar en Firebase → Configuración del proyecto → tu app Android."
+            echo
+            echo '```'
+            echo "$huellas"
+            echo '```'
+            if [ -z "$ANDROID_DEBUG_KEYSTORE" ]; then
+              echo
+              echo "⚠️ Falta el secret ANDROID_DEBUG_KEYSTORE: estas huellas pueden cambiar. Corre \`bash scripts/llave-android.sh\` en tu compu."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Ponerle nombre al APK
         id: nombre
