@@ -264,6 +264,51 @@ la pantalla de inicio → **Widgets** → **Taotao** y arrástralo.
 El diseño está en `android/app/src/main/res/layout/taotao_widget.xml` y la
 lógica en `TaotaoWidget.kt` y `lib/services/widget_celular/`.
 
+## Probar en el celular sin SDK de Android (APK desde GitHub)
+
+No hace falta instalar Android Studio ni el SDK: GitHub arma el APK en la
+nube con el archivo `.github/workflows/apk.yml`. Se arma solo en cada PR y en
+cada cambio que entra a `main`, y también puedes pedirlo a mano.
+
+### 1. Poner tu configuración de Firebase en GitHub (una sola vez)
+
+Tu `lib/firebase_options.dart` real no está subido al repo, así que GitHub
+no lo tiene. Se lo das como un *secret* (queda guardado y nadie lo ve):
+
+1. En tu compu, abre `lib/firebase_options.dart` (el que creó
+   `flutterfire configure`) y copia **todo** su texto.
+2. En GitHub, entra al repo → **Settings** → **Secrets and variables** →
+   **Actions** → **New repository secret**.
+3. En *Name* escribe `FIREBASE_OPTIONS_DART` y en *Secret* pega el texto.
+   Toca **Add secret**.
+4. (Opcional) Si tienes `android/app/google-services.json`, haz lo mismo con
+   el nombre `GOOGLE_SERVICES_JSON`.
+
+Sin el secret el APK igual se arma, pero al abrir la app te dirá que falta
+configurar Firebase.
+
+### 2. Descargar el APK
+
+- **Lo último de `main`:** en el repo, pestaña **Releases** → *APK de prueba
+  (último main)* → toca `taotao.apk`. Es lo más fácil desde el celular.
+- **El de un PR o una corrida a mano:** pestaña **Actions** → elige la
+  corrida *APK de prueba* (con ✅) → abajo, en **Artifacts**, descarga el
+  archivo. Viene en un `.zip`: ábrelo con la app *Archivos* del celular y
+  toca el `.apk` de adentro.
+- **Pedirlo a mano:** **Actions** → *APK de prueba* → **Run workflow** →
+  elige la rama → **Run workflow**. Tarda unos 10 minutos.
+
+### 3. Instalarlo
+
+1. Toca el `.apk` descargado. Si el celular pregunta, permite *Instalar apps
+   desconocidas* para el navegador o *Archivos*.
+2. Si dice *"App no instalada"*, desinstala Taotao primero (pasa si antes la
+   instalaste con `flutter run` desde tu compu, porque la firma es otra) y
+   vuelve a tocar el `.apk`. Los siguientes APK de GitHub se instalan encima.
+3. Abre la app, entra con tu cuenta, y luego agrega los widgets: mantén
+   apretado un espacio vacío de la pantalla de inicio → **Widgets** →
+   **Taotao** (días juntos y ánimo) o **Casita**.
+
 ## Cómo está organizado
 
 ```

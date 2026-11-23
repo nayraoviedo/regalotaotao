@@ -1,0 +1,123 @@
+# Arma el APK de prueba de Taotao en GitHub, sin tener el SDK de Android
+# en tu compu. Corre en cada PR, en cada push a main y cuando lo pides a mano
+# (pestaña Actions → "APK de prueba" → Run workflow).
+#
+# El APK queda para descargar en la página de la corrida (sección Artifacts).
+# En los push a main, además se publica en la versión "apk-de-prueba"
+# (pestaña Releases), que es más fácil de bajar desde el celular.
+#
+# La configuración de Firebase NO está en el repo. Se toma de los secrets:
+#   FIREBASE_OPTIONS_DART  → el contenido completo de tu lib/firebase_options.dart
+#   GOOGLE_SERVICES_JSON   → (opcional) tu android/app/google-services.json
+# Si faltan, el APK igual se arma, pero al abrirlo dirá que falta configurar
+# Firebase. Ver README.md, sección "Probar en el celular sin SDK".
+name: APK de prueba
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  revisar:
+    name: Revisar código y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: flutter test
+        run: flutter test
+
+  apk:
+    name: Armar APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # La llave de firma "debug" se guarda entre corridas para que cada APK
+      # nuevo se pueda instalar encima del anterior sin desinstalar.
+      - name: Recordar la llave de firma de prueba
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: taotao-debug-keystore
+
+      - name: Poner la configuración de Firebase
+        run: |
+          if [ -n "$FIREBASE_OPTIONS_DART" ]; then
+            printf '%s\n' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
+            echo "✅ firebase_options.dart tomado del secret."
+          else
+            echo "::warning title=Falta Firebase::No hay secret FIREBASE_OPTIONS_DART. El APK se arma, pero al abrirlo pedirá configurar Firebase."
+          fi
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s\n' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "✅ google-services.json tomado del secret."
+          fi
+
+      - run: flutter pub get
+
+      - name: Armar el APK (debug)
+        run: flutter build apk --debug
+
+      - name: Ponerle nombre al APK
+        id: nombre
+        run: |
+          corto=$(git rev-parse --short HEAD)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            nombre="taotao-pr${{ github.event.pull_request.number }}-${corto}.apk"
+          else
+            nombre="taotao-${corto}.apk"
+          fi
+          cp build/app/outputs/flutter-apk/app-debug.apk "$nombre"
+          echo "archivo=$nombre" >> "$GITHUB_OUTPUT"
+
+      - name: Subir el APK para descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.nombre.outputs.archivo }}
+          path: ${{ steps.nombre.outputs.archivo }}
+          retention-days: 14
+
+      - name: Publicar en Releases (solo main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archivo="${{ steps.nombre.outputs.archivo }}"
+          cp "$archivo" taotao.apk
+          gh release delete apk-de-prueba --yes --cleanup-tag || true
+          gh release create apk-de-prueba taotao.apk \
+            --prerelease \
+            --title "APK de prueba (último main)" \
+            --notes "APK de prueba armado desde el commit ${GITHUB_SHA::7}. Descárgalo desde el celular y ábrelo para instalar."
