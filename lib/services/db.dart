@@ -16,6 +16,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   dailyAnswers/{yyyy-MM-dd}       respuestas a la pregunta del día
 ///   bucketList/{id}                 cosas por hacer juntos
 ///   missYou/{id}                    "te extraño" (el Worker envía el aviso)
+///   abrazos/{id}                    abrazos cuando su ánimo no anda bien (también)
 class Db {
   static final _fs = FirebaseFirestore.instance;
 

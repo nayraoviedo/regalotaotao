@@ -3,14 +3,19 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../models/mood.dart';
+import 'ojo_acuarela.dart';
 
 /// Muestra el dibujo del ánimo (`assets/moods/<id>.png`).
 /// Si el PNG aún no existe, dibuja la carita de un gatito provisional.
+///
+/// [naranja] dice qué gatito dibujar en la carita provisional (el naranja o
+/// el blanco). Si es `null`, se reparten uno y uno según el orden.
 class MoodImage extends StatelessWidget {
-  const MoodImage(this.mood, {super.key, this.size = 56});
+  const MoodImage(this.mood, {super.key, this.size = 56, this.naranja});
 
   final MoodType mood;
   final double size;
+  final bool? naranja;
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +24,10 @@ class MoodImage extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, _, _) =>
-          CustomPaint(size: Size.square(size), painter: MoodBlobPainter(mood)),
+      errorBuilder: (_, _, _) => CustomPaint(
+        size: Size.square(size),
+        painter: MoodBlobPainter(mood, naranja: naranja),
+      ),
     );
   }
 }
@@ -29,13 +36,17 @@ class MoodImage extends StatelessWidget {
 /// blanco con manchitas plomo, uno y uno según el orden de la cuadrícula)
 /// sobre un círculo del color del ánimo.
 class MoodBlobPainter extends CustomPainter {
-  MoodBlobPainter(this.mood);
+  MoodBlobPainter(this.mood, {bool? naranja}) : _elegido = naranja;
   final MoodType mood;
+
+  /// El gatito elegido; `null` para repartirlos según el orden.
+  final bool? _elegido;
 
   static const _tinta = Color(0xFF2B3A75); // azul marino de la app
 
   /// Los ánimos se reparten entre el gatito naranja y el blanco.
-  bool get _naranja => MoodType.all.indexWhere((m) => m.id == mood.id).isEven;
+  bool get _naranja =>
+      _elegido ?? MoodType.all.indexWhere((m) => m.id == mood.id).isEven;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -175,9 +186,12 @@ class MoodBlobPainter extends CustomPainter {
 
   void _boquita(Canvas c, double y) => _linea(c, .465, y, .535, y);
 
-  void _puntos(Canvas c, double y, {double dx = 0, double r = .022}) {
-    c.drawCircle(Offset(.38 + dx, y), r, _relleno);
-    c.drawCircle(Offset(.62 + dx, y), r, _relleno);
+  /// Ojitos abiertos: grandes estilo acuarela, del color de cada gatito.
+  void _puntos(Canvas c, double y, {double dx = 0}) {
+    final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
+    final mirada = Offset(dx * 4, 0);
+    dibujarOjoAcuarela(c, Offset(.38, y), .05, iris, mirada: mirada);
+    dibujarOjoAcuarela(c, Offset(.62, y), .05, iris, mirada: mirada);
   }
 
   void _rubor(Canvas c, double y) {
@@ -237,10 +251,12 @@ class MoodBlobPainter extends CustomPainter {
         );
         _boquita(c, my);
       case 'ansioso':
-        final blanco = Paint()..color = Colors.white;
+        // Ojos muy abiertos, con la pupila chiquita.
+        final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
         for (final x in [.38, .62]) {
-          c.drawCircle(Offset(x, ey), .045, blanco);
-          c.drawCircle(Offset(x, ey), .022, _relleno);
+          dibujarOjoAcuarela(c, Offset(x, ey), .055, iris);
+          c.drawCircle(Offset(x, ey), .03, Paint()..color = iris);
+          c.drawCircle(Offset(x, ey), .016, _relleno);
         }
         _boquita(c, my + .02);
       case 'enojado':
@@ -328,5 +344,6 @@ class MoodBlobPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MoodBlobPainter old) => old.mood.id != mood.id;
+  bool shouldRepaint(MoodBlobPainter old) =>
+      old.mood.id != mood.id || old._elegido != _elegido;
 }

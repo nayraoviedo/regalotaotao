@@ -306,6 +306,13 @@ service cloud.firestore {
         allow create: if isMember(coupleId)
           && request.resource.data.from == me();
       }
+
+      // Abrazos que se mandan desde el inicio cuando la pareja no está bien.
+      match /abrazos/{id} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me();
+      }
     }
   }
 }
