@@ -1,0 +1,91 @@
+# Publica Taotao en la web (Firebase Hosting, gratis en el plan Spark):
+# https://taotao-bd5ee.web.app
+#
+# Corre en cada push a main y cuando lo pides a mano (pestaña Actions → "Web"
+# → Run workflow). No corre en los PR para no gastar minutos de GitHub.
+#
+# Necesita dos secrets:
+#   FIREBASE_OPTIONS_DART                 → el mismo del APK (debe incluir web)
+#   FIREBASE_SERVICE_ACCOUNT_TAOTAO_BD5EE → lo crea scripts/web-automatica.sh
+# Si falta alguno, arma la web para comprobar que compila pero NO la publica
+# (así nunca se reemplaza la web buena por una sin configurar).
+name: Web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Armar y publicar la web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+      CUENTA_HOSTING: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAOTAO_BD5EE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Poner la configuración de Firebase
+        id: config
+        run: |
+          listo=true
+          if [ -n "$FIREBASE_OPTIONS_DART" ]; then
+            printf '%s\n' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
+            if grep -q "static const FirebaseOptions web" lib/firebase_options.dart; then
+              echo "✅ firebase_options.dart tomado del secret."
+            else
+              echo "::warning title=Falta la config web::El secret FIREBASE_OPTIONS_DART no trae la plataforma web. Corre 'flutterfire configure' marcando web y actualiza el secret."
+              listo=false
+            fi
+          else
+            echo "::warning title=Falta Firebase::No hay secret FIREBASE_OPTIONS_DART. La web se arma pero no se publica."
+            listo=false
+          fi
+          if [ -z "$CUENTA_HOSTING" ]; then
+            echo "::warning title=Falta la cuenta de Hosting::No hay secret FIREBASE_SERVICE_ACCOUNT_TAOTAO_BD5EE. Corre 'bash scripts/web-automatica.sh' en tu compu. La web se arma pero no se publica."
+            listo=false
+          fi
+          echo "publicar=$listo" >> "$GITHUB_OUTPUT"
+
+      - run: flutter pub get
+
+      - name: Armar la web
+        run: flutter build web --release
+
+      - name: Publicar en Firebase Hosting
+        id: publicar
+        if: steps.config.outputs.publicar == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAOTAO_BD5EE }}
+          projectId: taotao-bd5ee
+          channelId: live
+
+      - name: Resumen
+        if: always()
+        run: |
+          {
+            if [ "${{ steps.publicar.outcome }}" = "success" ]; then
+              echo "### 🌐 Taotao publicada en https://taotao-bd5ee.web.app"
+            elif [ "${{ steps.config.outputs.publicar }}" = "true" ]; then
+              echo "### ❌ No se pudo publicar: revisa el paso \"Publicar en Firebase Hosting\"."
+            else
+              echo "### 🛠️ La web compiló, pero no se publicó"
+              echo
+              echo "Faltan secrets: mira los avisos de arriba y el README (sección \"Taotao en la web\")."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
