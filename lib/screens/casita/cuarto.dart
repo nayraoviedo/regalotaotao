@@ -19,10 +19,18 @@ class CuartoCasita extends StatelessWidget {
     this.tick = 0,
     this.banando = false,
     this.onBebe,
+    this.ahora,
+    this.conGatitos = true,
   });
+
+  /// En false los gatitos grandes no están (andan en otro cuarto).
+  final bool conGatitos;
 
   final EstadoCasita estado;
   final Cuarto cuarto;
+
+  /// La hora (para saber qué bebés andan por aquí). Si falta, la real.
+  final DateTime? ahora;
 
   /// Tocaron a un gatito bebé.
   final ValueChanged<Cosa>? onBebe;
@@ -71,6 +79,8 @@ class CuartoCasita extends StatelessWidget {
           momento,
           tick,
           banando,
+          ahora,
+          conGatitos,
         )) ...[
           if (a == Casita.bebesPaseando ||
               a == Casita.bebesDurmiendo ||
@@ -78,7 +88,7 @@ class CuartoCasita extends StatelessWidget {
             BebesPaseando(
               key: ValueKey(a),
               atras: a == Casita.bebesAtras,
-              bebes: estado.bebes,
+              bebes: estado.bebesEn(cuarto, ahora),
               nombres: estado.nombres,
               tick: tick,
               durmiendo: a == Casita.bebesDurmiendo,
@@ -179,6 +189,7 @@ class _CuartoVivoState extends State<CuartoVivo> {
       tick: quieto ? 0 : _tick,
       banando: widget.banando,
       onBebe: widget.onBebe,
+      ahora: widget.ahora,
     );
   }
 }
@@ -216,7 +227,9 @@ class BebesPaseando extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             for (final (i, b) in bebes.indexed)
-              if (durmiendo ? PaseoBebe.durmiendo(i) : PaseoBebe.en(i, tick)
+              if (durmiendo
+                      ? PaseoBebe.durmiendo(i)
+                      : PaseoBebe.en(i, tick, total: bebes.length)
                   case final p when durmiendo || p.atras == atras)
                 _bebe(b, p, px, py),
           ],

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/app_user.dart';
 import 'package:taotao/models/casita.dart';
 import 'package:taotao/screens/casita/casita_screen.dart';
+import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
 import 'package:taotao/theme.dart';
@@ -289,13 +290,30 @@ void main() {
         contains(Casita.bebesDurmiendo),
       );
       expect(EstadoCasita.vacio.capas(), isNot(contains(Casita.bebesPaseando)));
-      // Siempre dentro del piso, y se mueven.
+      // Siempre en el piso, sin subirse a los gatitos grandes ni encimarse
+      // entre ellos, y se mueven.
+      bool choca(PaseoBebe a, double x, double y, double w, double h) =>
+          a.x < x + w &&
+          a.x + PaseoBebe.ancho > x &&
+          a.y < y + h &&
+          a.y + PaseoBebe.alto > y;
       final vistos = <(double, double)>{};
-      for (var tick = 0; tick < 400; tick++) {
-        for (var i = 0; i < 6; i++) {
-          final p = PaseoBebe.en(i, tick);
+      for (var tick = 0; tick < 2000; tick++) {
+        final n = 1 + tick % 6;
+        final ps = [
+          for (var i = 0; i < n; i++) PaseoBebe.en(i, tick, total: n),
+        ];
+        for (final (i, p) in ps.indexed) {
           expect(p.x, inInclusiveRange(2, 78 - PaseoBebe.ancho));
           expect(p.y, inInclusiveRange(60, 100 - PaseoBebe.alto));
+          expect(choca(p, 20, 70, 42, 21), isFalse, reason: 'tick $tick');
+          for (final q in ps.skip(i + 1)) {
+            expect(
+              choca(p, q.x, q.y, PaseoBebe.ancho, PaseoBebe.alto),
+              isFalse,
+              reason: 'tick $tick',
+            );
+          }
           vistos.add((p.x, p.y));
         }
       }
@@ -303,6 +321,57 @@ void main() {
       expect(
         PaseoBebe.en(0, 3).caminando || PaseoBebe.en(0, 12).caminando,
         isTrue,
+      );
+    });
+
+    test('los bebés se reparten por los cuartos abiertos', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': [
+          'cuarto_cocina',
+          'cuarto_jardin',
+          ...Catalogo.bebes.map((b) => b.id),
+        ],
+      });
+      final hora = DateTime(2026, 11, 23, 12);
+      final dondeAndan = [for (final c in Cuarto.values) ...e.bebesEn(c, hora)];
+      // Cada bebé está en un solo cuarto, y nunca en uno cerrado.
+      expect(dondeAndan.length, 6);
+      expect(dondeAndan.toSet().length, 6);
+      expect(e.bebesEn(Cuarto.bano, hora), isEmpty);
+      // Con el tiempo se cambian de cuarto.
+      final otraHora = [
+        for (var m = 0; m < 24 * 60; m += 15)
+          e.bebesEn(Cuarto.cocina, hora.add(Duration(minutes: m))).length,
+      ];
+      expect(otraHora.toSet().length, greaterThan(1));
+    });
+
+    test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
+      expect(CasaEnCorte.queCuarto(120, 100), Cuarto.dormitorio);
+      expect(CasaEnCorte.queCuarto(200, 200), Cuarto.cocina);
+      expect(CasaEnCorte.queCuarto(40, 200), Cuarto.jardin);
+      expect(CasaEnCorte.queCuarto(167, 30), isNull); // el techo
+      expect(File(CasaEnCorte.marco).existsSync(), isTrue);
+      expect(File(CasaEnCorte.fachada).existsSync(), isTrue);
+      final conCama = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_dormitorio', 'cama_estrellas', 'cuarto_cocina'],
+        'puestos': {'cama': 'cama_estrellas'},
+      });
+      expect(conCama.dondeEstan(DateTime(2026, 11, 23, 23)), Cuarto.dormitorio);
+      expect(
+        EstadoCasita.vacio.dondeEstan(DateTime(2026, 11, 23, 23)),
+        Cuarto.sala,
+      );
+      // De día andan por un cuarto abierto (nunca uno cerrado).
+      for (var h = 0; h < 48; h++) {
+        final d = conCama.dondeEstan(
+          DateTime(2026, 11, 23, 8).add(Duration(minutes: 30 * h ~/ 4)),
+        );
+        expect(conCama.abierto(d), isTrue);
+      }
+      expect(
+        conCama.capas(Cuarto.sala, true, Momento.dia, 0, false, null, false),
+        isNot(contains('assets/casita/gatito_naranja.png')),
       );
     });
 
@@ -717,6 +786,27 @@ void main() {
       await t.tap(find.text('Listo'));
       await t.pumpAndSettle();
       expect(nombres, ['calico:Mochi']);
+    });
+
+    testWidgets('en la casa en corte, tocar un cuarto lo abre', (t) async {
+      final tocados = <Cuarto>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: CasaView(
+            estado: const EstadoCasita(tenemos: {'cuarto_cocina'}),
+            onCuarto: tocados.add,
+            ahora: DateTime(2026, 11, 23, 23),
+          ),
+        ),
+      );
+      expect(find.text('Los gatitos están en la sala'), findsOneWidget);
+      // Los cuartos cerrados tienen candado.
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
+      final casa = t.getRect(find.byType(CasaEnCorte));
+      final s = casa.width / CasaEnCorte.ancho;
+      await t.tapAt(casa.topLeft + Offset(200 * s, 200 * s));
+      await t.tapAt(casa.topLeft + Offset(120 * s, 200 * s));
+      expect(tocados, [Cuarto.cocina, Cuarto.sala]);
     });
 
     testWidgets('bañar a los gatitos en la tina', (t) async {

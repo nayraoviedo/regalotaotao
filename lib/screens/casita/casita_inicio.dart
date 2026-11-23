@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
+import 'casa_en_corte.dart';
 import 'cuarto.dart';
 
 /// Tarjeta del inicio con la casita en chiquito y los pescaditos.
@@ -74,7 +75,19 @@ class TarjetaCasita extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              SizedBox(width: 76, child: CuartoVivo(estado: estado)),
+              // La casita vista de afuera; al tocarla se ve por dentro.
+              SizedBox(
+                width: 84,
+                child: AspectRatio(
+                  aspectRatio: CasaEnCorte.ancho / CasaEnCorte.alto,
+                  child: Image.asset(
+                    CasaEnCorte.fachada,
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.none,
+                    errorBuilder: (_, _, _) => CuartoVivo(estado: estado),
+                  ),
+                ),
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

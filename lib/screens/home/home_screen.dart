@@ -34,7 +34,7 @@ import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
-import '../casita/casita_screen.dart';
+import '../casita/casa_en_corte.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -375,7 +375,7 @@ class _HomeBodyState extends State<_HomeBody> {
               coupleId: couple.id,
               uid: me.uid,
               onTap: () => _open(
-                CasitaScreen(
+                CasaScreen(
                   coupleId: couple.id,
                   me: me,
                   partner: partner,

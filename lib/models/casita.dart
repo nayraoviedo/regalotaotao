@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'festividades.dart';
@@ -1026,6 +1028,29 @@ class EstadoCasita {
       if (tenemos.contains(c.id)) c,
   ];
 
+  /// Los bebés que andan por [cuarto] a esta hora: cada uno elige un
+  /// cuarto abierto "al azar" y se cambia cada cuarto de hora.
+  List<Cosa> bebesEn(Cuarto cuarto, [DateTime? ahora]) {
+    final abiertos = [
+      for (final c in Cuarto.values)
+        if (abierto(c)) c,
+    ];
+    if (!abiertos.contains(cuarto)) return const [];
+    final rato =
+        (ahora ?? DateTime.now()).millisecondsSinceEpoch ~/
+        const Duration(minutes: 15).inMilliseconds;
+    return [
+      for (final (i, b) in bebes.indexed)
+        if (abiertos[_azar(i, rato) % abiertos.length] == cuarto) b,
+    ];
+  }
+
+  static int _azar(int i, int rato) {
+    var h = (i + 3) * 2654435761 ^ rato * 40503;
+    h = (h ^ (h >> 15)) * 2246822519;
+    return (h ^ (h >> 13)) & 0x7fffffff;
+  }
+
   String? nombreDe(Cosa bebe) {
     final n = nombres[bebe.colorBebe]?.trim();
     return n == null || n.isEmpty ? null : n;
@@ -1141,6 +1166,26 @@ class EstadoCasita {
         _ => false,
       };
 
+  /// En qué cuarto andan los gatitos grandes (para la casa en corte): de
+  /// noche en el dormitorio (si tienen cama) o en la sala, y de día en un
+  /// cuarto abierto al azar que cambia cada media hora.
+  Cuarto dondeEstan([DateTime? ahora]) {
+    final hora = ahora ?? DateTime.now();
+    if (Momento.de(hora) == Momento.noche) {
+      return abierto(Cuarto.dormitorio) && puesto(Lugar.cama) != null
+          ? Cuarto.dormitorio
+          : Cuarto.sala;
+    }
+    final abiertos = [
+      for (final c in Cuarto.values)
+        if (abierto(c)) c,
+    ];
+    final rato =
+        hora.millisecondsSinceEpoch ~/
+        const Duration(minutes: 30).inMilliseconds;
+    return abiertos[_azar(99, rato) % abiertos.length];
+  }
+
   /// ¿Hay tina para bañar a los gatitos? (en el baño)
   bool sePuedenBanar(Cuarto cuarto) =>
       cuarto == Cuarto.bano && puesto(Lugar.tina) != null;
@@ -1156,7 +1201,10 @@ class EstadoCasita {
     Momento momento = Momento.dia,
     int tick = 0,
     bool banando = false,
+    DateTime? ahora,
+    bool conGatitos = true,
   ]) {
+    final bebes = bebesEn(cuarto, ahora);
     String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
         ? Casita.asset('${c.id}_2')
         : c.asset;
@@ -1177,7 +1225,9 @@ class EstadoCasita {
         Casita.regaloEnvuelto,
       if (conMuebles && bebes.isNotEmpty && momento != Momento.noche)
         Casita.bebesAtras,
-      if (enLaTina)
+      if (!conGatitos)
+        ...const <String>[]
+      else if (enLaTina)
         Casita.asset('banando_${tick % 4 < 2 ? 1 : 2}')
       else if (duermen) ...[
         Casita.asset('dormidos_$cama'),
@@ -1345,9 +1395,12 @@ class Ganancia {
 
 /// Por dónde anda un gatito bebé en cada paso de la animación.
 ///
-/// Cada bebé camina de un punto del piso a otro elegido "al azar" (siempre
-/// el mismo para el mismo paso, así no hace falta guardar nada), descansa
-/// un ratito y sigue. De noche duerme en su rincón.
+/// Los bebés caminan por una vuelta alrededor de donde se sientan los
+/// gatitos grandes (atrás, a los lados y adelante), así nunca se les suben
+/// encima. Cada bebé tiene su pedacito de la vuelta, así tampoco se
+/// enciman entre ellos. Va a un punto elegido "al azar" (siempre el mismo
+/// para el mismo paso, así no hace falta guardar nada), descansa un ratito
+/// y sigue. De noche duermen en fila, adelante.
 class PaseoBebe {
   const PaseoBebe(this.x, this.y, {this.paso = 0, this.izquierda = false});
 
@@ -1362,11 +1415,17 @@ class PaseoBebe {
 
   bool get caminando => paso != 0;
 
-  /// Más al fondo que las patitas de los gatitos grandes.
-  bool get atras => y + alto < 87;
+  /// En la fila de atrás (detrás de los gatitos grandes).
+  bool get atras => y < _abajo;
 
   static const ancho = 10.0;
   static const alto = 9.0;
+
+  /// La vuelta: de [_izq] a [_der] y de [_arriba] a [_abajo] (esquina del
+  /// sprite). Los gatitos grandes ocupan x 20–62, y 70–90.
+  static const _izq = 3.0, _der = 68.0, _arriba = 60.0, _abajo = 91.0;
+  static const _largoX = _der - _izq, _largoY = _abajo - _arriba;
+  static const largo = 2 * (_largoX + _largoY);
 
   /// Pasos de cada tramo: camina [_camina] y descansa el resto.
   static const _tramo = 14;
@@ -1378,29 +1437,51 @@ class PaseoBebe {
     return (h ^ (h >> 16)) & 0x7fffffff;
   }
 
-  /// Un punto del piso para el bebé [i] en el tramo [k].
-  static (double, double) _punto(int i, int k) => (
-    4 + (_mezcla(i, k, 1) % 62).toDouble(),
-    62 + (_mezcla(i, k, 2) % 27).toDouble(),
-  );
+  /// Punto de la vuelta a la distancia [s] (contando desde arriba a la
+  /// izquierda, en el sentido del reloj).
+  static (double, double) _enLaVuelta(double s) {
+    s %= largo;
+    if (s < _largoX) return (_izq + s, _arriba);
+    s -= _largoX;
+    if (s < _largoY) return (_der, _arriba + s);
+    s -= _largoY;
+    if (s < _largoX) return (_der - s, _abajo);
+    s -= _largoX;
+    return (_izq, _abajo - s);
+  }
 
-  static PaseoBebe en(int i, int tick) {
+  /// Dónde quiere ir el bebé [i] de [total] en el tramo [k]: dentro de su
+  /// pedacito de la vuelta, dejando lugar para el sprite.
+  static double _meta(int i, int total, int k) {
+    final pedazo = largo / total;
+    // 20 de separación entre pedacitos: alcanza aunque queden a los dos
+    // lados de una esquina.
+    final libre = math.max(0.0, pedazo - 20);
+    return i * pedazo + (_mezcla(i, k, 1) % 1000) / 1000 * libre;
+  }
+
+  static PaseoBebe en(int i, int tick, {int total = 1}) {
+    total = math.max(total, i + 1);
     final t = tick + i * 5;
     final k = t ~/ _tramo;
     final f = t % _tramo;
-    final (x0, y0) = _punto(i, k);
-    final (x1, y1) = _punto(i, k + 1);
-    if (f >= _camina) return PaseoBebe(x1, y1, izquierda: x1 < x0);
-    final a = f / _camina;
+    final s0 = _meta(i, total, k);
+    final s1 = _meta(i, total, k + 1);
+    final s = f >= _camina ? s1 : s0 + (s1 - s0) * f / _camina;
+    final (x, y) = _enLaVuelta(s);
+    // Hacia dónde mira: según hacia dónde avanza en la vuelta.
+    final (xa, _) = _enLaVuelta(s0 + (s1 - s0) * math.max(0, f - 1) / _camina);
+    final (xb, _) = _enLaVuelta(
+      s0 + (s1 - s0) * math.min(_camina, f + 1) / _camina,
+    );
     return PaseoBebe(
-      x0 + (x1 - x0) * a,
-      y0 + (y1 - y0) * a,
-      paso: f.isEven ? 1 : 2,
-      izquierda: x1 < x0,
+      x,
+      y,
+      paso: f >= _camina ? 0 : (f.isEven ? 1 : 2),
+      izquierda: xb < xa || (xb == xa && s1 < s0 && y >= _abajo),
     );
   }
 
-  /// Donde duerme el bebé [i] (en fila, abajo).
-  static PaseoBebe durmiendo(int i) =>
-      PaseoBebe(4 + (i % 6) * 12.0, 89 - (i ~/ 6) * 8.0);
+  /// Donde duerme el bebé [i] (en fila, adelante).
+  static PaseoBebe durmiendo(int i) => PaseoBebe(_izq + (i % 6) * 12.5, _abajo);
 }
