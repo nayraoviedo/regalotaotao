@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/carta.dart';
 import '../../../services/cartas_service.dart';
 import '../../../theme.dart';
+import 'carta_screen.dart';
+import 'carta_sorpresa.dart';
 import 'cartas_style.dart';
 import 'papel.dart';
 import 'sobre.dart';
@@ -446,7 +448,30 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
       ...nuevas.map((c) => c.id),
     ]);
     if (!mounted) return;
-    final ver = await mostrarLlegadaDeCarta(context, nuevas);
+    // Las sorpresas llegan con los gatitos y se abren ahí mismo.
+    for (final carta in nuevas.where((c) => c.sorpresa)) {
+      final abrir = await mostrarLlegadaSorpresa(context, carta);
+      if (!mounted) return;
+      if (abrir) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CartaScreen(
+              carta: carta,
+              coupleId: widget.coupleId,
+              uid: widget.uid,
+              animarApertura: true,
+            ),
+          ),
+        );
+        if (!mounted) return;
+      }
+    }
+    final normales = [...nuevas.where((c) => !c.sorpresa)];
+    if (normales.isEmpty) {
+      _mostrando = false;
+      return;
+    }
+    final ver = await mostrarLlegadaDeCarta(context, normales);
     _mostrando = false;
     if (ver && mounted) widget.onVer();
   }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/carta.dart';
 import '../models/casita.dart';
 import 'db.dart';
 import 'notify_service.dart';
@@ -242,6 +243,52 @@ class PescaditosService {
       }
     });
     NotifyService.instance.send(NotifyKind.compra, coupleId, movRef.id);
+  }
+
+  /// Manda una carta sorpresa animada a la pareja, pagada con pescaditos.
+  /// La carta, el movimiento y el monedero se guardan juntos. Devuelve el
+  /// id de la carta.
+  Future<String> enviarCartaSorpresa(
+    String coupleId, {
+    required String from,
+    required String to,
+    required String text,
+    required Papel papel,
+  }) async {
+    const precio = Casita.precioCartaSorpresa;
+    final cartaRef = Db.coupleSub(coupleId, 'letters').doc();
+    final movRef = _movs(coupleId).doc('carta_${cartaRef.id}');
+    final estadoRef = _estado(coupleId);
+    await Db.instance.runTransaction((tx) async {
+      final estado = await tx.get(estadoRef);
+      final hay =
+          ((estado.data() ?? const {})['pescaditos'] as num?)?.toInt() ?? 0;
+      if (hay < precio) throw SinPescaditos(precio - hay);
+      tx.set(cartaRef, {
+        'from': from,
+        'to': to,
+        'motivo': Carta.motivoSorpresa,
+        'cuando': Carta.cuandoSorpresa,
+        'text': text,
+        'papel': papel.name,
+        'sorpresa': true,
+        'openedAt': null,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      tx.set(movRef, {
+        'tipo': Movimiento.carta,
+        'uid': from,
+        'cantidad': -precio,
+        'ref': cartaRef.id,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      tx.update(estadoRef, {
+        'pescaditos': hay - precio,
+        'ultimoMov': movRef.id,
+      });
+    });
+    NotifyService.instance.send(NotifyKind.letter, coupleId, cartaRef.id);
+    return cartaRef.id;
   }
 
   /// `set` no entiende 'a.b': arma los mapas anidados.

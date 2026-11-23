@@ -34,6 +34,9 @@ class Casita {
   /// Desde cuánto una compra es "grande": la tiene que aprobar la pareja
   /// antes de gastar (los regalos sorpresa no, para no arruinar la sorpresa).
   static const compraGrande = 100;
+
+  /// Lo que cuesta mandar una carta sorpresa animada.
+  static const precioCartaSorpresa = 30;
   static bool necesitaAprobacion(Cosa c) => c.precio > compraGrande;
 
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
@@ -1223,7 +1226,7 @@ class Propuesta {
 ///
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
 /// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `pomodoro_{logro}`,
-/// `racha{meta}_{inicio}` y `compra_{cosa}`.
+/// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
 class Movimiento {
   const Movimiento({
     required this.id,
@@ -1239,6 +1242,7 @@ class Movimiento {
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
+  static const carta = 'carta';
 
   final String id;
   final String tipo;
@@ -1274,6 +1278,7 @@ class Movimiento {
       final c? => 'compró ${c.nombre}',
       null => 'compró algo',
     },
+    carta => 'mandó una carta sorpresa',
     _ => '',
   };
 }

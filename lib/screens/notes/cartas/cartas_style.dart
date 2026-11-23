@@ -54,6 +54,7 @@ class CartasStyle {
     'abrazo' => Icons.volunteer_activism,
     'estres' => Icons.spa,
     'reir' => Icons.sentiment_very_satisfied,
+    'sorpresa' => Icons.auto_awesome,
     _ => Icons.mail,
   };
 }
