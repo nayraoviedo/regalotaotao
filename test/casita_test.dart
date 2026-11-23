@@ -742,6 +742,32 @@ void main() {
       expect(metas.last, isNull);
     });
 
+    testWidgets('al comprar se elige: para los dos o regalar', (t) async {
+      final compras = <(Cosa, String?)>[];
+      final regalos = <(Cosa, String?, String)>[];
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 130),
+          compras: compras,
+          regalos: regalos,
+        ),
+      );
+      await t.tap(find.text('Sofá azul'));
+      await t.pumpAndSettle();
+      // Las dos opciones, y por defecto es para los dos (no se impone regalar).
+      expect(find.text('🏠 Para los dos'), findsOneWidget);
+      expect(find.text('🎁 Regalar'), findsOneWidget);
+      expect(
+        find.text('Va directo a la casita, para los dos.'),
+        findsOneWidget,
+      );
+      expect(find.byType(TextField), findsNothing);
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'sofa_azul');
+      expect(regalos, isEmpty);
+    });
+
     testWidgets('regalar una prenda con un mensajito', (t) async {
       final regalos = <(Cosa, String?, String)>[];
       await t.pumpWidget(
@@ -753,7 +779,7 @@ void main() {
       await t.ensureVisible(find.text('Camiseta a rayas'));
       await t.tap(find.text('Camiseta a rayas'));
       await t.pumpAndSettle();
-      await t.tap(find.text('🎁 Es un regalo sorpresa para Xixi'));
+      await t.tap(find.text('🎁 Regalar'));
       await t.pumpAndSettle();
       await t.enterText(find.byType(TextField), 'Para nuestra cita');
       await t.tap(find.text('Regalar'));
