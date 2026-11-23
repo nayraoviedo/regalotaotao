@@ -12,6 +12,7 @@ import '../../theme.dart';
 import '../together/gatitos.dart';
 import 'escalera.dart';
 import '../../widgets/doodle.dart';
+import 'resena_juntos.dart';
 
 /// Lista de cosas por hacer juntos: citas, viajes, comidas...
 ///
@@ -65,6 +66,9 @@ class _BucketListScreenState extends State<BucketListScreen>
   /// Pendientes ya cumplidos en lo último que llegó; así se nota cuál se
   /// acaba de cumplir, aunque lo haya marcado tu pareja.
   Set<String>? _hechas;
+
+  /// Nombre de la pareja (para las reseñas); se conoce al cargar su perfil.
+  String _nombrePareja = 'Tu pareja';
 
   /// Uid de la pareja, para saber qué gatito eligió.
   late final Stream<Couple>? _pareja = widget.demo == null
@@ -122,21 +126,51 @@ class _BucketListScreenState extends State<BucketListScreen>
     if (_demo case final demo?) {
       setState(() {
         _demo = [
-          for (final i in demo)
-            i.id == item.id
-                ? BucketItem(
-                    id: i.id,
-                    title: i.title,
-                    category: i.category,
-                    done: !i.done,
-                  )
-                : i,
+          for (final i in demo) i.id == item.id ? i.copyWith(done: !i.done) : i,
         ];
       });
-      return;
+    } else {
+      await _service.toggleBucket(widget.coupleId, item);
     }
-    await _service.toggleBucket(widget.coupleId, item);
+    // Recién cumplido: se ofrece dejarle estrellitas, sin interrumpir.
+    if (!item.done && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('¡Cumplido! ¿Qué tal estuvo "${item.title}"?'),
+            action: SnackBarAction(
+              label: 'Reseñar',
+              onPressed: () => _resenar(item.copyWith(done: true)),
+            ),
+          ),
+        );
+    }
   }
+
+  Future<void> _resenar(BucketItem item) => showResenaJuntos(
+    context,
+    coupleId: widget.coupleId,
+    uid: widget.me.uid,
+    partnerName: _nombrePareja,
+    item: item,
+    onGuardar: _demo == null
+        ? null
+        : (r) async => setState(() {
+            _demo = [
+              for (final i in _demo!)
+                i.id == item.id
+                    ? i.copyWith(
+                        resenas: {
+                          for (final e in i.resenas.entries)
+                            if (e.key != widget.me.uid) e.key: e.value,
+                          widget.me.uid: ?r,
+                        },
+                      )
+                    : i,
+            ];
+          }),
+  );
 
   Future<void> _opciones(BucketItem item) async {
     final borrar = await showModalBottomSheet<bool>(
@@ -295,6 +329,7 @@ class _BucketListScreenState extends State<BucketListScreen>
                             item: item,
                             onMarcar: () => _marcar(item),
                             onOpciones: () => _opciones(item),
+                            onResenar: () => _resenar(item),
                           )
                         : _EscalonLibre(
                             primero: i == items.length,
@@ -375,6 +410,7 @@ class _BucketListScreenState extends State<BucketListScreen>
                           ? UserService.instance.watchUser(widget.me.uid)
                           : null,
                       builder: (context, yo) {
+                        if (p.data?.name case final n?) _nombrePareja = n;
                         final (mio, suyo) = Gatito.dePareja(
                           yo.data ?? widget.me,
                           p.data,
@@ -475,11 +511,13 @@ class _Escalon extends StatelessWidget {
     required this.item,
     required this.onMarcar,
     required this.onOpciones,
+    required this.onResenar,
   });
 
   final BucketItem item;
   final VoidCallback onMarcar;
   final VoidCallback onOpciones;
+  final VoidCallback onResenar;
 
   @override
   Widget build(BuildContext context) {
@@ -512,14 +550,17 @@ class _Escalon extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Tooltip(
-            message: item.category,
-            child: Doodle(
-              _iconoCategoria(item.category),
-              size: 18,
-              color: EscaleraColores.azulMedio,
+          if (item.done)
+            BotonResena(resenas: item.resenas, onTap: onResenar)
+          else
+            Tooltip(
+              message: item.category,
+              child: Doodle(
+                _iconoCategoria(item.category),
+                size: 18,
+                color: EscaleraColores.azulMedio,
+              ),
             ),
-          ),
           IconButton(
             tooltip: 'Eliminar',
             onPressed: onOpciones,

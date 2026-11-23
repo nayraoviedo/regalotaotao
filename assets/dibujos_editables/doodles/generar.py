@@ -92,6 +92,17 @@ D['montana'] = ambos('M6 82 L36 30 L52 56 L62 42 L90 82 Z', VE) + relleno('M30 4
 D['fuego'] = ambos('M48 86 C30 86 18 74 18 58 C18 44 28 34 32 22 C38 30 40 36 40 42 C46 32 50 20 48 8 C64 18 78 36 78 58 C78 74 66 86 48 86 Z', TO) + relleno('M48 84 C40 84 34 78 34 70 C34 62 42 56 46 48 C52 56 62 62 62 70 C62 78 56 84 48 84 Z', AM, 0, 0)
 D['quitar'] = linea('M20 48 L76 48', 6)
 
+ESTRELLA = 'M48 10 L58 36 L86 38 L64 56 L72 84 L48 68 L24 84 L32 56 L10 38 L38 36 Z'
+D['estrella'] = linea(ESTRELLA)
+D['estrella_llena'] = ambos(ESTRELLA, AM)
+D['libro'] = ambos('M48 24 C38 16 22 16 12 20 L12 78 C22 74 38 74 48 82 Z', CE) + ambos('M48 24 C58 16 74 16 84 20 L84 78 C74 74 58 74 48 82 Z', CR) + linea('M58 36 Q66 32 74 34 M58 48 Q66 44 74 46', 3.6)
+D['pelicula'] = ambos('M12 34 L84 34 L84 82 L12 82 Z', CE) + ambos('M12 34 L80 18 L84 32 L16 48 Z', AM) + linea('M30 28 L36 42 M50 24 L56 38 M68 20 L74 34', 4) + relleno('M40 50 L60 60 L40 70 Z', TO, 0, 0)
+D['musica'] = linea('M36 70 L36 22 L76 14 L76 62 M36 34 L76 26') + ambos('M24 62 C32 58 40 62 40 70 C40 78 30 82 24 80 C16 78 16 66 24 62 Z', AM) + ambos('M64 54 C72 50 80 54 80 62 C80 70 70 74 64 72 C56 70 56 58 64 54 Z', TO)
+D['abrir'] = linea('M44 20 L16 20 L16 80 L76 80 L76 52') + linea('M50 14 L82 14 L82 46 M82 14 L44 52', 5.6)
+D['lugar'] = ambos('M48 86 C40 72 18 54 18 36 C18 20 32 10 48 10 C64 10 78 20 78 36 C78 54 56 72 48 86 Z', TO) + f'<circle cx="48" cy="36" r="10" fill="{CR}" stroke="{AZ}" stroke-width="4.4"/>'
+D['podcast'] = ambos('M36 16 C36 8 60 8 60 16 L60 46 C60 56 36 56 36 46 Z', CE) + linea('M24 40 C24 70 72 70 72 40 M48 64 L48 82 M36 84 L60 84')
+D['tele'] = ambos('M12 28 L84 28 L84 76 L12 76 Z', CE) + linea('M36 12 L48 26 L62 10 M28 86 L68 86') + relleno('M22 38 L64 38 L64 66 L22 66 Z', AM, 0, 0) + f'<circle cx="74" cy="44" r="3.5" fill="{AZ}"/><circle cx="74" cy="58" r="3.5" fill="{AZ}"/>'
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

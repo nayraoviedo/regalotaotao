@@ -10,6 +10,7 @@ import '../../widgets/user_avatar.dart';
 import '../../widgets/doodle.dart';
 import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
+import 'mimos.dart';
 
 /// Secciones a las que se entra desde las tarjetas del inicio.
 enum SeccionInicio { animo, pomodoro, pregunta, porHacer }
@@ -66,11 +67,16 @@ class InicioView extends StatelessWidget {
     this.miGatito = Gatito.naranja,
     this.suGatito = Gatito.blanco,
     this.onAbrazo,
+    this.onMimo,
     this.misTeExtrano,
     this.susTeExtrano,
     this.racha,
     this.onRacha,
+    this.recomendacion,
   });
+
+  /// Rectángulo de la recomendación del día, debajo del ánimo.
+  final Widget? recomendacion;
 
   /// Racha de pareja; `null` mientras carga (no se muestra).
   final Racha? racha;
@@ -93,6 +99,9 @@ class InicioView extends StatelessWidget {
 
   /// Manda un abrazo a la pareja. Se ofrece cuando su ánimo no anda bien.
   final Future<void> Function()? onAbrazo;
+
+  /// Manda un beso o un abrazo desde el botón de "Te extraño".
+  final void Function(Mimo)? onMimo;
 
   /// Cuántos "te extraño" mandó cada uno; `null` mientras se cargan.
   final int? misTeExtrano;
@@ -131,7 +140,7 @@ class InicioView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _BotonTeExtrano(onTap: onTeExtrano),
+                  BotonMimos(onTeExtrano: onTeExtrano, onMimo: onMimo),
                   ConteoTeExtrano(
                     mios: misTeExtrano,
                     suyos: susTeExtrano,
@@ -160,6 +169,10 @@ class InicioView extends StatelessWidget {
                     suGatito: suGatito,
                     onTap: () => onAbrir(SeccionInicio.animo),
                   ),
+                  if (recomendacion case final r?) ...[
+                    const SizedBox(height: 12),
+                    r,
+                  ],
                   const SizedBox(height: 12),
                   IntrinsicHeight(
                     child: Row(
@@ -285,29 +298,6 @@ class _Pareja extends StatelessWidget {
           RachaPastilla(racha: r, onTap: onRacha ?? () {}),
         ],
       ],
-    );
-  }
-}
-
-class _BotonTeExtrano extends StatelessWidget {
-  const _BotonTeExtrano({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onTap,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(58),
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-      ),
-      icon: const Doodle(
-        Icons.favorite,
-        nombre: 'te_extrano',
-        color: AppTheme.amarillo,
-      ),
-      label: const Text('Te extraño'),
     );
   }
 }

@@ -82,6 +82,7 @@ final Map<int, String> _doodles = {
     Icons.checklist: 'por_hacer',
     Icons.chevron_right: 'siguiente',
     Icons.add: 'agregar',
+    Icons.add_rounded: 'agregar',
     Icons.add_circle_outline: 'agregar_circulo',
     // Pomodoro
     Icons.play_arrow_rounded: 'reproducir',
@@ -119,6 +120,10 @@ final Map<int, String> _doodles = {
     Icons.image_outlined: 'foto',
     Icons.hide_image_outlined: 'quitar_foto',
     Icons.auto_awesome: 'brillos',
+    Icons.auto_awesome_outlined: 'brillos',
+    Icons.open_in_new_rounded: 'abrir',
+    Icons.star_outline_rounded: 'estrella',
+    Icons.star_rounded: 'estrella_llena',
     // Categorías de notas
     Icons.school_outlined: 'estudio',
     Icons.work_outline: 'trabajo',
@@ -135,6 +140,15 @@ final Map<int, String> _doodles = {
     // Por hacer juntos
     Icons.flight_takeoff: 'avion',
     Icons.restaurant: 'comida',
+    // Recomendación del día
+    Icons.restaurant_rounded: 'comida',
+    Icons.menu_book_rounded: 'libro',
+    Icons.movie_outlined: 'pelicula',
+    Icons.music_note_rounded: 'musica',
+    Icons.queue_music_rounded: 'musica',
+    Icons.podcasts_rounded: 'podcast',
+    Icons.tv_rounded: 'tele',
+    Icons.place_outlined: 'lugar',
     Icons.hiking: 'montana',
   }.entries)
     e.key.codePoint: e.value,
