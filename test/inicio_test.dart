@@ -22,6 +22,8 @@ void main() {
     int? dias,
     VoidCallback? onTeExtrano,
     void Function(SeccionInicio)? onAbrir,
+    int? mios,
+    int? suyos,
   }) => MaterialApp(
     home: Scaffold(
       body: InicioView(
@@ -33,6 +35,8 @@ void main() {
         onTeExtrano: onTeExtrano ?? () {},
         onDiasJuntos: () {},
         onAbrir: onAbrir ?? (_) {},
+        misTeExtrano: mios,
+        susTeExtrano: suyos,
       ),
     ),
   );
@@ -61,5 +65,17 @@ void main() {
     await tester.tap(find.text('Pomodoro'));
     expect(extrana, 1);
     expect(abiertas, [SeccionInicio.animo, SeccionInicio.pomodoro]);
+  });
+
+  testWidgets('el conteo de te extraño aparece bajo el botón', (tester) async {
+    await tester.pumpWidget(inicio(mios: 12, suyos: 1));
+    expect(find.text('Tú lo dijiste 12 veces · Xixi, 1 vez'), findsOneWidget);
+  });
+
+  testWidgets('sin te extraño todavía no se muestra el conteo', (tester) async {
+    await tester.pumpWidget(inicio(mios: 0, suyos: 0));
+    expect(find.textContaining('lo dijiste'), findsNothing);
+    await tester.pumpWidget(inicio());
+    expect(find.textContaining('lo dijiste'), findsNothing);
   });
 }
