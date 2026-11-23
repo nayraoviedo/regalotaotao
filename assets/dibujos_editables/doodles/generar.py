@@ -102,6 +102,10 @@ D['abrir'] = linea('M44 20 L16 20 L16 80 L76 80 L76 52') + linea('M50 14 L82 14 
 D['lugar'] = ambos('M48 86 C40 72 18 54 18 36 C18 20 32 10 48 10 C64 10 78 20 78 36 C78 54 56 72 48 86 Z', TO) + f'<circle cx="48" cy="36" r="10" fill="{CR}" stroke="{AZ}" stroke-width="4.4"/>'
 D['podcast'] = ambos('M36 16 C36 8 60 8 60 16 L60 46 C60 56 36 56 36 46 Z', CE) + linea('M24 40 C24 70 72 70 72 40 M48 64 L48 82 M36 84 L60 84')
 D['tele'] = ambos('M12 28 L84 28 L84 76 L12 76 Z', CE) + linea('M36 12 L48 26 L62 10 M28 86 L68 86') + relleno('M22 38 L64 38 L64 66 L22 66 Z', AM, 0, 0) + f'<circle cx="74" cy="44" r="3.5" fill="{AZ}"/><circle cx="74" cy="58" r="3.5" fill="{AZ}"/>'
+# --- juegos de pareja (dos dados) ---
+D['juegos'] = ('<g transform="rotate(-12 34 52)">' + ambos('M14 32 L54 32 L54 72 L14 72 Z', CR) + f'<circle cx="24" cy="42" r="4" fill="{AZ}"/><circle cx="34" cy="52" r="4" fill="{AZ}"/><circle cx="44" cy="62" r="4" fill="{AZ}"/>' + '</g>'
+               + '<g transform="rotate(14 66 46)">' + ambos('M48 26 L84 26 L84 62 L48 62 Z', AM) + f'<circle cx="58" cy="36" r="3.6" fill="{AZ}"/><circle cx="74" cy="36" r="3.6" fill="{AZ}"/><circle cx="58" cy="52" r="3.6" fill="{AZ}"/><circle cx="74" cy="52" r="3.6" fill="{AZ}"/>' + '</g>'
+               + linea('M60 84 C54 78 50 75 50 71 C50 68 52 66 55 66 C57 66 59 67 60 69 C61 67 63 66 65 66 C68 66 70 68 70 71 C70 75 66 78 60 84 Z', 3.6, TO))
 
 def claro(c):
     # Versión para fondos oscuros: contorno crema.

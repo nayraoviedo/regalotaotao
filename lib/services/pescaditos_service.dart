@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/carta.dart';
 import '../models/casita.dart';
+import '../models/juegos.dart';
 import 'db.dart';
 import 'notify_service.dart';
 
@@ -106,6 +107,85 @@ class PescaditosService {
   Future<bool> yaRespiroHoy(String coupleId, String uid) async {
     final d = await _movs(coupleId).doc('respira_${dia()}_$uid').get();
     return d.exists;
+  }
+
+  /// Vio los resultados de una partida de los juegos de pareja: cobra
+  /// [Juegos.premio] según cuántas respuestas coincidieron.
+  ///
+  /// Solo las primeras [Juegos.partidasConPremio] partidas del día dan
+  /// pescaditos: cada una ocupa un lugar `juego_{día}_{uid}_{1..3}`. Si ya
+  /// no quedan, la partida se marca como vista sin premio. Devuelve cuánto
+  /// se ganó (0 si ya se había cobrado o no quedaban lugares).
+  Future<int> ganarJuego(String coupleId, String uid, String partidaId) async {
+    final hoy = dia();
+    final estadoRef = _estado(coupleId);
+    final partidaRef = Db.coupleSub(coupleId, 'juegos').doc(partidaId);
+    final lugares = [
+      for (var i = 1; i <= Juegos.partidasConPremio; i++)
+        _movs(coupleId).doc(_lugarJuego(hoy, uid, i)),
+    ];
+    final ganado = await Db.instance.runTransaction<int>((tx) async {
+      final partida = Partida.fromDoc(await tx.get(partidaRef));
+      if (partida == null ||
+          !partida.terminada ||
+          !partida.respondio(uid) ||
+          partida.cobros.containsKey(uid)) {
+        return 0;
+      }
+      final estado = await tx.get(estadoRef);
+      DocumentReference<Map<String, dynamic>>? libre;
+      var slot = 0;
+      for (var i = 0; i < lugares.length; i++) {
+        if (!(await tx.get(lugares[i])).exists) {
+          libre = lugares[i];
+          slot = i + 1;
+          break;
+        }
+      }
+      if (libre == null) {
+        tx.update(partidaRef, {'cobros.$uid': Partida.sinPremio});
+        return 0;
+      }
+      final cantidad = partida.premio;
+      tx.set(libre, {
+        'tipo': Movimiento.juego,
+        'uid': uid,
+        'cantidad': cantidad,
+        'ref': hoy,
+        'partida': partidaId,
+        'slot': slot,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      final cambios = <String, Object?>{
+        'pescaditos':
+            ((estado.data()?['pescaditos'] as num?)?.toInt() ?? 0) + cantidad,
+        'ultimoMov': libre.id,
+      };
+      if (estado.exists) {
+        tx.update(estadoRef, cambios);
+      } else {
+        tx.set(estadoRef, cambios);
+      }
+      tx.update(partidaRef, {'cobros.$uid': libre.id});
+      return cantidad;
+    });
+    if (ganado > 0) {
+      ultimaGanancia.value = Ganancia(ganado, 'por jugar juntos');
+    }
+    return ganado;
+  }
+
+  static String _lugarJuego(String dia, String uid, int i) =>
+      'juego_${dia}_${uid}_$i';
+
+  /// Cuántas partidas con premio le quedan hoy a [uid].
+  Future<int> partidasConPremioHoy(String coupleId, String uid) async {
+    final hoy = dia();
+    final docs = await Future.wait([
+      for (var i = 1; i <= Juegos.partidasConPremio; i++)
+        _movs(coupleId).doc(_lugarJuego(hoy, uid, i)).get(),
+    ]);
+    return docs.where((d) => !d.exists).length;
   }
 
   /// Completó un pomodoro ([logroId] es su logro en `achievements`).

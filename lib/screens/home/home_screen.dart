@@ -40,6 +40,7 @@ import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
 import '../casita/casa_en_corte.dart';
+import '../juegos/juegos_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -396,6 +397,13 @@ class _HomeBodyState extends State<_HomeBody> {
                   inicioPareja: couple.startDate,
                 ),
               ),
+            ),
+            juegos: JuegosInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerName: partnerName,
+              onTap: () =>
+                  _open(JuegosScreen(me: me, couple: couple, partner: partner)),
             ),
             musica: MusicaInicio(
               coupleId: couple.id,

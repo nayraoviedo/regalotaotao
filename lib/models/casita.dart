@@ -1651,7 +1651,7 @@ class Propuesta {
 ///
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
 /// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `respira_{día}_{uid}`,
-/// `pomodoro_{logro}`,
+/// `pomodoro_{logro}`, `juego_{día}_{uid}_{1..3}`,
 /// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
 class Movimiento {
   const Movimiento({
@@ -1666,6 +1666,7 @@ class Movimiento {
   static const pregunta = 'pregunta';
   static const animo = 'animo';
   static const respira = 'respira';
+  static const juego = 'juego';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
@@ -1699,6 +1700,7 @@ class Movimiento {
     pregunta => 'respondió la pregunta del día',
     animo => 'contó cómo se siente',
     respira => 'respiró con los gatitos',
+    juego => 'jugó un juego de pareja',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {

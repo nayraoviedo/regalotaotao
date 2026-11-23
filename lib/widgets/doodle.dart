@@ -151,6 +151,8 @@ final Map<int, String> _doodles = {
     Icons.tv_rounded: 'tele',
     Icons.place_outlined: 'lugar',
     Icons.hiking: 'montana',
+    // Juegos de pareja
+    Icons.casino_outlined: 'juegos',
   }.entries)
     e.key.codePoint: e.value,
 };

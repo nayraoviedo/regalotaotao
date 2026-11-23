@@ -17,6 +17,7 @@ enum NotifyKind {
   kiss,
   compra,
   propuesta,
+  juego,
 }
 
 /// Le pide al Worker de Cloudflare que avise a la pareja.

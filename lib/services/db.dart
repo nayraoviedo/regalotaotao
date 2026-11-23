@@ -21,6 +21,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   missYou/{id}                    "te extraño" (el Worker envía el aviso)
 ///   abrazos/{id}                    abrazos cuando su ánimo no anda bien (también)
 ///   recomendaciones/{día}_{uid}     recomendación del día para la pareja
+///   juegos/{id}                     partidas de los juegos de pareja
 ///   musica/sala                     música juntos (lo que suena, cola, 3-2-1)
 class Db {
   static final _fs = FirebaseFirestore.instance;
