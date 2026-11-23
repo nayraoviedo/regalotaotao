@@ -7,6 +7,7 @@ import '../../widgets/text_prompt.dart';
 import 'pomodoro_style.dart';
 
 import 'reward_coupon.dart';
+import '../../widgets/doodle.dart';
 
 export 'reward_coupon.dart' show showRewardCoupon;
 
@@ -142,7 +143,7 @@ Future<Reward?> pickReward(
                               for (final r in rewards)
                                 ActionChip(
                                   label: Text(r.title),
-                                  avatar: const Icon(
+                                  avatar: const Doodle(
                                     Icons.card_giftcard,
                                     size: 18,
                                     color: PomodoroStyle.azul,
@@ -165,7 +166,7 @@ Future<Reward?> pickReward(
                   children: [
                     Expanded(
                       child: TextButton.icon(
-                        icon: const Icon(Icons.add),
+                        icon: const Doodle(Icons.add),
                         label: const Text('Otro premio'),
                         onPressed: () async {
                           final title = await promptText(
@@ -260,7 +261,7 @@ Future<void> editRewards(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ListTile(
-                        leading: const Icon(
+                        leading: const Doodle(
                           Icons.card_giftcard,
                           color: PomodoroStyle.azul,
                         ),
@@ -270,7 +271,7 @@ Future<void> editRewards(
                           children: [
                             IconButton(
                               tooltip: 'Cambiar',
-                              icon: const Icon(Icons.edit_outlined),
+                              icon: const Doodle(Icons.edit_outlined),
                               onPressed: () async {
                                 final t = await promptText(
                                   context,
@@ -284,7 +285,7 @@ Future<void> editRewards(
                             ),
                             IconButton(
                               tooltip: 'Borrar',
-                              icon: const Icon(Icons.delete_outline),
+                              icon: const Doodle(Icons.delete_outline),
                               onPressed: () =>
                                   service.deleteReward(coupleId, r.id),
                             ),
@@ -294,7 +295,7 @@ Future<void> editRewards(
                     ),
                   const SizedBox(height: 4),
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.add),
+                    icon: const Doodle(Icons.add),
                     label: const Text('Agregar premio'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: PomodoroStyle.azul,
@@ -356,7 +357,7 @@ class _Suggestions extends StatelessWidget {
               for (final s in ideas)
                 ActionChip(
                   label: Text(s),
-                  avatar: const Icon(Icons.add, size: 18),
+                  avatar: const Doodle(Icons.add, size: 18),
                   backgroundColor: Colors.white,
                   side: BorderSide.none,
                   shape: const StadiumBorder(),

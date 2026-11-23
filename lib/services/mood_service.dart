@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/mood.dart';
 import 'db.dart';
+import 'racha_service.dart';
 
 class MoodService {
   MoodService._();
@@ -13,11 +14,14 @@ class MoodService {
     String uid,
     MoodType mood, {
     String? note,
-  }) => Db.coupleSub(coupleId, 'moods').doc(uid).set({
-    'mood': mood.id,
-    'note': note,
-    'updatedAt': FieldValue.serverTimestamp(),
-  });
+  }) async {
+    await Db.coupleSub(coupleId, 'moods').doc(uid).set({
+      'mood': mood.id,
+      'note': note,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await RachaService.instance.marcarHoy(coupleId, uid);
+  }
 
   Stream<MoodEntry?> watch(String coupleId, String uid) =>
       Db.coupleSub(coupleId, 'moods')

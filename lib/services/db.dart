@@ -14,8 +14,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   rewards/{id}                    lista de premios (la editan los dos)
 ///   achievements/{id}               pomodoros/tareas cumplidas y premio elegido
 ///   dailyAnswers/{yyyy-MM-dd}       respuestas a la pregunta del día
+///   preguntas/{id}                  preguntas que escribieron para el mazo
+///   datosCuriosos/{id}              datos curiosos de cada uno sobre sí
+///   racha/{yyyy-MM-dd}              quién hizo su parte ese día (racha)
 ///   bucketList/{id}                 cosas por hacer juntos
 ///   missYou/{id}                    "te extraño" (el Worker envía el aviso)
+///   abrazos/{id}                    abrazos cuando su ánimo no anda bien (también)
+///   recomendaciones/{día}_{uid}     recomendación del día para la pareja
 class Db {
   static final _fs = FirebaseFirestore.instance;
 

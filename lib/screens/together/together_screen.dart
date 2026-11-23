@@ -4,12 +4,15 @@ import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
+import '../../services/datos_curiosos_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
+import 'dato_del_dia.dart';
 import 'fondo_flotante.dart';
 import 'gatitos.dart';
 import 'hitos.dart';
+import '../../widgets/doodle.dart';
 
 const _meses = [
   'enero',
@@ -49,11 +52,18 @@ class TogetherScreen extends StatelessWidget {
           stream: UserService.instance.watchUser(myUid),
           builder: (context, meSnap) => StreamBuilder<AppUser?>(
             stream: UserService.instance.watchUser(c.partnerOf(myUid)),
-            builder: (context, partnerSnap) => DiasJuntosView(
-              couple: c,
-              me: meSnap.data,
-              partner: partnerSnap.data,
-              onCambiarFecha: () => _elegirFecha(context, c),
+            builder: (context, partnerSnap) => StreamBuilder<List<DatoCurioso>>(
+              stream: DatosCuriososService.instance.watchDe(
+                c.id,
+                c.partnerOf(myUid),
+              ),
+              builder: (context, datosSnap) => DiasJuntosView(
+                couple: c,
+                me: meSnap.data,
+                partner: partnerSnap.data,
+                onCambiarFecha: () => _elegirFecha(context, c),
+                datosPareja: datosSnap.data,
+              ),
             ),
           ),
         );
@@ -84,12 +94,17 @@ class DiasJuntosView extends StatelessWidget {
     required this.partner,
     required this.onCambiarFecha,
     this.hoy,
+    this.datosPareja,
   });
 
   final Couple couple;
   final AppUser? me;
   final AppUser? partner;
   final VoidCallback onCambiarFecha;
+
+  /// Datos curiosos que escribió tu pareja; se muestra uno por día.
+  /// null mientras cargan (no se muestra nada).
+  final List<DatoCurioso>? datosPareja;
 
   /// Solo para pruebas; por defecto es hoy.
   final DateTime? hoy;
@@ -115,7 +130,7 @@ class DiasJuntosView extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: start == null ? 'Elegir fecha' : 'Cambiar fecha',
-            icon: const Icon(Icons.edit_calendar),
+            icon: const Doodle(Icons.edit_calendar),
             onPressed: onCambiarFecha,
           ),
         ],
@@ -143,6 +158,13 @@ class DiasJuntosView extends StatelessWidget {
                           const SizedBox(height: 32),
                           _BarraHito(hito: Hito.proximo(start, today)),
                         ],
+                        if (datosPareja != null) ...[
+                          const SizedBox(height: 28),
+                          DatoDelDia(
+                            dato: DatoCurioso.delDia(datosPareja!, today),
+                            nombre: partner?.name ?? 'tu pareja',
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -164,17 +186,18 @@ class _Pareja extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (mio, suyo) = Gatito.dePareja(me, partner);
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _GatitoConFoto(gatito: Gatito.naranja, user: me, retraso: 0),
+          _GatitoConFoto(gatito: mio, user: me, retraso: 0),
           const Padding(
             padding: EdgeInsets.only(bottom: 70, left: 6, right: 6),
             child: _CorazonLatiendo(),
           ),
-          _GatitoConFoto(gatito: Gatito.negro, user: partner, retraso: 0.5),
+          _GatitoConFoto(gatito: suyo, user: partner, retraso: 0.5),
         ],
       ),
     );
@@ -317,7 +340,7 @@ class _CorazonLatiendoState extends State<_CorazonLatiendo>
         final escala = 1 + 0.18 * golpe(0.1) + 0.12 * golpe(0.3);
         return Transform.scale(scale: escala, child: child);
       },
-      child: const Icon(Icons.favorite, color: _corazon, size: 34),
+      child: const Doodle(Icons.favorite, color: _corazon, size: 34),
     );
   }
 }
@@ -486,11 +509,10 @@ class _Barra extends StatelessWidget {
               // El corazoncito que va avanzando.
               Positioned(
                 left: (x - corazon / 2).clamp(-corazon / 4, ancho - corazon),
-                child: const Icon(
+                child: const Doodle(
                   Icons.favorite,
                   color: _corazon,
                   size: corazon,
-                  shadows: [Shadow(color: Colors.white, blurRadius: 6)],
                 ),
               ),
             ],
@@ -520,7 +542,7 @@ class _SinFecha extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          icon: const Icon(Icons.edit_calendar),
+          icon: const Doodle(Icons.edit_calendar),
           label: const Text('Elegir nuestra fecha'),
           onPressed: onTap,
         ),

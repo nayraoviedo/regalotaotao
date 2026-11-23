@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../theme.dart';
 import 'cartas_style.dart';
+import '../../../widgets/doodle.dart';
 
 /// Sobre con solapa, sello redondo y la etiqueta "Ábrelo cuando…".
 class Sobre extends StatelessWidget {
@@ -246,7 +247,7 @@ class Sello extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
+      child: Doodle(
         CartasStyle.iconoDe(motivo),
         color: CartasStyle.amarillo,
         size: size * 0.48,

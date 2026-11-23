@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'carta_style.dart';
 import 'criatura.dart';
+import '../../widgets/doodle.dart';
 
 /// Tamaño de un naipe del mazo.
 const _ancho = 110.0;
@@ -17,7 +18,7 @@ class NaipeFrente extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const corazon = Icon(Icons.favorite, size: 14, color: CartaStyle.azul);
+    const corazon = Doodle(Icons.favorite, size: 14, color: CartaStyle.azul);
     return Container(
       width: _ancho,
       height: _alto,
@@ -270,11 +271,15 @@ class CartaColgante extends StatefulWidget {
     required this.carta,
     required this.pregunta,
     required this.total,
+    this.etiqueta,
   });
 
   final int carta;
   final String pregunta;
   final int total;
+
+  /// Texto arriba de la pregunta. Por defecto, "naipe X de Y".
+  final String? etiqueta;
 
   @override
   State<CartaColgante> createState() => _CartaColganteState();
@@ -366,7 +371,8 @@ class _Tarjeta extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'Pregunta de hoy · naipe ${widget.carta + 1} de ${widget.total}',
+            widget.etiqueta ??
+                'Pregunta de hoy · naipe ${widget.carta + 1} de ${widget.total}',
             style: const TextStyle(
               color: CartaStyle.gris,
               fontSize: 13,

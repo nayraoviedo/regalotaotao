@@ -8,6 +8,8 @@ class AppUser {
     this.coupleId,
     this.photoUrl,
     this.email,
+    this.gatito,
+    this.gatitoEn,
   });
 
   final String uid;
@@ -23,6 +25,13 @@ class AppUser {
   final String? photoUrl;
   final String? email;
 
+  /// Qué gatito eligió ser (`Gatito.id`). `null` si todavía no eligió.
+  final String? gatito;
+
+  /// Cuándo lo eligió: si los dos eligieron el mismo antes de vincularse,
+  /// se lo queda quien lo eligió primero.
+  final DateTime? gatitoEn;
+
   String get initial =>
       name.isEmpty ? '?' : String.fromCharCode(name.runes.first).toUpperCase();
 
@@ -35,6 +44,8 @@ class AppUser {
       coupleId: d['coupleId'] as String?,
       photoUrl: d['photoUrl'] as String?,
       email: d['email'] as String?,
+      gatito: d['gatito'] as String?,
+      gatitoEn: (d['gatitoEn'] as Timestamp?)?.toDate(),
     );
   }
 }

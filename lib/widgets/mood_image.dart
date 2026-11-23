@@ -3,14 +3,19 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../models/mood.dart';
+import 'ojo_acuarela.dart';
 
 /// Muestra el dibujo del ánimo (`assets/moods/<id>.png`).
-/// Si el PNG aún no existe, dibuja un bloblito de color con carita.
+/// Si el PNG aún no existe, dibuja la carita de un gatito provisional.
+///
+/// [naranja] dice qué gatito dibujar en la carita provisional (el naranja o
+/// el blanco). Si es `null`, se reparten uno y uno según el orden.
 class MoodImage extends StatelessWidget {
-  const MoodImage(this.mood, {super.key, this.size = 56});
+  const MoodImage(this.mood, {super.key, this.size = 56, this.naranja});
 
   final MoodType mood;
   final double size;
+  final bool? naranja;
 
   @override
   Widget build(BuildContext context) {
@@ -19,107 +24,130 @@ class MoodImage extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, _, _) =>
-          CustomPaint(size: Size.square(size), painter: MoodBlobPainter(mood)),
+      errorBuilder: (_, _, _) => CustomPaint(
+        size: Size.square(size),
+        painter: MoodBlobPainter(mood, naranja: naranja),
+      ),
     );
   }
 }
 
-/// Bloblito provisional: forma de color pastel y carita simple.
+/// Dibujo provisional del ánimo: la carita de un gatito (naranja o el
+/// blanco con manchitas plomo, uno y uno según el orden de la cuadrícula)
+/// sobre un círculo del color del ánimo.
 class MoodBlobPainter extends CustomPainter {
-  MoodBlobPainter(this.mood);
+  MoodBlobPainter(this.mood, {bool? naranja}) : _elegido = naranja;
   final MoodType mood;
 
+  /// El gatito elegido; `null` para repartirlos según el orden.
+  final bool? _elegido;
+
   static const _tinta = Color(0xFF2B3A75); // azul marino de la app
+
+  /// Los ánimos se reparten entre el gatito naranja y el blanco.
+  bool get _naranja =>
+      _elegido ?? MoodType.all.indexWhere((m) => m.id == mood.id).isEven;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width;
     canvas.save();
     canvas.scale(s);
-    _cuerpo(canvas, Paint()..color = mood.color);
+    canvas.drawCircle(
+      const Offset(.5, .54),
+      .44,
+      Paint()..color = mood.color.withValues(alpha: .75),
+    );
+    _gatito(canvas);
     _cara(canvas);
     canvas.restore();
   }
 
-  // ---------- Cuerpo ----------
+  // ---------- Gatito ----------
 
-  /// Contorno ondulado alrededor de (cx, cy).
-  Path _onda(
-    double cx,
-    double cy,
-    double rx,
-    double ry, {
-    double a = 0.04,
-    int k = 3,
-    double fase = 0,
-  }) {
-    final p = Path();
-    const n = 90;
-    for (var i = 0; i <= n; i++) {
-      final t = i / n * 2 * math.pi;
-      final r = 1 + a * math.sin(k * t + fase);
-      final pt = Offset(cx + rx * r * math.cos(t), cy + ry * r * math.sin(t));
-      i == 0 ? p.moveTo(pt.dx, pt.dy) : p.lineTo(pt.dx, pt.dy);
+  void _gatito(Canvas c) {
+    final naranja = _naranja;
+    final pelo = Paint()
+      ..color = naranja ? const Color(0xFFF2A65A) : const Color(0xFFFBF8F4);
+    final orejas = Paint()
+      ..color = naranja ? const Color(0xFFF2A65A) : const Color(0xFF8E95A3);
+    final contorno = Paint()
+      ..color = naranja ? const Color(0xFFD9803A) : const Color(0xFFD5D8DF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .012
+      ..strokeJoin = StrokeJoin.round;
+    final rosita = Paint()..color = const Color(0xFFF2B8B8);
+
+    // Orejas.
+    for (final l in [-1.0, 1.0]) {
+      Offset p(double x, double y) => Offset(.5 + l * (x - .5), y);
+      final oreja = Path()
+        ..moveTo(p(.15, .46).dx, p(.15, .46).dy)
+        ..lineTo(p(.21, .15).dx, p(.21, .15).dy)
+        ..lineTo(p(.43, .31).dx, p(.43, .31).dy)
+        ..close();
+      c.drawPath(oreja, orejas);
+      final dentro = Path()
+        ..moveTo(p(.21, .38).dx, p(.21, .38).dy)
+        ..lineTo(p(.235, .23).dx, p(.235, .23).dy)
+        ..lineTo(p(.34, .32).dx, p(.34, .32).dy)
+        ..close();
+      c.drawPath(dentro, rosita);
     }
-    return p..close();
-  }
 
-  void _cuerpo(Canvas c, Paint p) {
-    RRect caja(double l, double t, double r, double b, double rad) =>
-        RRect.fromLTRBR(l, t, r, b, Radius.circular(rad));
-
-    switch (mood.shape) {
-      case MoodShape.gota:
-        c.drawPath(_onda(.5, .52, .38, .35, a: .07, k: 2, fase: -1.2), p);
-      case MoodShape.nube:
-        c.drawPath(_onda(.5, .52, .42, .32, a: .05, k: 4, fase: .6), p);
-      case MoodShape.huevo:
-        c.drawPath(_onda(.5, .52, .39, .35, a: .05, k: 3, fase: .4), p);
-      case MoodShape.ovalo:
-        c.drawPath(_onda(.5, .5, .34, .41, a: .03, k: 2, fase: .8), p);
-      case MoodShape.almohada:
-        c.drawPath(_onda(.5, .53, .45, .3, a: .03, k: 4, fase: 1), p);
-      case MoodShape.cubo:
-        c.drawRRect(caja(.13, .22, .87, .82, .22), p);
-      case MoodShape.flor:
-        c.drawPath(_onda(.5, .52, .37, .35, a: .06, k: 8, fase: .3), p);
-      case MoodShape.puas:
-        c.drawRRect(caja(.12, .32, .88, .84, .2), p);
-        final corona = Path()
-          ..moveTo(.14, .45)
-          ..lineTo(.2, .2)
-          ..lineTo(.34, .34)
-          ..lineTo(.45, .12)
-          ..lineTo(.56, .32)
-          ..lineTo(.7, .15)
-          ..lineTo(.78, .34)
-          ..lineTo(.88, .24)
-          ..lineTo(.86, .45)
-          ..close();
-        c.drawPath(corona, p);
-      case MoodShape.cachetes:
-        c.drawCircle(const Offset(.13, .55), .1, p);
-        c.drawCircle(const Offset(.87, .55), .1, p);
-        c.drawPath(_onda(.5, .52, .35, .35, a: .02, k: 3), p);
-      case MoodShape.osito:
-        c.drawCircle(const Offset(.2, .3), .11, p);
-        c.drawCircle(const Offset(.8, .3), .11, p);
-        c.drawPath(_onda(.5, .55, .38, .3, a: .03, k: 2), p);
-      case MoodShape.fantasma:
-        c.drawRRect(caja(.14, .18, .86, .72, .3), p);
-        for (var i = 0; i < 4; i++) {
-          c.drawCircle(Offset(.23 + i * .18, .72), .095, p);
+    // Cabeza (el blanco con mechoncitos en los cachetes).
+    final cabeza = Path()
+      ..addOval(
+        Rect.fromCenter(center: const Offset(.5, .55), width: .76, height: .6),
+      );
+    if (!naranja) {
+      for (final l in [-1.0, 1.0]) {
+        for (final (y, largo) in [(.55, .07), (.64, .06), (.47, .05)]) {
+          final x = .5 + l * .37;
+          cabeza.addPath(
+            Path()
+              ..moveTo(x, y - .04)
+              ..lineTo(x + l * largo, y)
+              ..lineTo(x, y + .04)
+              ..close(),
+            Offset.zero,
+          );
         }
-      case MoodShape.medusa:
-        c.drawOval(const Rect.fromLTRB(.14, .14, .86, .72), p);
-        for (var i = 0; i < 3; i++) {
-          c.drawCircle(Offset(.3 + i * .2, .74), .11, p);
-        }
-      case MoodShape.panza:
-        c.drawPath(_onda(.5, .5, .34, .34, a: .02, k: 3), p);
-        c.drawOval(const Rect.fromLTRB(.2, .45, .8, .88), p);
+      }
     }
+    c.drawPath(cabeza, pelo);
+    c.drawPath(cabeza, contorno);
+
+    if (naranja) {
+      // Rayitas en la frente.
+      final raya = Paint()
+        ..color = const Color(0xFFD9803A)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = .025;
+      for (final dx in [-.05, 0.0, .05]) {
+        c.drawLine(Offset(.5 + dx, .28), Offset(.5 + dx * .8, .35), raya);
+      }
+    } else {
+      // Manchitas plomo alrededor de los ojitos.
+      final mancha = Paint()..color = const Color(0xFFB9BEC8);
+      for (final x in [.38, .62]) {
+        c.drawOval(
+          Rect.fromCenter(center: Offset(x, .48), width: .2, height: .15),
+          mancha,
+        );
+      }
+    }
+
+    // Naricita.
+    c.drawPath(
+      Path()
+        ..moveTo(.485, .53)
+        ..lineTo(.515, .53)
+        ..lineTo(.5, .548)
+        ..close(),
+      Paint()..color = const Color(0xFFE88C8C),
+    );
   }
 
   // ---------- Carita ----------
@@ -158,9 +186,12 @@ class MoodBlobPainter extends CustomPainter {
 
   void _boquita(Canvas c, double y) => _linea(c, .465, y, .535, y);
 
-  void _puntos(Canvas c, double y, {double dx = 0, double r = .022}) {
-    c.drawCircle(Offset(.38 + dx, y), r, _relleno);
-    c.drawCircle(Offset(.62 + dx, y), r, _relleno);
+  /// Ojitos abiertos: grandes estilo acuarela, del color de cada gatito.
+  void _puntos(Canvas c, double y, {double dx = 0}) {
+    final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
+    final mirada = Offset(dx * 4, 0);
+    dibujarOjoAcuarela(c, Offset(.38, y), .05, iris, mirada: mirada);
+    dibujarOjoAcuarela(c, Offset(.62, y), .05, iris, mirada: mirada);
   }
 
   void _rubor(Canvas c, double y) {
@@ -220,10 +251,12 @@ class MoodBlobPainter extends CustomPainter {
         );
         _boquita(c, my);
       case 'ansioso':
-        final blanco = Paint()..color = Colors.white;
+        // Ojos muy abiertos, con la pupila chiquita.
+        final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
         for (final x in [.38, .62]) {
-          c.drawCircle(Offset(x, ey), .045, blanco);
-          c.drawCircle(Offset(x, ey), .022, _relleno);
+          dibujarOjoAcuarela(c, Offset(x, ey), .055, iris);
+          c.drawCircle(Offset(x, ey), .03, Paint()..color = iris);
+          c.drawCircle(Offset(x, ey), .016, _relleno);
         }
         _boquita(c, my + .02);
       case 'enojado':
@@ -311,5 +344,6 @@ class MoodBlobPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MoodBlobPainter old) => old.mood.id != mood.id;
+  bool shouldRepaint(MoodBlobPainter old) =>
+      old.mood.id != mood.id || old._elegido != _elegido;
 }

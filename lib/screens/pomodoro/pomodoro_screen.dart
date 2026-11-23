@@ -14,8 +14,10 @@ import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/text_prompt.dart';
 import '../../widgets/user_avatar.dart';
+import '../together/gatitos.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
+import '../../widgets/doodle.dart';
 
 /// Pomodoro solo o en pareja. Al completar un pomodoro o una tarea se elige
 /// un premio de la lista de la pareja, y la otra persona lo ve.
@@ -43,6 +45,30 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   /// Sesión juntos que está corriendo ahora (aceptada y sin terminar).
   PomodoroSession? _jointActive;
+
+  /// El temporizador solo está en descanso.
+  bool _descanso = false;
+
+  /// Un momento que se muestra un ratito (al terminar, o si mi pareja se
+  /// salió de la sesión juntos) y luego vuelve al dibujo de siempre.
+  MomentoPomodoro? _momentoBreve;
+  Timer? _momentoTimer;
+
+  MomentoPomodoro get _momento =>
+      _momentoBreve ??
+      (_juntos
+          ? MomentoPomodoro.juntos
+          : _descanso
+          ? MomentoPomodoro.descanso
+          : MomentoPomodoro.concentrados);
+
+  void _mostrarUnRato(MomentoPomodoro m) {
+    _momentoTimer?.cancel();
+    setState(() => _momentoBreve = m);
+    _momentoTimer = Timer(const Duration(seconds: 20), () {
+      if (mounted) setState(() => _momentoBreve = null);
+    });
+  }
 
   late final StreamSubscription<List<PomodoroTask>> _tasksSub;
   late final StreamSubscription<AppUser?> _partnerSub;
@@ -74,6 +100,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   void dispose() {
     _tasksSub.cancel();
     _partnerSub.cancel();
+    _momentoTimer?.cancel();
     if (_locked) FocusLock.unlock();
     super.dispose();
   }
@@ -107,7 +134,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: PomodoroStyle.crema,
-        icon: const Icon(
+        icon: const Doodle(
           Icons.favorite_border,
           color: PomodoroStyle.azul,
           size: 32,
@@ -169,6 +196,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   Future<void> _onPomodoroDone({String? sessionId}) async {
     if (sessionId != null && !_counted.add(sessionId)) return;
+    _mostrarUnRato(MomentoPomodoro.terminado);
     final task = _task;
     final id = await _rewards.logAchievement(
       _coupleId,
@@ -253,6 +281,10 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
               ),
               if (_locked) _LockedBanner(onUnlock: _toggleLock),
               _IllustratedCard(
+                imagen: PomodoroStyle.dibujo(
+                  _momento,
+                  Gatito.dePareja(widget.me, _partner).$1,
+                ),
                 child: Column(
                   children: [
                     // Los dos se mantienen vivos para no perder el tiempo
@@ -260,7 +292,10 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                     Visibility(
                       visible: !_juntos,
                       maintainState: true,
-                      child: _SoloTimer(onFocusDone: _onPomodoroDone),
+                      child: _SoloTimer(
+                        onFocusDone: _onPomodoroDone,
+                        onRestChanged: (r) => setState(() => _descanso = r),
+                      ),
                     ),
                     Visibility(
                       visible: _juntos,
@@ -276,6 +311,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                           }
                         },
                         onStop: _confirmLeaveJoint,
+                        onPartnerLeft: () =>
+                            _mostrarUnRato(MomentoPomodoro.triste),
                       ),
                     ),
                   ],
@@ -363,7 +400,7 @@ class _TopBar extends StatelessWidget {
         IconButton(
           tooltip: 'Volver',
           color: PomodoroStyle.azul,
-          icon: const Icon(Icons.arrow_back),
+          icon: const Doodle(Icons.arrow_back),
           onPressed: locked ? null : onBack,
         ),
         Expanded(
@@ -383,13 +420,13 @@ class _TopBar extends StatelessWidget {
           style: locked
               ? IconButton.styleFrom(backgroundColor: PomodoroStyle.amarillo)
               : null,
-          icon: Icon(locked ? Icons.lock : Icons.lock_open_outlined),
+          icon: Doodle(locked ? Icons.lock : Icons.lock_open_outlined),
           onPressed: onLock,
         ),
         IconButton(
           tooltip: 'Mis premios',
           color: PomodoroStyle.azul,
-          icon: const Icon(Icons.card_giftcard),
+          icon: const Doodle(Icons.card_giftcard),
           onPressed: locked ? null : onEditRewards,
         ),
       ],
@@ -413,7 +450,7 @@ class _LockedBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
+          const Doodle(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -512,7 +549,10 @@ class _Pills extends StatelessWidget {
 // Dibujo arriba y la tarjeta del temporizador encima.
 
 class _IllustratedCard extends StatelessWidget {
-  const _IllustratedCard({required this.child});
+  const _IllustratedCard({required this.imagen, required this.child});
+
+  /// El dibujo de los gatitos para el momento actual.
+  final String imagen;
   final Widget child;
 
   static const _imageHeight = 210.0;
@@ -527,11 +567,20 @@ class _IllustratedCard extends StatelessWidget {
           left: 0,
           right: 0,
           height: _imageHeight,
-          child: Image.asset(
-            PomodoroStyle.ilustracion,
-            fit: BoxFit.contain,
-            alignment: Alignment.bottomCenter,
-            errorBuilder: (_, _, _) => const _PlaceholderDrawing(),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: Image.asset(
+              imagen,
+              key: ValueKey(imagen),
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              errorBuilder: (_, _, _) => Image.asset(
+                PomodoroStyle.ilustracion,
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+                errorBuilder: (_, _, _) => const _PlaceholderDrawing(),
+              ),
+            ),
           ),
         ),
         Container(
@@ -545,7 +594,7 @@ class _IllustratedCard extends StatelessWidget {
   }
 }
 
-/// Se ve solo si falta `assets/images/pomodoro.png`.
+/// Se ve solo si faltan el dibujo del momento y `assets/images/pomodoro.png`.
 class _PlaceholderDrawing extends StatelessWidget {
   const _PlaceholderDrawing();
 
@@ -571,8 +620,11 @@ class _PlaceholderDrawing extends StatelessWidget {
 // Temporizador solo: Enfoque / Descanso, pausa y Terminar.
 
 class _SoloTimer extends StatefulWidget {
-  const _SoloTimer({required this.onFocusDone});
+  const _SoloTimer({required this.onFocusDone, required this.onRestChanged});
   final Future<void> Function() onFocusDone;
+
+  /// Avisa cuando cambia entre Enfoque y Descanso (para el dibujo).
+  final ValueChanged<bool> onRestChanged;
 
   @override
   State<_SoloTimer> createState() => _SoloTimerState();
@@ -611,10 +663,12 @@ class _SoloTimerState extends State<_SoloTimer> {
     _ticker?.cancel();
     _ticker = null;
     _endsAt = null;
+    final cambio = rest != null && rest != _rest;
     setState(() {
       if (rest != null) _rest = rest;
       _left = _full;
     });
+    if (cambio) widget.onRestChanged(_rest);
   }
 
   void _tick() {
@@ -762,7 +816,7 @@ class _TimerButtons extends StatelessWidget {
               shape: shape,
               padding: EdgeInsets.zero,
             ),
-            child: Icon(
+            child: Doodle(
               running ? Icons.pause_rounded : Icons.play_arrow_rounded,
               size: 30,
               semanticLabel: running ? 'Pausar' : 'Empezar',
@@ -788,7 +842,7 @@ class _TimerButtons extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              icon: const Icon(Icons.celebration_outlined),
+              icon: const Doodle(Icons.celebration_outlined),
               label: Text(finishLabel),
             ),
           ),
@@ -809,6 +863,7 @@ class _CoupleTimer extends StatefulWidget {
     required this.onDone,
     required this.onActive,
     required this.onStop,
+    required this.onPartnerLeft,
   });
 
   final AppUser me;
@@ -822,6 +877,9 @@ class _CoupleTimer extends StatefulWidget {
   /// Detener: muestra el aviso de que ya no contará como sesión juntos.
   final Future<bool> Function() onStop;
 
+  /// Mi pareja se salió de la sesión juntos (para el gatito triste).
+  final VoidCallback onPartnerLeft;
+
   @override
   State<_CoupleTimer> createState() => _CoupleTimerState();
 }
@@ -832,6 +890,13 @@ class _CoupleTimerState extends State<_CoupleTimer> {
   PomodoroSession? _session;
   Timer? _ticker;
   int _minutes = 25;
+
+  /// Minutos que la persona invitada ajustó (para la invitación [_ajusteDe]).
+  String? _ajusteDe;
+  int _ajuste = 25;
+
+  int _minutosPara(PomodoroSession s) =>
+      _ajusteDe == s.id ? _ajuste : s.minutes;
 
   String get _coupleId => widget.couple.id;
 
@@ -867,6 +932,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     if (!mounted || s == null) return;
     if (s.status != PomodoroStatus.cancelled) return;
     if (s.cancelledBy == null || s.cancelledBy == widget.me.uid) return;
+    widget.onPartnerLeft();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -922,14 +988,19 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     if (s == null) {
       return Column(
         children: [
-          _Pills(
-            left: '25 min',
-            right: '45 min',
-            rightSelected: _minutes == 45,
-            onChanged: (v) => setState(() => _minutes = v ? 45 : 25),
+          const Text(
+            '¿Cuánto tiempo quieren pasar juntos?',
+            style: TextStyle(
+              color: PomodoroStyle.azul,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 20),
-          Text(_fmt(Duration(minutes: _minutes)), style: _timerStyle),
+          const SizedBox(height: 12),
+          _MinutesPicker(
+            minutes: _minutes,
+            onChanged: (m) => setState(() => _minutes = m),
+          ),
           _message('Concéntrense juntos y al final cada uno elige su premio'),
           const SizedBox(height: 8),
           SizedBox(
@@ -942,7 +1013,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              icon: const Icon(Icons.send_rounded),
+              icon: const Doodle(Icons.send_rounded),
               label: Text('Invitar a $name'),
               onPressed: () => _service.invite(
                 _coupleId,
@@ -958,49 +1029,73 @@ class _CoupleTimerState extends State<_CoupleTimer> {
 
     if (s.status == PomodoroStatus.pending) {
       final iInvited = s.invitedBy == widget.me.uid;
-      return Column(
-        children: [
-          const SizedBox(height: 8),
-          Text(_fmt(Duration(minutes: s.minutes)), style: _timerStyle),
-          _message(
-            iInvited
-                ? 'Esperando que $name acepte… ⏳'
-                : '¡$name te invita a un pomodoro de ${s.minutes} min!',
-          ),
-          const SizedBox(height: 8),
-          if (iInvited)
+      if (iInvited) {
+        return Column(
+          children: [
+            const SizedBox(height: 8),
+            Text(_fmt(Duration(minutes: s.minutes)), style: _timerStyle),
+            _message('Esperando que $name acepte… ⏳'),
+            const SizedBox(height: 4),
+            Text(
+              '$name puede confirmar, bajar o subir el tiempo.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => _service.cancel(_coupleId, s.id),
               child: const Text('Cancelar invitación'),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      foregroundColor: PomodoroStyle.azul,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: () => _service.decline(_coupleId, s.id),
-                    child: const Text('Ahora no'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      backgroundColor: PomodoroStyle.azul,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: () => _service.accept(_coupleId, s.id),
-                    child: const Text('Aceptar'),
-                  ),
-                ),
-              ],
             ),
+          ],
+        );
+      }
+      final elegidos = _minutosPara(s);
+      final cambio = elegidos != s.minutes;
+      return Column(
+        children: [
+          _message('¡$name te invita a un pomodoro de ${s.minutes} min!'),
+          const Text(
+            'Puedes confirmar ese tiempo, o bajarlo o subirlo:',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          _MinutesPicker(
+            minutes: elegidos,
+            onChanged: (m) => setState(() {
+              _ajusteDe = s.id;
+              _ajuste = m;
+            }),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    foregroundColor: PomodoroStyle.azul,
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () => _service.decline(_coupleId, s.id),
+                  child: const Text('Ahora no'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    backgroundColor: PomodoroStyle.azul,
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () =>
+                      _service.accept(_coupleId, s.id, minutes: elegidos),
+                  child: Text(cambio ? 'Aceptar con $elegidos min' : 'Aceptar'),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
@@ -1031,10 +1126,84 @@ class _CoupleTimerState extends State<_CoupleTimer> {
               side: const BorderSide(color: PomodoroStyle.azul, width: 1.5),
               shape: const StadiumBorder(),
             ),
-            icon: const Icon(Icons.stop_rounded),
+            icon: const Doodle(Icons.stop_rounded),
             label: const Text('Salir de la sesión'),
             onPressed: widget.onStop,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Elegir los minutos de la sesión juntos antes de invitar: atajos rápidos
+/// y botones − / + de 5 en 5 (entre 5 y 60, lo que permiten las reglas).
+class _MinutesPicker extends StatelessWidget {
+  const _MinutesPicker({required this.minutes, required this.onChanged});
+
+  final int minutes;
+  final ValueChanged<int> onChanged;
+
+  static const _min = 5;
+  static const _max = 60;
+  static const _atajos = [15, 25, 30, 45, 60];
+
+  @override
+  Widget build(BuildContext context) {
+    Widget paso(IconData icon, int delta) {
+      final next = minutes + delta;
+      final ok = next >= _min && next <= _max;
+      return IconButton.filledTonal(
+        onPressed: ok ? () => onChanged(next) : null,
+        style: IconButton.styleFrom(
+          backgroundColor: PomodoroStyle.pastilla,
+          foregroundColor: PomodoroStyle.azul,
+        ),
+        icon: Doodle(icon),
+      );
+    }
+
+    return Column(
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            for (final m in _atajos)
+              ChoiceChip(
+                label: Text('$m min'),
+                selected: minutes == m,
+                onSelected: (_) => onChanged(m),
+                showCheckmark: false,
+                shape: const StadiumBorder(),
+                side: BorderSide.none,
+                backgroundColor: Colors.white.withValues(alpha: 0.7),
+                selectedColor: PomodoroStyle.azul,
+                labelStyle: TextStyle(
+                  color: minutes == m ? Colors.white : PomodoroStyle.azul,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            paso(Icons.remove, -5),
+            const SizedBox(width: 8),
+            Flexible(
+              child: FittedBox(
+                child: Text(
+                  _fmt(Duration(minutes: minutes)),
+                  style: _timerStyle,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            paso(Icons.add, 5),
+          ],
         ),
       ],
     );
@@ -1244,7 +1413,7 @@ class _TaskList extends StatelessWidget {
                       IconButton(
                         tooltip: t.done ? 'Terminada' : 'Marcar terminada',
                         color: t.done ? PomodoroStyle.hoja : PomodoroStyle.azul,
-                        icon: Icon(
+                        icon: Doodle(
                           t.done
                               ? Icons.check_circle_rounded
                               : Icons.radio_button_unchecked_rounded,
@@ -1273,7 +1442,7 @@ class _TaskList extends StatelessWidget {
                       IconButton(
                         tooltip: 'Borrar',
                         color: PomodoroStyle.gris,
-                        icon: const Icon(Icons.close_rounded, size: 20),
+                        icon: const Doodle(Icons.close_rounded, size: 20),
                         onPressed: () => onDelete(t),
                       ),
                     ],
@@ -1317,7 +1486,7 @@ class _AddTaskButton extends StatelessWidget {
                 color: PomodoroStyle.pastilla,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add, size: 22),
+              child: const Doodle(Icons.add, size: 22),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -1358,6 +1527,7 @@ class _RewardFeed extends StatelessWidget {
     final quien = mine ? 'Completaste' : '$partnerName completó';
     final quienT = mine ? 'Terminaste' : '$partnerName terminó';
     if (a.kind == Achievement.tarea) return '$quienT "${a.taskTitle}"';
+    if (a.kind == Achievement.racha) return '${a.taskTitle} juntos';
     if (a.taskTitle != null) {
       return '$quien un pomodoro en "${a.taskTitle}"';
     }
@@ -1394,7 +1564,7 @@ class _RewardFeed extends StatelessWidget {
                 ),
                 TextButton.icon(
                   onPressed: onEditRewards,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  icon: const Doodle(Icons.edit_outlined, size: 18),
                   label: const Text('Mi lista'),
                 ),
               ],
@@ -1502,7 +1672,7 @@ class _WhoChose extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
-                  Icon(
+                  Doodle(
                     a.delivered ? Icons.check_circle : Icons.card_giftcard,
                     size: 15,
                     color: a.delivered

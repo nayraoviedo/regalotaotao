@@ -24,6 +24,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Pregunta del día (ves la respuesta de tu pareja después de responder) | ✅ |
 | Lista de cosas por hacer juntos | ✅ |
 | Botón "Te extraño" con notificación push | ✅ (necesita el Worker gratis de Cloudflare, ver abajo) |
+| Recomendación del día (canción, playlist, peli, lugar…) con reproductor de Spotify/YouTube, reseñas con estrellitas e historial | ✅ |
 
 ## Requisitos
 
@@ -198,6 +199,16 @@ en su lugar. Deja un poco de aire alrededor del dibujo: se muestra en un
 cuadrado de unos 84 px en la cuadrícula y de 56 px en el inicio. Para cambiar
 los textos, el orden o agregar ánimos, edita `lib/models/mood.dart`.
 
+### Su gatito triste y el abrazo
+
+Cuando tu pareja registra un ánimo que sugiere mindfulness (la columna "Sí"
+de arriba), en tu inicio aparece su gatito triste con el botón **Mandar un
+abrazo**, que le llega como notificación. El dibujo se cambia reemplazando
+`assets/images/animo_triste_naranja.png` y `animo_triste_blanco.png`
+(cuadrados, fondo transparente, 600×600). Los originales editables están en
+`assets/dibujos_editables/`. Para que llegue la notificación del abrazo,
+vuelve a publicar el Worker (`cd worker && npx wrangler deploy`).
+
 ## El dibujo del pomodoro
 
 La ilustración de arriba de la pantalla de Pomodoro es
@@ -230,6 +241,29 @@ dibuja uno simple):
 Para que también llegue la notificación push de carta nueva, vuelve a
 publicar el Worker (`cd worker && npx wrangler deploy`).
 
+## Widget del celular (solo Android)
+
+Un widget de 4×2 para la pantalla de inicio con los **días juntos** y el
+**ánimo de tu pareja**, con los gatitos y en crema y azul marino. Al tocarlo
+se abre la app. En web (Brave) no existe, así que no se ve ahí.
+
+- Usa los mismos dibujos de la app (gatitos y ánimos, también tus PNG de
+  `assets/`): la app los exporta al widget cada vez que la abres.
+- Los días los cuenta el propio widget, así el número cambia solo cada día.
+- El ánimo se actualiza al instante con la app abierta y, con la app cerrada,
+  más o menos cada 30 minutos (tarea en segundo plano, gratis, sin Blaze).
+
+Para probarlo, con el celular Android conectado por USB (depuración USB activa):
+
+```bash
+flutter run -d android
+```
+
+Abre la app una vez con tu cuenta, luego mantén apretado un espacio vacío de
+la pantalla de inicio → **Widgets** → **Taotao** y arrástralo.
+El diseño está en `android/app/src/main/res/layout/taotao_widget.xml` y la
+lógica en `TaotaoWidget.kt` y `lib/services/widget_celular/`.
+
 ## Cómo está organizado
 
 ```
@@ -261,6 +295,7 @@ couples/{coupleId}               members (los dos uid), startDate
   dailyAnswers/{aaaa-mm-dd}      respuestas a la pregunta del día
   bucketList/{id}                cosas por hacer juntos
   missYou/{id}                   "te extraño" (el Worker envía el aviso)
+  abrazos/{id}                   abrazos cuando su ánimo no anda bien (también con aviso)
 ```
 
 ## Pruebas
