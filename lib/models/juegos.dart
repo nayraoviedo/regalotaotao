@@ -62,10 +62,31 @@ enum Juego {
 
 /// Una pregunta de "Adivina mis respuestas": un tema y sus opciones.
 /// Quien responde ve "Sobre ti", quien adivina ve "¿Qué dijo…?".
+///
+/// También sirve para las preguntas que escribe uno mismo: en "¿Quién es
+/// más probable?" solo se usa [tema] (la frase) y [opciones] va vacía.
 class Adivinanza {
   const Adivinanza(this.tema, this.opciones);
   final String tema;
   final List<String> opciones;
+
+  /// Largo máximo de lo que se escribe (las reglas lo revisan igual).
+  static const maxTema = 120;
+  static const maxOpcion = 60;
+
+  Map<String, Object> toMap() => {
+    'texto': tema,
+    if (opciones.isNotEmpty) 'opciones': opciones,
+  };
+
+  static Adivinanza? fromMap(Object? m) {
+    if (m is! Map) return null;
+    final texto = m['texto'];
+    if (texto is! String) return null;
+    return Adivinanza(texto, [
+      for (final o in (m['opciones'] as List? ?? const [])) '$o',
+    ]);
+  }
 }
 
 class Juegos {
@@ -90,13 +111,26 @@ class Juegos {
 
   /// Elige [preguntasPorPartida] preguntas al azar del mazo de [juego],
   /// tratando de no repetir las de [usadas] (las de partidas recientes).
-  static List<int> elegir(Juego juego, Set<int> usadas, [math.Random? r]) {
+  static List<int> elegir(Juego juego, Set<int> usadas, [math.Random? r]) =>
+      elegirVarias(juego, usadas, preguntasPorPartida, r);
+
+  /// Número que se guarda en `preguntas` cuando la escribió uno mismo
+  /// (el texto va en `propias`).
+  static const propia = -1;
+
+  /// Elige [n] preguntas al azar, primero las que no están en [usadas].
+  static List<int> elegirVarias(
+    Juego juego,
+    Set<int> usadas,
+    int n, [
+    math.Random? r,
+  ]) {
     final rnd = r ?? math.Random();
     final todas = List.generate(juego.totalPreguntas, (i) => i);
     final nuevas = todas.where((i) => !usadas.contains(i)).toList()
       ..shuffle(rnd);
     final viejas = todas.where(usadas.contains).toList()..shuffle(rnd);
-    return [...nuevas, ...viejas].take(preguntasPorPartida).toList();
+    return [...nuevas, ...viejas].take(n).toList();
   }
 
   /// Para agregar preguntas, súmalas AL FINAL de la lista: las partidas
@@ -330,6 +364,8 @@ class Juegos {
 /// - `por`: quien empezó (en "Adivina", quien responde sobre sí)
 /// - `respuestas`: `{uid: [5 respuestas]}`. En "¿Quién es más probable?"
 ///   cada respuesta es el uid elegido; en "Adivina", el número de opción.
+/// - `propias`: `{"2": {texto, opciones}}` las preguntas que escribió
+///   quien empezó (en `preguntas` van como [Juegos.propia])
 /// - `terminada`: los dos ya respondieron
 /// - `cobros`: `{uid: id del movimiento de pescaditos}` (o `tope` si ese
 ///   día ya no daba pescaditos)
@@ -340,6 +376,7 @@ class Partida {
     required this.preguntas,
     required this.por,
     required this.respuestas,
+    this.propias = const {},
     this.cobros = const {},
     this.creadaEn,
     this.terminadaEn,
@@ -354,6 +391,9 @@ class Partida {
   final List<int> preguntas;
   final String por;
   final Map<String, List<Object>> respuestas;
+
+  /// Las preguntas que escribió quien empezó, por posición.
+  final Map<int, Adivinanza> propias;
   final Map<String, String> cobros;
   final DateTime? creadaEn;
   final DateTime? terminadaEn;
@@ -375,6 +415,14 @@ class Partida {
           e.key as String: [
             for (final r in (e.value as List? ?? const [])) r as Object,
           ],
+      },
+      propias: {
+        for (final e in ((m['propias'] as Map?) ?? const {}).entries)
+          if ((int.tryParse('${e.key}'), Adivinanza.fromMap(e.value)) case (
+            final i?,
+            final a?,
+          ))
+            i: a,
       },
       cobros: {
         for (final e in ((m['cobros'] as Map?) ?? const {}).entries)
@@ -416,6 +464,23 @@ class Partida {
   int get premio => Juegos.premio(aciertos);
 
   /// El texto de la pregunta [i] de esta partida.
-  String probable(int i) => Juegos.probables[preguntas[i]];
-  Adivinanza adivinanza(int i) => Juegos.adivinanzas[preguntas[i]];
+  String probable(int i) => preguntaDe(juego, preguntas[i], propias[i]).tema;
+  Adivinanza adivinanza(int i) => preguntaDe(juego, preguntas[i], propias[i]);
+
+  /// La pregunta [n] del mazo de [juego], o la [propia] si la escribieron.
+  static Adivinanza preguntaDe(Juego juego, int n, [Adivinanza? propia]) {
+    if (propia != null) return propia;
+    return switch (juego) {
+      Juego.probable when n >= 0 && n < Juegos.probables.length => Adivinanza(
+        Juegos.probables[n],
+        const [],
+      ),
+      Juego.adivina when n >= 0 && n < Juegos.adivinanzas.length =>
+        Juegos.adivinanzas[n],
+      _ => const Adivinanza('…', []),
+    };
+  }
+
+  /// Escribió alguna pregunta propia.
+  bool get conPropias => propias.isNotEmpty;
 }

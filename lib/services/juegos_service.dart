@@ -37,6 +37,7 @@ class JuegosService {
     String uid, {
     required Juego juego,
     required List<int> preguntas,
+    Map<int, Adivinanza> propias = const {},
     required List<Object> respuestas,
   }) async {
     final ref = _col(coupleId).doc();
@@ -45,6 +46,10 @@ class JuegosService {
       'preguntas': preguntas,
       'por': uid,
       'respuestas': {uid: respuestas},
+      if (propias.isNotEmpty)
+        'propias': {
+          for (final e in propias.entries) '${e.key}': e.value.toMap(),
+        },
       'terminada': false,
       'creadaEn': FieldValue.serverTimestamp(),
     });

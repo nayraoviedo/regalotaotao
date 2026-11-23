@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/juegos.dart';
+import 'package:taotao/screens/juegos/armar_partida.dart';
 import 'package:taotao/screens/juegos/juegos_screen.dart';
 import 'package:taotao/screens/juegos/partida_screen.dart';
 import 'package:taotao/screens/juegos/resultado_screen.dart';
@@ -80,6 +81,89 @@ void main() {
     });
   });
 
+  group('preguntas propias', () {
+    test('la propia reemplaza a la del mazo', () {
+      final p = Partida(
+        id: 'p',
+        juego: Juego.adivina,
+        preguntas: const [0, Juegos.propia, 2, 3, 4],
+        por: 'a',
+        respuestas: const {},
+        propias: const {
+          1: Adivinanza('Mi serie', ['Una', 'Otra']),
+        },
+      );
+      expect(p.adivinanza(0).tema, Juegos.adivinanzas[0].tema);
+      expect(p.adivinanza(1).tema, 'Mi serie');
+      expect(p.adivinanza(1).toMap(), {
+        'texto': 'Mi serie',
+        'opciones': ['Una', 'Otra'],
+      });
+      expect(Adivinanza.fromMap({'texto': 'se ría'})!.opciones, isEmpty);
+    });
+
+    testWidgets('antes de empezar se cambia o se escribe cada pregunta', (
+      t,
+    ) async {
+      final cambiadas = <int>[];
+      final escritas = <int>[];
+      await t.pumpWidget(
+        app(
+          ArmarPartidaVista(
+            juego: Juego.probable,
+            preguntas: const [0, Juegos.propia, 2, 3, 4],
+            propias: const {1: Adivinanza('baile bajo la lluvia', [])},
+            partnerName: 'Xixi',
+            onCambiar: cambiadas.add,
+            onEscribir: escritas.add,
+            onEmpezar: () {},
+          ),
+        ),
+      );
+      expect(
+        find.text('¿Quién es más probable que baile bajo la lluvia?'),
+        findsOneWidget,
+      );
+      expect(find.text('Tu pregunta'), findsOneWidget);
+      await t.tap(find.text('Cambiar').first);
+      await t.tap(find.text('Editar'));
+      expect(cambiadas, [0]);
+      expect(escritas, [1]);
+    });
+
+    testWidgets('en Adivina hacen falta al menos 2 respuestas', (t) async {
+      Adivinanza? escrita;
+      await t.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => escrita = await editarPreguntaPropia(
+                context,
+                juego: Juego.adivina,
+                partnerName: 'Xixi',
+              ),
+              child: const Text('abrir'),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('abrir'));
+      await t.pumpAndSettle();
+      final campos = find.byType(TextField);
+      await t.enterText(campos.at(0), 'Mi canción favorita');
+      await t.enterText(campos.at(1), 'Una de Taylor');
+      await t.pump();
+      final boton = find.widgetWithText(FilledButton, 'Usar esta pregunta');
+      expect(t.widget<FilledButton>(boton).onPressed, isNull);
+      await t.enterText(campos.at(2), 'Una de anime');
+      await t.pump();
+      await t.tap(boton);
+      await t.pumpAndSettle();
+      expect(escrita?.tema, 'Mi canción favorita');
+      expect(escrita?.opciones, ['Una de Taylor', 'Una de anime']);
+    });
+  });
+
   group('pantallas', () {
     testWidgets('"¿Quién es más probable?" se elige tocando un gatito', (
       t,
@@ -89,7 +173,7 @@ void main() {
         app(
           PreguntaVista(
             juego: Juego.probable,
-            pregunta: 0,
+            pregunta: Partida.preguntaDe(Juego.probable, 0),
             numero: 1,
             total: 5,
             empieza: true,
@@ -114,7 +198,7 @@ void main() {
         app(
           PreguntaVista(
             juego: Juego.adivina,
-            pregunta: 0,
+            pregunta: Partida.preguntaDe(Juego.adivina, 0),
             numero: 0,
             total: 5,
             empieza: false,

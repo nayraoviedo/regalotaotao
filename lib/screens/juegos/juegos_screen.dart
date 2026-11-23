@@ -8,6 +8,7 @@ import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
 import '../together/gatitos.dart';
+import 'armar_partida.dart';
 import 'partida_screen.dart';
 import 'resultado_screen.dart';
 
@@ -74,12 +75,12 @@ class _JuegosScreenState extends State<JuegosScreen> {
         if (p.juego == juego) ...p.preguntas,
     };
     _ir(
-      PartidaScreen.nueva(
+      ArmarPartidaScreen(
         me: widget.me,
         couple: widget.couple,
         partner: widget.partner,
         juego: juego,
-        preguntas: Juegos.elegir(juego, usadas),
+        usadas: usadas,
       ),
     );
   }

@@ -23,6 +23,7 @@ class PartidaScreen extends StatefulWidget {
     this.partner,
     required Juego this.juego,
     required List<int> this.preguntas,
+    this.propias = const {},
   }) : partida = null;
 
   const PartidaScreen.responder({
@@ -32,13 +33,17 @@ class PartidaScreen extends StatefulWidget {
     this.partner,
     required Partida this.partida,
   }) : juego = null,
-       preguntas = null;
+       preguntas = null,
+       propias = const {};
 
   final AppUser me;
   final Couple couple;
   final AppUser? partner;
   final Juego? juego;
   final List<int>? preguntas;
+
+  /// Las preguntas que escribió quien empieza, por posición.
+  final Map<int, Adivinanza> propias;
   final Partida? partida;
 
   @override
@@ -49,6 +54,8 @@ class _PartidaScreenState extends State<PartidaScreen> {
   late final Juego _juego = widget.partida?.juego ?? widget.juego!;
   late final List<int> _preguntas =
       widget.partida?.preguntas ?? widget.preguntas!;
+  late final Map<int, Adivinanza> _propias =
+      widget.partida?.propias ?? widget.propias;
   late final List<Object?> _respuestas = List.filled(_preguntas.length, null);
   int _i = 0;
   bool _enviando = false;
@@ -82,6 +89,7 @@ class _PartidaScreenState extends State<PartidaScreen> {
           widget.me.uid,
           juego: _juego,
           preguntas: _preguntas,
+          propias: _propias,
           respuestas: respuestas,
         );
         if (mounted) setState(() => _listo = true);
@@ -129,7 +137,12 @@ class _PartidaScreenState extends State<PartidaScreen> {
               )
             : PreguntaVista(
                 juego: _juego,
-                pregunta: _preguntas[_i],
+                pregunta: Partida.preguntaDe(
+                  _juego,
+                  _preguntas[_i],
+                  _propias[_i],
+                ),
+                propia: _propias.containsKey(_i),
                 numero: _i,
                 total: _preguntas.length,
                 empieza: _empieza,
@@ -156,6 +169,7 @@ class PreguntaVista extends StatelessWidget {
     super.key,
     required this.juego,
     required this.pregunta,
+    this.propia = false,
     required this.numero,
     required this.total,
     required this.empieza,
@@ -172,8 +186,11 @@ class PreguntaVista extends StatelessWidget {
 
   final Juego juego;
 
-  /// Número de la pregunta en el mazo del juego.
-  final int pregunta;
+  /// La pregunta (en "¿Quién es más probable?", la frase va en `tema`).
+  final Adivinanza pregunta;
+
+  /// La escribió quien empezó (se muestra con una marquita).
+  final bool propia;
 
   /// Cuál va (desde 0) y cuántas son.
   final int numero;
@@ -266,6 +283,30 @@ class PreguntaVista extends StatelessWidget {
       ),
       child: Column(
         children: [
+          if (propia)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.amarillo.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Doodle(Icons.edit, size: 14, color: AppTheme.azul),
+                  const SizedBox(width: 6),
+                  Text(
+                    empieza ? 'Tu pregunta' : 'La escribió $partnerName',
+                    style: TextStyle(
+                      color: AppTheme.azul,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (arriba != null)
             Text(
               arriba,
@@ -306,7 +347,7 @@ class PreguntaVista extends StatelessWidget {
       children: [
         _tarjeta(
           arriba: '¿Quién es más probable que…',
-          texto: '${Juegos.probables[pregunta]}?',
+          texto: '${pregunta.tema}?',
         ),
         const SizedBox(height: 22),
         Row(
@@ -343,7 +384,7 @@ class PreguntaVista extends StatelessWidget {
   }
 
   Widget _adivina() {
-    final a = Juegos.adivinanzas[pregunta];
+    final a = pregunta;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

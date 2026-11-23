@@ -524,6 +524,22 @@ service cloud.firestore {
             && request.resource.data.terminada == true
             && request.resource.data.terminadaEn == request.time;
         }
+        function propiaOk(q) {
+          return q is map
+            && q.keys().hasOnly(['texto', 'opciones'])
+            && q.texto is string && q.texto.size() > 0 && q.texto.size() <= 120
+            && (!('opciones' in q)
+                || (q.opciones is list && q.opciones.size() >= 2 && q.opciones.size() <= 4));
+        }
+        function propiasOk(p) {
+          return p is map
+            && p.keys().hasOnly(['0', '1', '2', '3', '4'])
+            && (!('0' in p) || propiaOk(p['0']))
+            && (!('1' in p) || propiaOk(p['1']))
+            && (!('2' in p) || propiaOk(p['2']))
+            && (!('3' in p) || propiaOk(p['3']))
+            && (!('4' in p) || propiaOk(p['4']));
+        }
         function cobra() {
           let antes = resource.data.get('cobros', {});
           return resource.data.terminada == true
@@ -536,7 +552,10 @@ service cloud.firestore {
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.keys()
-               .hasOnly(['juego', 'preguntas', 'por', 'respuestas', 'terminada', 'creadaEn'])
+               .hasOnly(['juego', 'preguntas', 'por', 'respuestas', 'terminada', 'creadaEn',
+                         'propias'])
+          // Preguntas que escribió quien empieza: {"posición": {texto, opciones}}.
+          && propiasOk(request.resource.data.get('propias', {}))
           && request.resource.data.juego in ['probable', 'adivina']
           && request.resource.data.preguntas is list
           && request.resource.data.preguntas.size() == 5

@@ -253,6 +253,10 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('A no empieza con 3 respuestas', partida('A','j0',{respuestas:{A:['A','B','A']}}));
   await no('A no responde por B al empezar', partida('A','j0',{respuestas:{A:['A','B','A','A','B'],B:['A','B','A','A','B']}}));
   await ok('A empieza ¿Quién es más probable?', partida('A','j1'));
+  await ok('A empieza con preguntas propias', partida('A','jp',{juego:'adivina',preguntas:[1,-1,3,-1,5],respuestas:{A:[0,1,0,2,1]},propias:{'1':{texto:'Mi canción favorita',opciones:['Una','Otra']},'3':{texto:'Mi serie',opciones:['A','B','C']}}}));
+  await no('las propias van en posiciones 0 a 4', partida('A','jq',{propias:{'7':{texto:'x'}}}));
+  await no('una propia no viene vacía', partida('A','jq',{propias:{'0':{texto:''}}}));
+  await no('una propia tiene de 2 a 4 respuestas', partida('A','jq',{juego:'adivina',propias:{'0':{texto:'Mi color',opciones:['Azul']}}}));
   await no('A no responde dos veces', updateDoc(doc(db('A'),'couples/c1/juegos/j1'),{'respuestas.A':['B','B','B','B','B'],terminada:true,terminadaEn:serverTimestamp()}));
   await no('B no cambia las respuestas de A', updateDoc(doc(db('B'),'couples/c1/juegos/j1'),{'respuestas.A':['B','B','B','B','B'],'respuestas.B':['A','B','A','B','A'],terminada:true,terminadaEn:serverTimestamp()}));
   const hayJ = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data().pescaditos;
