@@ -32,6 +32,11 @@ await no('B no borra la nota de A', deleteDoc(doc(db('B'),'couples/c1/notes/nl1'
 await no('C no marca pendientes', updateDoc(doc(db('C'),'couples/c1/notes/nl1'),{items:[]}));
 await ok('A invita pomodoro', setDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
 await no('A no puede aceptar su propia invitación', updateDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{status:'accepted'}));
+await ok('A invita a otra sesión', setDoc(doc(db('A'),'couples/c1/pomodoros/p2'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
+await no('A no cambia el tiempo de su invitación pendiente', updateDoc(doc(db('A'),'couples/c1/pomodoros/p2'),{minutes:50}));
+await no('B no acepta con más de 60 min', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'accepted',startedAt:serverTimestamp(),minutes:90}));
+await ok('B acepta subiendo el tiempo a 30 min', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'accepted',startedAt:serverTimestamp(),minutes:30}));
+await no('ya aceptada, nadie cambia el tiempo', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'finished',minutes:5}));
 await ok('B acepta', updateDoc(doc(db('B'),'couples/c1/pomodoros/p1'),{status:'accepted',startedAt:serverTimestamp()}));
 await ok('A responde pregunta', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{A:'hola'}},{merge:true}));
 await ok('B responde pregunta', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{B:'chau'}},{merge:true}));

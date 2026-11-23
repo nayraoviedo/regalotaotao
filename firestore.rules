@@ -173,25 +173,33 @@ service cloud.firestore {
           && request.resource.data.minutes >= 5
           && request.resource.data.minutes <= 60
           && request.resource.data.get('startedAt', null) == null;
-        // Nadie puede cambiar la duración ni la hora de inicio: de eso
-        // depende que la sesión juntos dé premio. Una sesión cancelada
-        // (alguien se salió) o terminada ya no cambia más.
+        // Al aceptar, la persona invitada puede confirmar, bajar o subir la
+        // duración. Después nadie puede cambiar la duración ni la hora de
+        // inicio: de eso depende que la sesión juntos dé premio. Una sesión
+        // cancelada (alguien se salió) o terminada ya no cambia más.
         allow update: if isMember(coupleId)
           && request.resource.data.invitedBy == resource.data.invitedBy
           && request.resource.data.invitee == resource.data.invitee
-          && request.resource.data.minutes == resource.data.minutes
           && (
             (resource.data.status == 'pending'
               && me() == resource.data.invitee
-              && ((request.resource.data.status == 'accepted'
-                    && request.resource.data.startedAt == request.time)
-                || (request.resource.data.status == 'declined'
-                    && request.resource.data.get('startedAt', null) == null)))
+              && request.resource.data.status == 'accepted'
+              && request.resource.data.startedAt == request.time
+              && request.resource.data.minutes is int
+              && request.resource.data.minutes >= 5
+              && request.resource.data.minutes <= 60)
+            || (resource.data.status == 'pending'
+              && me() == resource.data.invitee
+              && request.resource.data.status == 'declined'
+              && request.resource.data.minutes == resource.data.minutes
+              && request.resource.data.get('startedAt', null) == null)
             || (request.resource.data.status == 'cancelled'
               && resource.data.status in ['pending', 'accepted']
+              && request.resource.data.minutes == resource.data.minutes
               && request.resource.data.get('startedAt', null) == resource.data.get('startedAt', null))
             || (request.resource.data.status == 'finished'
               && resource.data.status == 'accepted'
+              && request.resource.data.minutes == resource.data.minutes
               && request.resource.data.startedAt == resource.data.startedAt)
           );
       }

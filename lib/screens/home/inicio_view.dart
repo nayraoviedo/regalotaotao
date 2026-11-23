@@ -63,6 +63,8 @@ class InicioView extends StatelessWidget {
     this.miGatito = Gatito.naranja,
     this.suGatito = Gatito.blanco,
     this.onAbrazo,
+    this.misTeExtrano,
+    this.susTeExtrano,
   });
 
   final AppUser me;
@@ -82,6 +84,10 @@ class InicioView extends StatelessWidget {
 
   /// Manda un abrazo a la pareja. Se ofrece cuando su ánimo no anda bien.
   final Future<void> Function()? onAbrazo;
+
+  /// Cuántos "te extraño" mandó cada uno; `null` mientras se cargan.
+  final int? misTeExtrano;
+  final int? susTeExtrano;
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +121,11 @@ class InicioView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _BotonTeExtrano(onTap: onTeExtrano),
+                  ConteoTeExtrano(
+                    mios: misTeExtrano,
+                    suyos: susTeExtrano,
+                    partnerName: partnerName,
+                  ),
                   const SizedBox(height: 16),
                   if (suAnimo case final animo? when animo.suggestMindfulness)
                     Padding(
@@ -273,6 +284,52 @@ class _BotonTeExtrano extends StatelessWidget {
       ),
       icon: const Icon(Icons.favorite, color: AppTheme.amarillo),
       label: const Text('Te extraño'),
+    );
+  }
+}
+
+/// Línea chiquita bajo el botón: cuántas veces lo dijo cada uno.
+///
+/// No aparece hasta que alguien mande el primero, para no meter ruido.
+class ConteoTeExtrano extends StatelessWidget {
+  const ConteoTeExtrano({
+    super.key,
+    required this.mios,
+    required this.suyos,
+    required this.partnerName,
+  });
+
+  final int? mios;
+  final int? suyos;
+  final String partnerName;
+
+  static String veces(int n) => n == 1 ? '1 vez' : '$n veces';
+
+  /// Texto de la línea, o `null` si no hay nada que mostrar.
+  static String? texto(int? mios, int? suyos, String partnerName) {
+    final a = mios ?? 0;
+    final b = suyos ?? 0;
+    if (a == 0 && b == 0) return null;
+    return 'Tú lo dijiste ${veces(a)} · $partnerName, ${veces(b)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = texto(mios, suyos, partnerName);
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      child: t == null
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                t,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+              ),
+            ),
     );
   }
 }

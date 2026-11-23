@@ -25,6 +25,8 @@ void main() {
     Future<void> Function()? onAbrazo,
     VoidCallback? onTeExtrano,
     void Function(SeccionInicio)? onAbrir,
+    int? mios,
+    int? suyos,
   }) => MaterialApp(
     home: Scaffold(
       body: InicioView(
@@ -38,6 +40,8 @@ void main() {
         onTeExtrano: onTeExtrano ?? () {},
         onDiasJuntos: () {},
         onAbrir: onAbrir ?? (_) {},
+        misTeExtrano: mios,
+        susTeExtrano: suyos,
       ),
     ),
   );
@@ -102,5 +106,17 @@ void main() {
     await tester.tap(find.text('Mandar un abrazo'));
     await tester.pump();
     expect(find.text('Mandar un abrazo'), findsOneWidget);
+  });
+
+  testWidgets('el conteo de te extraño aparece bajo el botón', (tester) async {
+    await tester.pumpWidget(inicio(mios: 12, suyos: 1));
+    expect(find.text('Tú lo dijiste 12 veces · Xixi, 1 vez'), findsOneWidget);
+  });
+
+  testWidgets('sin te extraño todavía no se muestra el conteo', (tester) async {
+    await tester.pumpWidget(inicio(mios: 0, suyos: 0));
+    expect(find.textContaining('lo dijiste'), findsNothing);
+    await tester.pumpWidget(inicio());
+    expect(find.textContaining('lo dijiste'), findsNothing);
   });
 }
