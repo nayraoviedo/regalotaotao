@@ -287,6 +287,27 @@ no lo tiene. Se lo das como un *secret* (queda guardado y nadie lo ve):
 Sin el secret el APK igual se arma, pero al abrir la app te dirá que falta
 configurar Firebase.
 
+### 1b. Para que "Entrar con Google" funcione en el APK (una sola vez)
+
+Google solo deja entrar desde un APK cuya firma (huella SHA-1/SHA-256) esté
+registrada en Firebase; si no, sale *"Ocurrió un error (invalid-cert-hash)"*.
+Para que la firma de GitHub sea siempre la misma, corre en tu compu, dentro
+de la carpeta del repo (necesitas `gh` y `firebase` con sesión iniciada):
+
+```bash
+bash scripts/llave-android.sh
+```
+
+El script crea la llave en `~/.taotao/debug.keystore` (no la subas al repo),
+la guarda en GitHub como el secret `ANDROID_DEBUG_KEYSTORE` y registra sus
+huellas en tu app Android de Firebase. Después pide un APK nuevo (paso 2),
+desinstala Taotao del celular **una vez** (la firma cambió) e instálalo.
+
+Cada corrida muestra las huellas que usó en su resumen (pestaña Actions →
+la corrida → *Summary*), por si quieres compararlas con las de Firebase
+(**Configuración del proyecto** → tu app Android → *Huellas digitales del
+certificado SHA*).
+
 ### 2. Descargar el APK
 
 - **Lo último de `main`:** en el repo, pestaña **Releases** → *APK de prueba
