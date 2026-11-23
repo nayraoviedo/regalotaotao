@@ -37,6 +37,11 @@ class UserService {
   Future<void> updateName(String uid, String name) =>
       Db.user(uid).update({'name': name});
 
+  /// Qué gatito quiere ser (ver `Gatito.id`).
+  Future<void> updateGatito(String uid, String gatito) =>
+      Db.user(uid)
+          .update({'gatito': gatito, 'gatitoEn': FieldValue.serverTimestamp()});
+
   /// Crea el perfil con un código de pareja único, si todavía no existe.
   Future<void> ensureProfile(
     String uid,

@@ -8,6 +8,7 @@ import '../../services/couple_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
+import '../together/elegir_gatito.dart';
 import '../together/together_screen.dart';
 
 /// Perfil: foto (la de Google), nombre, código y fecha de aniversario.
@@ -165,6 +166,8 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 24),
+                  ElegirGatito(me: user, partner: partner),
+                  const SizedBox(height: 8),
 
                   // Aniversario: se guarda en el espacio de pareja, así que
                   // si uno lo elige, al otro le aparece directamente.
