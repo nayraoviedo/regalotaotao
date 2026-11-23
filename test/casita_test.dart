@@ -62,7 +62,7 @@ void main() {
           expect(Catalogo.porId(id)!.gratis, isTrue);
         }
       }
-      expect(Catalogo.cosas.where((c) => c.gratis).length, 10);
+      expect(Catalogo.cosas.where((c) => c.gratis).length, 12);
     });
   });
 
@@ -346,11 +346,37 @@ void main() {
       expect(otraHora.toSet().length, greaterThan(1));
     });
 
+    test('con cuarto de juegos, los bebés andan ahí más seguido', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': [
+          'cuarto_cocina',
+          'cuarto_juegos',
+          ...Catalogo.bebes.map((b) => b.id),
+        ],
+      });
+      final cuenta = {for (final c in Cuarto.values) c: 0};
+      final hora = DateTime(2026, 11, 23, 12);
+      for (var m = 0; m < 24 * 60; m += 15) {
+        final t = hora.add(Duration(minutes: m));
+        var total = 0;
+        for (final c in Cuarto.values) {
+          final n = e.bebesEn(c, t).length;
+          cuenta[c] = cuenta[c]! + n;
+          total += n;
+        }
+        expect(total, 6); // cada bebé en un solo cuarto
+      }
+      expect(cuenta[Cuarto.juegos]!, greaterThan(cuenta[Cuarto.sala]! * 2));
+      expect(cuenta[Cuarto.huerto], 0); // cerrado
+    });
+
     test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
-      expect(CasaEnCorte.queCuarto(120, 100), Cuarto.dormitorio);
-      expect(CasaEnCorte.queCuarto(200, 200), Cuarto.cocina);
-      expect(CasaEnCorte.queCuarto(40, 200), Cuarto.jardin);
-      expect(CasaEnCorte.queCuarto(167, 30), isNull); // el techo
+      expect(CasaEnCorte.queCuarto(200, 190), Cuarto.dormitorio);
+      expect(CasaEnCorte.queCuarto(280, 280), Cuarto.cocina);
+      expect(CasaEnCorte.queCuarto(120, 280), Cuarto.jardin);
+      expect(CasaEnCorte.queCuarto(40, 280), Cuarto.huerto);
+      expect(CasaEnCorte.queCuarto(250, 100), Cuarto.juegos);
+      expect(CasaEnCorte.queCuarto(250, 30), isNull); // el techo
       expect(File(CasaEnCorte.marco).existsSync(), isTrue);
       expect(File(CasaEnCorte.fachada).existsSync(), isTrue);
       final conCama = EstadoCasita.fromMap({
@@ -883,11 +909,11 @@ void main() {
       );
       expect(find.text('Los gatitos están en la sala'), findsOneWidget);
       // Los cuartos cerrados tienen candado.
-      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(5));
       final casa = t.getRect(find.byType(CasaEnCorte));
       final s = casa.width / CasaEnCorte.ancho;
-      await t.tapAt(casa.topLeft + Offset(200 * s, 200 * s));
-      await t.tapAt(casa.topLeft + Offset(120 * s, 200 * s));
+      await t.tapAt(casa.topLeft + Offset(280 * s, 280 * s));
+      await t.tapAt(casa.topLeft + Offset(200 * s, 280 * s));
       expect(tocados, [Cuarto.cocina, Cuarto.sala]);
     });
 

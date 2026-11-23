@@ -29,18 +29,22 @@ class CasaEnCorte extends StatefulWidget {
   final DateTime? ahora;
 
   /// Tamaño del dibujo en píxeles.
-  static const ancho = 256.0;
-  static const alto = 252.0;
+  static const ancho = 344.0;
+  static const alto = 344.0;
   static const marco = 'assets/casita/casa_corte.png';
   static const fachada = 'assets/casita/casa_fachada.png';
 
-  /// Dónde va cada cuarto (su interior de 76×86, sin el techito).
+  /// Dónde va cada cuarto (su interior de 76×86, sin el techito): el de
+  /// juegos en el ático, dos pisos de a dos cuartos, y el jardín y el
+  /// huerto al costado.
   static const huecos = {
-    Cuarto.dormitorio: Rect.fromLTWH(88, 62, 76, 86),
-    Cuarto.bano: Rect.fromLTWH(170, 62, 76, 86),
-    Cuarto.sala: Rect.fromLTWH(88, 154, 76, 86),
-    Cuarto.cocina: Rect.fromLTWH(170, 154, 76, 86),
-    Cuarto.jardin: Rect.fromLTWH(4, 154, 76, 86),
+    Cuarto.juegos: Rect.fromLTWH(212, 62, 76, 86),
+    Cuarto.dormitorio: Rect.fromLTWH(170, 154, 76, 86),
+    Cuarto.bano: Rect.fromLTWH(252, 154, 76, 86),
+    Cuarto.sala: Rect.fromLTWH(170, 246, 76, 86),
+    Cuarto.cocina: Rect.fromLTWH(252, 246, 76, 86),
+    Cuarto.jardin: Rect.fromLTWH(86, 246, 76, 86),
+    Cuarto.huerto: Rect.fromLTWH(4, 246, 76, 86),
   };
 
   /// Qué cuarto hay en un punto del dibujo.

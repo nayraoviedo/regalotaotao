@@ -275,6 +275,21 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.paredBano,
             Lugar.pisoBano,
           ],
+          Cuarto.juegos => const [
+            Lugar.pelotero,
+            Lugar.torre,
+            Lugar.estante,
+            Lugar.colgante,
+            Lugar.juguetes,
+            Lugar.paredJuegos,
+            Lugar.pisoJuegos,
+          ],
+          Cuarto.huerto => const [
+            Lugar.fondoHuerto,
+            Lugar.tomatera,
+            Lugar.bancal,
+            Lugar.surco,
+          ],
           _ => const [
             Lugar.arbol,
             Lugar.asiento,
