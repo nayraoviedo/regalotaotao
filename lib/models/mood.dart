@@ -20,7 +20,7 @@ enum MoodShape {
 
 /// Un estado de ánimo. La imagen vive en `assets/moods/<id>.png`
 /// (dibujos propios, PNG con fondo transparente). Mientras no exista,
-/// se dibuja un bloblito de color con carita.
+/// se dibuja la carita de un gatito (naranja o blanco) sobre su color.
 class MoodType {
   const MoodType(
     this.id,
@@ -34,8 +34,10 @@ class MoodType {
   final String id;
   final String label;
 
-  /// Color del bloblito provisional.
+  /// Color del círculo de fondo del dibujo provisional.
   final Color color;
+
+  /// Forma del antiguo bloblito (ya no se dibuja; se conserva la lista).
   final MoodShape shape;
 
   /// Si es true, al registrar este ánimo se sugiere un ejercicio de mindfulness.
