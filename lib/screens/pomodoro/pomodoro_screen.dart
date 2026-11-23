@@ -8,10 +8,12 @@ import '../../models/couple.dart';
 import '../../models/pomodoro_session.dart';
 import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
+import '../../services/focus/focus_lock.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/text_prompt.dart';
+import '../../widgets/user_avatar.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
 
@@ -35,6 +37,12 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   /// Pomodoros en pareja que ya se contaron (para no dar dos premios).
   final _counted = <String>{};
+
+  /// Pantalla bloqueada (modo enfoque) para no salirse del pomodoro.
+  bool _locked = false;
+
+  /// Sesión juntos que está corriendo ahora (aceptada y sin terminar).
+  PomodoroSession? _jointActive;
 
   late final StreamSubscription<List<PomodoroTask>> _tasksSub;
   late final StreamSubscription<AppUser?> _partnerSub;
@@ -66,8 +74,98 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   void dispose() {
     _tasksSub.cancel();
     _partnerSub.cancel();
+    if (_locked) FocusLock.unlock();
     super.dispose();
   }
+
+  Future<void> _toggleLock() async {
+    if (_locked) {
+      await FocusLock.unlock();
+      if (mounted) setState(() => _locked = false);
+      return;
+    }
+    await FocusLock.lock();
+    if (!mounted) return;
+    setState(() => _locked = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          FocusLock.isAndroid
+              ? 'Pantalla bloqueada. Para salir, toca el candado.'
+              : 'Modo enfoque activado. Toca el candado para salir.',
+        ),
+      ),
+    );
+  }
+
+  /// Popup antes de salir de una sesión juntos. Si confirma, la sesión se
+  /// detiene para los dos y ya no da premio.
+  Future<bool> _confirmLeaveJoint() async {
+    final s = _jointActive;
+    if (s == null) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: PomodoroStyle.crema,
+        icon: const Icon(
+          Icons.favorite_border,
+          color: PomodoroStyle.azul,
+          size: 32,
+        ),
+        title: const Text('¿Salir de la sesión juntos?'),
+        content: Text(
+          'Si sales ahora, ya no contará como una sesión juntos con '
+          '$_partnerName y no podrás reclamar tu premio.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Salir igual'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: PomodoroStyle.azul),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Seguir juntos'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    await PomodoroService.instance.cancel(_coupleId, s.id, by: widget.me.uid);
+    if (mounted) setState(() => _jointActive = null);
+    return true;
+  }
+
+  Future<void> _onBack() async {
+    if (_locked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La pantalla está bloqueada. Toca el candado para salir.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!await _confirmLeaveJoint()) return;
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _celebrate(
+    String achievementId,
+    String motivo, {
+    String? sessionId,
+  }) => celebrateAndChooseReward(
+    context,
+    coupleId: _coupleId,
+    me: widget.me,
+    partner: _partner,
+    partnerUid: _partnerUid,
+    partnerName: _partnerName,
+    achievementId: achievementId,
+    motivo: motivo,
+    sessionId: sessionId,
+  );
 
   Future<void> _onPomodoroDone({String? sessionId}) async {
     if (sessionId != null && !_counted.add(sessionId)) return;
@@ -77,18 +175,18 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       widget.me.uid,
       kind: Achievement.pomodoro,
       taskTitle: task?.title,
-      docId: sessionId == null ? null : '${sessionId}_${widget.me.uid}',
+      sessionId: sessionId,
     );
     if (task != null) await _rewards.addPomodoroToTask(widget.me.uid, task.id);
     if (!mounted) return;
-    await celebrateAndChooseReward(
-      context,
-      coupleId: _coupleId,
-      uid: widget.me.uid,
-      achievementId: id,
-      motivo: task == null
-          ? 'Completaste un pomodoro'
+    await _celebrate(
+      id,
+      task == null
+          ? (sessionId == null
+                ? 'Completaste un pomodoro'
+                : 'Completaron un pomodoro juntos')
           : 'Completaste un pomodoro en "${task.title}"',
+      sessionId: sessionId,
     );
   }
 
@@ -102,13 +200,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       taskTitle: task.title,
     );
     if (!mounted) return;
-    await celebrateAndChooseReward(
-      context,
-      coupleId: _coupleId,
-      uid: widget.me.uid,
-      achievementId: id,
-      motivo: 'Terminaste "${task.title}"',
-    );
+    await _celebrate(id, 'Terminaste "${task.title}"');
   }
 
   Future<void> _addTask() async {
@@ -122,6 +214,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_locked && _jointActive == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: PomodoroStyle.crema,
       body: DecoratedBox(
@@ -139,6 +241,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
             children: [
               _TopBar(
                 juntos: _juntos,
+                locked: _locked,
+                onBack: _onBack,
+                onLock: _toggleLock,
                 onMode: (v) => setState(() => _juntos = v),
                 onEditRewards: () => editRewards(
                   context,
@@ -146,6 +251,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                   uid: widget.me.uid,
                 ),
               ),
+              if (_locked) _LockedBanner(onUnlock: _toggleLock),
               _IllustratedCard(
                 child: Column(
                   children: [
@@ -164,6 +270,12 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                         couple: widget.couple,
                         partnerName: _partnerName,
                         onDone: (s) => _onPomodoroDone(sessionId: s.id),
+                        onActive: (s) {
+                          if (s?.id != _jointActive?.id) {
+                            setState(() => _jointActive = s);
+                          }
+                        },
+                        onStop: _confirmLeaveJoint,
                       ),
                     ),
                   ],
@@ -191,8 +303,11 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
               const SizedBox(height: 28),
               _RewardFeed(
                 coupleId: _coupleId,
-                myUid: widget.me.uid,
+                me: widget.me,
+                partner: _partner,
                 partnerName: _partnerName,
+                onChoose: (a, motivo) =>
+                    _celebrate(a.id, motivo, sessionId: a.sessionId),
                 onEditRewards: () => editRewards(
                   context,
                   coupleId: _coupleId,
@@ -227,11 +342,17 @@ const _timerStyle = TextStyle(
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.juntos,
+    required this.locked,
+    required this.onBack,
+    required this.onLock,
     required this.onMode,
     required this.onEditRewards,
   });
 
   final bool juntos;
+  final bool locked;
+  final VoidCallback onBack;
+  final VoidCallback onLock;
   final ValueChanged<bool> onMode;
   final VoidCallback onEditRewards;
 
@@ -239,7 +360,12 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const BackButton(color: PomodoroStyle.azul),
+        IconButton(
+          tooltip: 'Volver',
+          color: PomodoroStyle.azul,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: locked ? null : onBack,
+        ),
         Expanded(
           child: Center(
             child: _Pills(
@@ -252,12 +378,61 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Nuestros premios',
+          tooltip: locked ? 'Desbloquear pantalla' : 'Bloquear pantalla',
+          color: PomodoroStyle.azul,
+          style: locked
+              ? IconButton.styleFrom(backgroundColor: PomodoroStyle.amarillo)
+              : null,
+          icon: Icon(locked ? Icons.lock : Icons.lock_open_outlined),
+          onPressed: onLock,
+        ),
+        IconButton(
+          tooltip: 'Mis premios',
           color: PomodoroStyle.azul,
           icon: const Icon(Icons.card_giftcard),
-          onPressed: onEditRewards,
+          onPressed: locked ? null : onEditRewards,
         ),
       ],
+    );
+  }
+}
+
+/// Aviso de que la pantalla está bloqueada para concentrarse.
+class _LockedBanner extends StatelessWidget {
+  const _LockedBanner({required this.onUnlock});
+  final VoidCallback onUnlock;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+      decoration: BoxDecoration(
+        color: PomodoroStyle.azul,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Pantalla bloqueada: a concentrarse 🍅',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onUnlock,
+            style: TextButton.styleFrom(
+              foregroundColor: PomodoroStyle.amarillo,
+            ),
+            child: const Text('Desbloquear'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -632,12 +807,20 @@ class _CoupleTimer extends StatefulWidget {
     required this.couple,
     required this.partnerName,
     required this.onDone,
+    required this.onActive,
+    required this.onStop,
   });
 
   final AppUser me;
   final Couple couple;
   final String partnerName;
   final void Function(PomodoroSession session) onDone;
+
+  /// Avisa qué sesión juntos está corriendo (o null si ninguna).
+  final ValueChanged<PomodoroSession?> onActive;
+
+  /// Detener: muestra el aviso de que ya no contará como sesión juntos.
+  final Future<bool> Function() onStop;
 
   @override
   State<_CoupleTimer> createState() => _CoupleTimerState();
@@ -670,9 +853,28 @@ class _CoupleTimerState extends State<_CoupleTimer> {
       if (ends != null &&
           !DateTime.now().isBefore(ends.subtract(const Duration(seconds: 5)))) {
         widget.onDone(prev);
+      } else {
+        _avisarSiSalio(prev.id);
       }
     }
     if (mounted) setState(() => _session = s);
+    widget.onActive(s?.status == PomodoroStatus.accepted ? s : null);
+  }
+
+  /// Si la pareja se salió de la sesión juntos, avisarme.
+  Future<void> _avisarSiSalio(String sessionId) async {
+    final s = await _service.get(_coupleId, sessionId);
+    if (!mounted || s == null) return;
+    if (s.status != PomodoroStatus.cancelled) return;
+    if (s.cancelledBy == null || s.cancelledBy == widget.me.uid) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${widget.partnerName} salió de la sesión. '
+          'Ya no cuenta como sesión juntos 💔',
+        ),
+      ),
+    );
   }
 
   void _tick() {
@@ -681,8 +883,13 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     final ends = s.endsAt;
     if (ends == null) return;
     if (!DateTime.now().isBefore(ends)) {
-      widget.onDone(s);
-      _service.finish(_coupleId, s.id);
+      // Primero se marca terminada (así ya nadie la puede cancelar) y
+      // después se guarda el logro.
+      _service
+          .finish(_coupleId, s.id)
+          .catchError((_) {})
+          .whenComplete(() => widget.onDone(s));
+      widget.onActive(null);
     }
     if (mounted) setState(() {});
   }
@@ -825,8 +1032,8 @@ class _CoupleTimerState extends State<_CoupleTimer> {
               shape: const StadiumBorder(),
             ),
             icon: const Icon(Icons.stop_rounded),
-            label: const Text('Detener para los dos'),
-            onPressed: () => _service.cancel(_coupleId, s.id),
+            label: const Text('Salir de la sesión'),
+            onPressed: widget.onStop,
           ),
         ),
       ],
@@ -1125,20 +1332,27 @@ class _AddTaskButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Premios elegidos: los míos y los de mi pareja.
+// Premios elegidos: qué escogió cada uno, con su foto y su nombre.
+// Solo se escoge un premio por sesión completada.
 
 class _RewardFeed extends StatelessWidget {
   const _RewardFeed({
     required this.coupleId,
-    required this.myUid,
+    required this.me,
+    required this.partner,
     required this.partnerName,
+    required this.onChoose,
     required this.onEditRewards,
   });
 
   final String coupleId;
-  final String myUid;
+  final AppUser me;
+  final AppUser? partner;
   final String partnerName;
+  final void Function(Achievement a, String motivo) onChoose;
   final VoidCallback onEditRewards;
+
+  String get myUid => me.uid;
 
   String _what(Achievement a, bool mine) {
     final quien = mine ? 'Completaste' : '$partnerName completó';
@@ -1154,12 +1368,15 @@ class _RewardFeed extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = RewardService.instance;
     return StreamBuilder<List<Achievement>>(
-      stream: service.watchRecent(coupleId),
+      stream: service.watchRecent(coupleId, limit: 40),
       builder: (context, snap) {
-        final items = (snap.data ?? const <Achievement>[])
+        final all = snap.data ?? const <Achievement>[];
+        final items = all
             .where((a) => a.hasReward || a.uid == myUid)
             .take(10)
             .toList();
+        final mios = all.where((a) => a.uid == myUid && a.hasReward).toList();
+        final suyos = all.where((a) => a.uid != myUid && a.hasReward).toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1178,16 +1395,42 @@ class _RewardFeed extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onEditRewards,
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Editar lista'),
+                  label: const Text('Mi lista'),
                 ),
               ],
             ),
+            const Text(
+              'Un premio por cada sesión completada.',
+              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _WhoChose(
+                    user: me,
+                    label: 'Tú escogiste',
+                    picks: mios,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _WhoChose(
+                    user: partner,
+                    label: '$partnerName escogió',
+                    picks: suyos,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   'Cuando uno de los dos complete un pomodoro o una tarea, '
-                  'aquí aparece el premio que eligió.',
+                  'aquí aparece el premio que escogió.',
                   style: TextStyle(color: PomodoroStyle.gris),
                 ),
               ),
@@ -1195,15 +1438,10 @@ class _RewardFeed extends StatelessWidget {
               _RewardTile(
                 achievement: a,
                 mine: a.uid == myUid,
+                user: a.uid == myUid ? me : partner,
                 what: _what(a, a.uid == myUid),
                 partnerName: partnerName,
-                onChoose: () => celebrateAndChooseReward(
-                  context,
-                  coupleId: coupleId,
-                  uid: myUid,
-                  achievementId: a.id,
-                  motivo: _what(a, true),
-                ),
+                onChoose: () => onChoose(a, _what(a, true)),
                 onDelivered: () => service.markDelivered(coupleId, a.id),
               ),
           ],
@@ -1213,10 +1451,95 @@ class _RewardFeed extends StatelessWidget {
   }
 }
 
+/// Resumen de una persona: su foto, su nombre y los últimos premios que
+/// escogió.
+class _WhoChose extends StatelessWidget {
+  const _WhoChose({
+    required this.user,
+    required this.label,
+    required this.picks,
+  });
+
+  final AppUser? user;
+  final String label;
+  final List<Achievement> picks;
+
+  @override
+  Widget build(BuildContext context) {
+    final ultimos = picks.take(3).toList();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: PomodoroStyle.tarjeta(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              UserAvatar(user, size: 34, border: false),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: PomodoroStyle.azul,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (ultimos.isEmpty)
+            const Text(
+              'Nada todavía',
+              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+          for (final a in ultimos)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    a.delivered ? Icons.check_circle : Icons.card_giftcard,
+                    size: 15,
+                    color: a.delivered
+                        ? PomodoroStyle.hoja
+                        : PomodoroStyle.amarillo,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      a.rewardTitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: PomodoroStyle.azul,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (picks.length > ultimos.length)
+            Text(
+              'y ${picks.length - ultimos.length} más',
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 12),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RewardTile extends StatelessWidget {
   const _RewardTile({
     required this.achievement,
     required this.mine,
+    required this.user,
     required this.what,
     required this.partnerName,
     required this.onChoose,
@@ -1225,6 +1548,7 @@ class _RewardTile extends StatelessWidget {
 
   final Achievement achievement;
   final bool mine;
+  final AppUser? user;
   final String what;
   final String partnerName;
   final VoidCallback onChoose;
@@ -1233,11 +1557,12 @@ class _RewardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = achievement;
+    final quien = mine ? 'Tú' : partnerName;
     Widget? action;
     String status;
     if (!a.hasReward) {
       status = 'Sin premio todavía';
-      action = TextButton(onPressed: onChoose, child: const Text('Elegir'));
+      action = TextButton(onPressed: onChoose, child: const Text('Escoger'));
     } else if (a.delivered) {
       status = mine ? '¡$partnerName ya te lo dio! 💛' : 'Ya se lo diste 💛';
     } else if (mine) {
@@ -1257,28 +1582,14 @@ class _RewardTile extends StatelessWidget {
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: a.hasReward
-                  ? PomodoroStyle.amarillo.withValues(alpha: 0.3)
-                  : PomodoroStyle.pastilla,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              a.hasReward ? Icons.card_giftcard : Icons.hourglass_empty,
-              color: PomodoroStyle.azul,
-              size: 20,
-            ),
-          ),
+          UserAvatar(user, size: 40, border: false),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1292,12 +1603,22 @@ class _RewardTile extends StatelessWidget {
                   ),
                 ),
                 if (a.hasReward)
-                  Text(
-                    a.rewardTitle!,
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: mine ? 'Escogiste ' : '$quien escogió ',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        TextSpan(
+                          text: a.rewardTitle!,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
                     style: const TextStyle(
                       color: PomodoroStyle.azul,
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 Text(

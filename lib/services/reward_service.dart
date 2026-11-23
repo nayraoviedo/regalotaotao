@@ -5,6 +5,12 @@ import '../models/reward.dart';
 import 'db.dart';
 import 'notify_service.dart';
 
+/// Ya se había elegido un premio para esa sesión.
+class RewardAlreadyChosen implements Exception {
+  RewardAlreadyChosen(this.rewardTitle);
+  final String rewardTitle;
+}
+
 /// Premios de la pareja, lo que cada uno cumplió y las tareas del pomodoro.
 class RewardService {
   RewardService._();
@@ -18,11 +24,18 @@ class RewardService {
       Db.user(uid).collection('pomodoroTasks');
 
   // ---- Lista de premios (la editan los dos) ----
-  Stream<List<Reward>> watchRewards(String coupleId) =>
+  /// Premios de la pareja. Con [createdBy] solo los que puso esa persona:
+  /// cada uno ve su propia lista, y la de su pareja recién al terminar.
+  Stream<List<Reward>> watchRewards(String coupleId, {String? createdBy}) =>
       _rewards(coupleId)
           .orderBy('createdAt')
           .snapshots()
-          .map((q) => q.docs.map(Reward.fromDoc).toList());
+          .map(
+            (q) => q.docs
+                .map(Reward.fromDoc)
+                .where((r) => createdBy == null || r.createdBy == createdBy)
+                .toList(),
+          );
 
   Future<Reward> addReward(String coupleId, String uid, String title) async {
     final ref = await _rewards(coupleId).add({
@@ -41,19 +54,34 @@ class RewardService {
 
   // ---- Logros: pomodoros y tareas cumplidas ----
 
-  /// Guarda un logro y devuelve su id. Con [docId] no se duplica aunque se
-  /// llame dos veces (sirve para el pomodoro en pareja).
+  /// Id del logro de [uid] en un pomodoro en pareja.
+  static String sessionAchievementId(String sessionId, String uid) =>
+      '${sessionId}_$uid';
+
+  Stream<Achievement?> watchAchievement(String coupleId, String id) =>
+      _achievements(coupleId)
+          .doc(id)
+          .snapshots()
+          .map((d) => d.exists ? Achievement.fromDoc(d) : null);
+
+  /// Guarda un logro y devuelve su id. Con [sessionId] (pomodoro en pareja)
+  /// no se duplica aunque se llame dos veces, y las reglas revisan que la
+  /// sesión de verdad se completó juntos.
   Future<String> logAchievement(
     String coupleId,
     String uid, {
     required String kind,
     String? taskTitle,
-    String? docId,
+    String? sessionId,
   }) async {
+    final docId = sessionId == null
+        ? null
+        : sessionAchievementId(sessionId, uid);
     final data = {
       'uid': uid,
       'kind': kind,
       'taskTitle': taskTitle,
+      'sessionId': sessionId,
       'rewardId': null,
       'rewardTitle': null,
       'delivered': false,
@@ -71,15 +99,27 @@ class RewardService {
     return docId;
   }
 
+  /// Guarda el premio elegido para un logro. Solo se puede elegir UNO por
+  /// sesión completada: si ya tenía premio, lanza [RewardAlreadyChosen] y no
+  /// cambia nada (las reglas de Firestore también lo impiden).
   Future<void> chooseReward(
     String coupleId,
     String achievementId,
     Reward reward,
   ) async {
-    await _achievements(coupleId).doc(achievementId).update({
-      'rewardId': reward.id,
-      'rewardTitle': reward.title,
-      'rewardChosenAt': FieldValue.serverTimestamp(),
+    final ref = _achievements(coupleId).doc(achievementId);
+    await Db.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final d = snap.data();
+      if (d == null) throw StateError('No existe ese logro');
+      if (d['rewardId'] != null) {
+        throw RewardAlreadyChosen(d['rewardTitle'] as String? ?? '');
+      }
+      tx.update(ref, {
+        'rewardId': reward.id,
+        'rewardTitle': reward.title,
+        'rewardChosenAt': FieldValue.serverTimestamp(),
+      });
     });
     NotifyService.instance.send(NotifyKind.reward, coupleId, achievementId);
   }

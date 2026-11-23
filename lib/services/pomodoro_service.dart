@@ -42,10 +42,18 @@ class PomodoroService {
           .doc(sessionId)
           .update({'status': PomodoroStatus.declined.name});
 
-  Future<void> cancel(String coupleId, String sessionId) =>
-      _col(coupleId)
-          .doc(sessionId)
-          .update({'status': PomodoroStatus.cancelled.name});
+  /// Detiene la sesión para los dos. Si estaba corriendo, ya no cuenta
+  /// como sesión juntos y ninguno puede reclamar premio por ella.
+  Future<void> cancel(String coupleId, String sessionId, {String? by}) =>
+      _col(coupleId).doc(sessionId).update({
+        'status': PomodoroStatus.cancelled.name,
+        'cancelledBy': ?by,
+      });
+
+  Future<PomodoroSession?> get(String coupleId, String sessionId) async {
+    final d = await _col(coupleId).doc(sessionId).get();
+    return d.exists ? PomodoroSession.fromDoc(d) : null;
+  }
 
   Future<void> finish(String coupleId, String sessionId) =>
       _col(coupleId)
