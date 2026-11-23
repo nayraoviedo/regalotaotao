@@ -133,7 +133,10 @@ class DibujoGatitosWidget extends StatelessWidget {
           GatitoImagen(gatitos.first, size: 100),
           const Padding(
             padding: EdgeInsets.only(bottom: 52),
-            child: CustomPaint(size: Size.square(20), painter: _Corazon()),
+            child: CustomPaint(
+              size: Size.square(20),
+              painter: _Corazon(),
+            ),
           ),
           GatitoImagen(gatitos.last, size: 100),
         ],
