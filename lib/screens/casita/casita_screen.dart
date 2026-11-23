@@ -1,6 +1,8 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
+import '../../services/foto_pixelada.dart';
 import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
@@ -14,11 +16,15 @@ class CasitaScreen extends StatelessWidget {
     required this.coupleId,
     required this.me,
     required this.partner,
+    this.inicioPareja,
   });
 
   final String coupleId;
   final AppUser me;
   final AppUser? partner;
+
+  /// Desde cuándo están juntos (para las cosas de su aniversario).
+  final DateTime? inicioPareja;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +38,13 @@ class CasitaScreen extends StatelessWidget {
           movimientos: movs.data ?? const [],
           me: me,
           partner: partner,
+          inicioPareja: inicioPareja,
           onComprar: (cosa, gatito) =>
               servicio.comprar(coupleId, me.uid, cosa, gatito: gatito),
           onPoner: (lugar, cosa) => servicio.poner(coupleId, lugar, cosa),
           onVestir: (gatito, parte, cosa) =>
               servicio.vestir(coupleId, gatito, parte, cosa),
+          onFoto: (foto) => servicio.ponerFoto(coupleId, foto),
         ),
       ),
     );
@@ -54,8 +62,11 @@ class CasitaView extends StatefulWidget {
     required this.onComprar,
     required this.onPoner,
     required this.onVestir,
+    this.onFoto,
     this.categoriaInicial,
     this.cuartoInicial,
+    this.inicioPareja,
+    this.hoy,
   });
 
   final EstadoCasita estado;
@@ -66,8 +77,17 @@ class CasitaView extends StatefulWidget {
   final Future<void> Function(Lugar lugar, Cosa? cosa) onPoner;
   final Future<void> Function(String gatito, Parte parte, Cosa? cosa) onVestir;
 
-  /// Categoría elegida al abrir (`null` = ropita).
-  final Lugar? categoriaInicial;
+  /// Guarda (o quita, con `null`) su foto pixelada del cuadro.
+  final Future<void> Function(List<int>? foto)? onFoto;
+
+  /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
+  final String? categoriaInicial;
+
+  /// Desde cuándo están juntos (para las cosas de su aniversario).
+  final DateTime? inicioPareja;
+
+  /// Para probar con otra fecha (las cosas de temporada dependen de ella).
+  final DateTime? hoy;
 
   /// Cuarto que se ve al abrir (la sala si no se dice).
   final Cuarto? cuartoInicial;
@@ -79,9 +99,60 @@ class CasitaView extends StatefulWidget {
 class _CasitaViewState extends State<CasitaView> {
   /// Categoría de la tienda: un lugar del cuarto, o `null` para la ropita.
   late Cuarto _cuarto = widget.cuartoInicial ?? Cuarto.sala;
-  late Lugar? _categoria =
+  late String _categoria =
       widget.categoriaInicial ??
-      _ordenDe(widget.cuartoInicial ?? Cuarto.sala).first;
+      _categoriasDe(widget.cuartoInicial ?? Cuarto.sala).first;
+
+  DateTime get _hoy => widget.hoy ?? DateTime.now();
+
+  List<Festividad> get _fiestas =>
+      Festividad.activas(_hoy, inicioPareja: widget.inicioPareja);
+
+  /// Categorías especiales de la tienda (las demás son `Lugar.name`).
+  static const _catFiesta = '_fiesta';
+  static const _catRopa = '_ropa';
+  static const _catRopita = '_ropita';
+  static const _catEpoca = '_epoca';
+
+  List<String> _categoriasDe(Cuarto cuarto) => [
+    if (_fiestas.isNotEmpty) _catFiesta,
+    for (final l in _ordenDe(cuarto))
+      if (_cosasDe(l.name).isNotEmpty) l.name,
+    _catRopa,
+    _catEpoca,
+    _catRopita,
+  ];
+
+  String _nombreCat(String cat) => switch (cat) {
+    _catFiesta => '${_fiestas.first.emoji} De temporada',
+    _catRopa => 'Ropa',
+    _catRopita => 'Accesorios',
+    _catEpoca => 'De época',
+    _ => Lugar.deId(cat)?.nombre ?? cat,
+  };
+
+  /// Lo que se ve en la vitrina: lo de temporada solo en su fecha o si ya
+  /// lo tienen.
+  List<Cosa> _cosasDe(String cat) {
+    bool visible(Cosa c) =>
+        _estado.tiene(c) || c.aLaVenta(_hoy, inicioPareja: widget.inicioPareja);
+    final todas = switch (cat) {
+      _catFiesta => Catalogo.cosas.where(
+        (c) =>
+            c.fiesta != null &&
+            c.aLaVenta(_hoy, inicioPareja: widget.inicioPareja),
+      ),
+      _catRopa => Catalogo.ropa.where(
+        (c) => c.parte == Parte.cuerpo && !c.deEpoca,
+      ),
+      _catRopita => Catalogo.ropa.where(
+        (c) => c.parte != Parte.cuerpo && !c.deEpoca,
+      ),
+      _catEpoca => Catalogo.ropa.where((c) => c.deEpoca),
+      _ => Catalogo.de(Lugar.deId(cat)!),
+    };
+    return todas.where(visible).toList();
+  }
 
   /// Orden de las categorías de la tienda: lo más vistoso primero.
   static List<Lugar> _ordenDe(Cuarto cuarto) => cuarto == Cuarto.sala
@@ -93,6 +164,8 @@ class _CasitaViewState extends State<CasitaView> {
           Lugar.cuadro,
           Lugar.planta,
           Lugar.camita,
+          Lugar.adorno,
+          Lugar.temporada,
           Lugar.pared,
           Lugar.piso,
         ]
@@ -101,8 +174,11 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.estufa,
             Lugar.refri,
             Lugar.mesa,
+            Lugar.comida,
             Lugar.repisa,
             Lugar.comedero,
+            Lugar.paredCocina,
+            Lugar.pisoCocina,
           ],
           Cuarto.dormitorio => const [
             Lugar.cama,
@@ -110,6 +186,8 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.velador,
             Lugar.alfombraCama,
             Lugar.cuadroCama,
+            Lugar.paredDorm,
+            Lugar.pisoDorm,
           ],
           _ => const [
             Lugar.arbol,
@@ -117,12 +195,14 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.estanque,
             Lugar.flores,
             Lugar.farol,
+            Lugar.cielo,
           ],
         };
 
   void _verCuarto(Cuarto c) => setState(() {
     _cuarto = c;
-    _categoria = _ordenDe(c).first;
+    final cats = _categoriasDe(c);
+    _categoria = cats[cats.length > 1 && cats.first == _catFiesta ? 1 : 0];
   });
   final _tiendaKey = GlobalKey();
 
@@ -143,7 +223,10 @@ class _CasitaViewState extends State<CasitaView> {
       ? widget.me.name
       : (widget.partner?.name ?? 'Tu pareja');
 
-  void _elegir(Lugar? categoria) {
+  /// Al tocar el cuarto: un lugar, o los gatitos (`null`) para la ropa.
+  void _elegir(Lugar? lugar) => _elegirCat(lugar?.name ?? _catRopa);
+
+  void _elegirCat(String categoria) {
     setState(() => _categoria = categoria);
     final ctx = _tiendaKey.currentContext;
     if (ctx != null) {
@@ -161,12 +244,43 @@ class _CasitaViewState extends State<CasitaView> {
       ..showSnackBar(SnackBar(content: Text(texto)));
   }
 
+  bool _subiendoFoto = false;
+  static final _cuadroFoto = Catalogo.porId('cuadro_foto')!;
+
+  /// Elige una foto, la pixela y la pone en el cuadro "Foto de los dos".
+  Future<void> _elegirFoto(Cosa cuadro) async {
+    setState(() => _subiendoFoto = true);
+    try {
+      final img = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      if (img == null) return;
+      final foto = await pixelarFoto(await img.readAsBytes());
+      await widget.onFoto!(foto);
+      if (_estado.puesto(Lugar.cuadro)?.id != cuadro.id) {
+        await widget.onPoner(Lugar.cuadro, cuadro);
+      }
+      _aviso('¡Listo! Su foto ya está en el cuadro de la sala.');
+    } catch (_) {
+      _aviso('No se pudo poner la foto. Prueba con otra.');
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
+  }
+
   Future<void> _tocar(Cosa cosa) async {
     if (cosa.lugar case final l? when !_estado.abierto(l.cuarto)) {
       final abrir = Catalogo.abre(l.cuarto)!;
       _aviso(
         'Primero abran ${abrir.nombre.toLowerCase()} (${abrir.precio} pescaditos)',
       );
+      return;
+    }
+    if (!_estado.tiene(cosa) &&
+        !cosa.aLaVenta(_hoy, inicioPareja: widget.inicioPareja)) {
+      _aviso('${cosa.nombre} solo se vende en ${cosa.fiesta!.nombre}');
       return;
     }
     if (!_estado.tiene(cosa)) return _comprar(cosa);
@@ -381,11 +495,12 @@ class _CasitaViewState extends State<CasitaView> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),
               child: _estado.abierto(_cuarto)
-                  ? CuartoCasita(
+                  ? CuartoVivo(
                       key: ValueKey(_cuarto),
                       estado: _estado,
                       cuarto: _cuarto,
                       onToque: _elegir,
+                      ahora: widget.hoy,
                     )
                   : _CuartoCerrado(
                       key: ValueKey(_cuarto),
@@ -406,16 +521,43 @@ class _CasitaViewState extends State<CasitaView> {
           const SizedBox(height: 20),
           _Titulo('Tienda', key: _tiendaKey),
           const SizedBox(height: 8),
+          if (_fiestas.isNotEmpty) ...[
+            _AvisoFiesta(
+              fiestas: _fiestas,
+              hoy: _hoy,
+              inicioPareja: widget.inicioPareja,
+              onVer: () => _elegirCat(_catFiesta),
+            ),
+            const SizedBox(height: 10),
+          ],
           _Categorias(
-            orden: _ordenDe(_cuarto),
+            categorias: [
+              for (final c in _categoriasDe(_cuarto)) (c, _nombreCat(c)),
+            ],
             elegida: _categoria,
-            onElegir: _elegir,
+            onElegir: _elegirCat,
           ),
           const SizedBox(height: 12),
+          if (_categoria == Lugar.comida.name &&
+              _estado.puesto(Lugar.mesa) == null)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text(
+                'La comida se sirve en la mesa: primero pongan una.',
+                style: TextStyle(color: AppTheme.gris, fontSize: 13),
+              ),
+            ),
+          if (_categoria == Lugar.cuadro.name &&
+              widget.onFoto != null &&
+              _estado.tiene(_cuadroFoto))
+            _FotoDelCuadro(
+              hayFoto: _estado.foto != null,
+              cargando: _subiendoFoto,
+              onElegir: () => _elegirFoto(_cuadroFoto),
+              onQuitar: () => widget.onFoto!(null),
+            ),
           _Vitrina(
-            cosas: _categoria == null
-                ? Catalogo.ropa
-                : Catalogo.de(_categoria!),
+            cosas: _cosasDe(_categoria),
             estado: _estado,
             capasDe: (c) => _capasDe(c),
             zonaDe: (c) => _zonaDe(c),
@@ -425,6 +567,10 @@ class _CasitaViewState extends State<CasitaView> {
           const _Titulo('Cómo ganar pescaditos'),
           const SizedBox(height: 8),
           const _ComoGanar(),
+          const SizedBox(height: 24),
+          const _Titulo('Próximas festividades'),
+          const SizedBox(height: 8),
+          _ProximasFiestas(hoy: _hoy, inicioPareja: widget.inicioPareja),
           if (widget.movimientos.isNotEmpty) ...[
             const SizedBox(height: 24),
             const _Titulo('Últimos pescaditos'),
@@ -473,32 +619,127 @@ class _Titulo extends StatelessWidget {
 
 class _Categorias extends StatelessWidget {
   const _Categorias({
-    required this.orden,
+    required this.categorias,
     required this.elegida,
     required this.onElegir,
   });
 
-  final List<Lugar> orden;
-  final Lugar? elegida;
-  final ValueChanged<Lugar?> onElegir;
+  /// (id, nombre) de cada categoría.
+  final List<(String, String)> categorias;
+  final String elegida;
+  final ValueChanged<String> onElegir;
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(String texto, Lugar? lugar) => Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(texto),
-        selected: elegida == lugar,
-        showCheckmark: false,
-        onSelected: (_) => onElegir(lugar),
-      ),
-    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          chip('Ropita', null),
-          for (final l in orden) chip(l.nombre, l),
+          for (final (id, nombre) in categorias)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(nombre),
+                selected: elegida == id,
+                showCheckmark: false,
+                onSelected: (_) => onElegir(id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+const _meses = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+String _fecha(DateTime d) => '${d.day} de ${_meses[d.month - 1]}';
+
+/// "🎄 Navidad: cosas especiales hasta el 26 de diciembre".
+class _AvisoFiesta extends StatelessWidget {
+  const _AvisoFiesta({
+    required this.fiestas,
+    required this.hoy,
+    required this.inicioPareja,
+    required this.onVer,
+  });
+
+  final List<Festividad> fiestas;
+  final DateTime hoy;
+  final DateTime? inicioPareja;
+  final VoidCallback onVer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.azul,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onVer,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final f in fiestas)
+                Text(
+                  '${f.emoji} ${f.nombre}: cosas especiales hasta el '
+                  '${_fecha(f.activaEn(hoy, inicioPareja: inicioPareja)!.$2)}',
+                  style: const TextStyle(
+                    color: AppTheme.crema,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              const SizedBox(height: 2),
+              const Text(
+                'Lo que compren se queda para siempre',
+                style: TextStyle(color: AppTheme.amarillo, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProximasFiestas extends StatelessWidget {
+  const _ProximasFiestas({required this.hoy, required this.inicioPareja});
+
+  final DateTime hoy;
+  final DateTime? inicioPareja;
+
+  @override
+  Widget build(BuildContext context) {
+    final proximas = Festividad.proximas(hoy, inicioPareja: inicioPareja);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (final (f, d) in proximas.take(5))
+            ListTile(
+              dense: true,
+              leading: Text(f.emoji, style: const TextStyle(fontSize: 20)),
+              title: Text(f.nombre),
+              trailing: Text(
+                'desde el ${_fecha(d)}',
+                style: const TextStyle(color: AppTheme.gris, fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
@@ -787,6 +1028,67 @@ class _ComoGanar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Para poner una foto real de los dos (pixelada) en el cuadro.
+class _FotoDelCuadro extends StatelessWidget {
+  const _FotoDelCuadro({
+    required this.hayFoto,
+    required this.cargando,
+    required this.onElegir,
+    required this.onQuitar,
+  });
+
+  final bool hayFoto;
+  final bool cargando;
+  final VoidCallback onElegir;
+  final VoidCallback onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.azul.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hayFoto
+                ? 'Su foto está en el cuadro "Foto de los dos".'
+                : 'Pongan una foto real de los dos en el cuadro: '
+                      'aparece pixelada en la pared.',
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonal(
+                onPressed: cargando ? null : onElegir,
+                child: Text(
+                  cargando
+                      ? 'Pixelando…'
+                      : hayFoto
+                      ? 'Cambiar foto'
+                      : 'Elegir foto',
+                ),
+              ),
+              if (hayFoto)
+                TextButton(
+                  onPressed: cargando ? null : onQuitar,
+                  child: const Text('Quitar foto'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

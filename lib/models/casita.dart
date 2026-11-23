@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'festividades.dart';
+
+export 'festividades.dart';
+
 /// "Nuestra casita": la casa de los gatitos que la pareja decora con los
 /// pescaditos que gana usando la app.
 ///
@@ -28,6 +32,45 @@ class Casita {
 
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
+
+  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes.
+  static const animadas = {
+    'pajarito_azul',
+    'pajarito_canario',
+    'pajarito_rosa',
+    'pecera_pececito',
+    'pecera_pareja',
+  };
+
+  /// Cosas que se prenden de noche (tienen su halo `luz_{id}`).
+  static const conLuz = {
+    'lampara_pie',
+    'lampara_guirnalda',
+    'lampara_luna',
+    'lampara_papel',
+    'velador_lampara',
+    'farol',
+  };
+
+  /// Tamaño de la foto pixelada del cuadro y dónde va (en la sala).
+  static const fotoAncho = 14;
+  static const fotoAlto = 12;
+  static const fotoX = 50;
+  static const fotoY = 21;
+}
+
+/// Momento del día en la casita, según la hora real.
+enum Momento {
+  dia,
+  tarde,
+  noche;
+
+  /// De 7 a 17 es de día, de 18 a 19 de tarde y de 20 a 6 de noche.
+  static Momento de(DateTime t) => t.hour >= 20 || t.hour < 7
+      ? noche
+      : t.hour >= 18
+      ? tarde
+      : dia;
 }
 
 /// Los cuartos de la casita. La sala viene con la casita; los demás se
@@ -43,7 +86,8 @@ enum Cuarto {
   final String nombre;
   final int precio;
 
-  /// Capa de fondo (pared y piso fijos). La sala no tiene: ahí se eligen.
+  /// Capa con lo fijo del cuarto (mesón, ventanita, cerca), encima de la
+  /// pared y el piso. La sala no tiene.
   final String? base;
 
   /// Capa del borde (techito o setos).
@@ -60,24 +104,57 @@ enum Cuarto {
 /// adelante). [zona] es dónde queda, en píxeles del dibujo, para recortar
 /// la vista previa en la tienda y para saber qué se tocó en el cuarto.
 enum Lugar {
-  pared('Pared', ZonaCasita(2, 14, 76, 46), inicial: 'pared_crema'),
-  piso('Piso', ZonaCasita(2, 60, 76, 40), inicial: 'piso_madera'),
+  pared('Pared', ZonaCasita(2, 14, 76, 46), inicial: 'pared_crema', fijo: true),
+  piso('Piso', ZonaCasita(2, 60, 76, 40), inicial: 'piso_madera', fijo: true),
   alfombra('Alfombra', ZonaCasita(12, 72, 56, 26)),
   ventana('Ventana', ZonaCasita(4, 16, 34, 34), inicial: 'ventana_simple'),
+  pecera('Pecera', ZonaCasita(7, 34, 14, 12)),
+  pajarito('Pajarito', ZonaCasita(24, 36, 10, 10)),
   cuadro('Cuadro', ZonaCasita(46, 16, 22, 20)),
+  adorno('Adorno', ZonaCasita(2, 14, 76, 14)),
   lampara('Luces', ZonaCasita(63, 28, 15, 34)),
   sofa('Sofá', ZonaCasita(22, 40, 40, 24)),
   planta('Planta', ZonaCasita(2, 40, 16, 22)),
   camita('Camita', ZonaCasita(56, 76, 22, 20)),
+  temporada('Festivo', ZonaCasita(1, 66, 26, 34)),
 
   // Cocina
+  paredCocina(
+    'Pared',
+    ZonaCasita(2, 14, 76, 46),
+    cuarto: Cuarto.cocina,
+    inicial: 'pared_cocina_azulejos',
+    fijo: true,
+  ),
+  pisoCocina(
+    'Piso',
+    ZonaCasita(2, 60, 76, 40),
+    cuarto: Cuarto.cocina,
+    inicial: 'piso_cocina_terracota',
+    fijo: true,
+  ),
   repisa('Repisa', ZonaCasita(43, 16, 33, 18), cuarto: Cuarto.cocina),
   refri('Refri', ZonaCasita(4, 18, 16, 46), cuarto: Cuarto.cocina),
   estufa('Estufa', ZonaCasita(19, 32, 18, 31), cuarto: Cuarto.cocina),
   mesa('Mesa', ZonaCasita(58, 50, 21, 30), cuarto: Cuarto.cocina),
+  comida('Comida', ZonaCasita(59, 50, 15, 13), cuarto: Cuarto.cocina),
   comedero('Platito', ZonaCasita(3, 84, 21, 13), cuarto: Cuarto.cocina),
 
   // Dormitorio
+  paredDorm(
+    'Pared',
+    ZonaCasita(2, 14, 76, 46),
+    cuarto: Cuarto.dormitorio,
+    inicial: 'pared_dorm_celeste',
+    fijo: true,
+  ),
+  pisoDorm(
+    'Piso',
+    ZonaCasita(2, 60, 76, 40),
+    cuarto: Cuarto.dormitorio,
+    inicial: 'piso_dorm_madera',
+    fijo: true,
+  ),
   alfombraCama(
     'Alfombra',
     ZonaCasita(14, 76, 52, 22),
@@ -89,6 +166,13 @@ enum Lugar {
   cama('Cama', ZonaCasita(43, 36, 36, 34), cuarto: Cuarto.dormitorio),
 
   // Jardín
+  cielo(
+    'Cielo',
+    ZonaCasita(2, 14, 76, 36),
+    cuarto: Cuarto.jardin,
+    inicial: 'cielo_dia',
+    fijo: true,
+  ),
   arbol('Árbol', ZonaCasita(46, 14, 33, 53), cuarto: Cuarto.jardin),
   farol('Farol', ZonaCasita(2, 24, 15, 40), cuarto: Cuarto.jardin),
   flores('Flores', ZonaCasita(2, 50, 20, 22), cuarto: Cuarto.jardin),
@@ -100,6 +184,7 @@ enum Lugar {
     this.zona, {
     this.inicial,
     this.cuarto = Cuarto.sala,
+    this.fijo = false,
   });
 
   final String nombre;
@@ -109,7 +194,10 @@ enum Lugar {
   /// Lo que hay al principio (gratis). Pared y piso siempre tienen algo.
   final String? inicial;
 
-  bool get siempreLleno => this == pared || this == piso;
+  /// Pared, piso y cielo: siempre tienen algo (no se pueden quitar).
+  final bool fijo;
+
+  bool get siempreLleno => fijo;
 
   static Lugar? deId(String id) {
     for (final l in values) {
@@ -120,10 +208,12 @@ enum Lugar {
 }
 
 /// Partes del gatito donde va la ropita (una prenda por parte).
+/// En el orden en que se dibujan (lo de la cabeza va encima de todo).
 enum Parte {
-  cabeza('Cabeza'),
+  cuerpo('Ropa'),
+  cuello('Cuello'),
   cara('Cara'),
-  cuello('Cuello');
+  cabeza('Cabeza');
 
   const Parte(this.nombre);
   final String nombre;
@@ -148,6 +238,8 @@ class Cosa {
     this.parte,
     this.zonaPropia,
     this.cuarto,
+    this.fiesta,
+    this.deEpoca = false,
   }) : assert(
          (lugar != null ? 1 : 0) +
                  (parte != null ? 1 : 0) +
@@ -165,6 +257,17 @@ class Cosa {
 
   /// Si es un cuarto nuevo para la casita.
   final Cuarto? cuarto;
+
+  /// Si es de temporada: solo se compra mientras dura esta festividad.
+  final Festividad? fiesta;
+
+  /// Ropa de época o de otras culturas (va en su propia vitrina).
+  final bool deEpoca;
+
+  /// ¿Se puede comprar [hoy]? (lo de temporada, solo en su fecha).
+  bool aLaVenta(DateTime hoy, {DateTime? inicioPareja}) =>
+      fiesta == null ||
+      fiesta!.activaEn(hoy, inicioPareja: inicioPareja) != null;
 
   /// Dónde queda en el dibujo, si no es la zona de siempre de su lugar.
   final ZonaCasita? zonaPropia;
@@ -208,6 +311,12 @@ class Catalogo {
     Cosa('cuadro_pescadito', 'Cuadro de pescadito', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_corazon', 'Cuadro de corazón', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_foto', 'Foto de los dos', 60, lugar: Lugar.cuadro),
+    // Visitantes (en la repisa de la ventana)
+    Cosa('pajarito_azul', 'Pajarito azul', 100, lugar: Lugar.pajarito),
+    Cosa('pajarito_canario', 'Canario', 100, lugar: Lugar.pajarito),
+    Cosa('pajarito_rosa', 'Pajarito rosado', 120, lugar: Lugar.pajarito),
+    Cosa('pecera_pececito', 'Pecera con pececito', 120, lugar: Lugar.pecera),
+    Cosa('pecera_pareja', 'Pecera de dos peces', 180, lugar: Lugar.pecera),
     // Luces
     Cosa('lampara_pie', 'Lámpara de pie', 50, lugar: Lugar.lampara),
     Cosa(
@@ -288,6 +397,412 @@ class Catalogo {
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
     Cosa('estanque_fuente', 'Fuente', 110, lugar: Lugar.estanque),
+
+    // ---- Más para la sala ----
+    Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
+    Cosa('pared_durazno', 'Pared durazno', 60, lugar: Lugar.pared),
+    Cosa('sofa_verde', 'Sofá verde', 120, lugar: Lugar.sofa),
+    Cosa('sofa_mostaza', 'Sofá mostaza', 120, lugar: Lugar.sofa),
+    Cosa('planta_suculentas', 'Suculentas', 35, lugar: Lugar.planta),
+    Cosa('alfombra_gatito', 'Alfombra gatito', 70, lugar: Lugar.alfombra),
+    Cosa(
+      'lampara_papel',
+      'Lámpara de papel',
+      60,
+      lugar: Lugar.lampara,
+      zonaPropia: ZonaCasita(33, 14, 15, 18),
+    ),
+
+    // ---- Más para la cocina ----
+    Cosa(
+      'pared_cocina_azulejos',
+      'Azulejos celestes',
+      0,
+      lugar: Lugar.paredCocina,
+    ),
+    Cosa('pared_cocina_rosa', 'Azulejos rosados', 50, lugar: Lugar.paredCocina),
+    Cosa('pared_cocina_menta', 'Azulejos menta', 50, lugar: Lugar.paredCocina),
+    Cosa(
+      'pared_cocina_amarilla',
+      'Azulejos amarillos',
+      50,
+      lugar: Lugar.paredCocina,
+    ),
+    Cosa(
+      'piso_cocina_terracota',
+      'Baldosas terracota',
+      0,
+      lugar: Lugar.pisoCocina,
+    ),
+    Cosa('piso_cocina_ajedrez', 'Piso de ajedrez', 60, lugar: Lugar.pisoCocina),
+    Cosa('piso_cocina_madera', 'Piso de madera', 50, lugar: Lugar.pisoCocina),
+    Cosa('refri_rosa', 'Refri rosa', 90, lugar: Lugar.refri),
+    Cosa('refri_menta', 'Refri menta', 90, lugar: Lugar.refri),
+    Cosa('refri_rojo', 'Refri rojo retro', 110, lugar: Lugar.refri),
+    Cosa('comida_hamburguesa', 'Hamburguesa', 25, lugar: Lugar.comida),
+    Cosa('comida_pizza', 'Pizza', 25, lugar: Lugar.comida),
+    Cosa('comida_pollo_agridulce', 'Pollo agridulce', 30, lugar: Lugar.comida),
+    Cosa('comida_empanadas', 'Empanadas', 25, lugar: Lugar.comida),
+    Cosa('comida_sushi', 'Sushi', 30, lugar: Lugar.comida),
+    Cosa('comida_ramen', 'Ramen', 30, lugar: Lugar.comida),
+    Cosa('comida_tacos', 'Tacos', 25, lugar: Lugar.comida),
+    Cosa('comida_papas_fritas', 'Papas fritas', 20, lugar: Lugar.comida),
+    Cosa('comida_pastel', 'Pastel de fresa', 25, lugar: Lugar.comida),
+    Cosa('comida_helado', 'Copa de helado', 20, lugar: Lugar.comida),
+
+    // ---- Más para el dormitorio ----
+    Cosa('pared_dorm_celeste', 'Pared celeste', 0, lugar: Lugar.paredDorm),
+    Cosa('pared_dorm_lila', 'Pared lila', 50, lugar: Lugar.paredDorm),
+    Cosa('pared_dorm_crema', 'Pared crema', 50, lugar: Lugar.paredDorm),
+    Cosa('pared_dorm_noche', 'Pared de noche', 70, lugar: Lugar.paredDorm),
+    Cosa('piso_dorm_madera', 'Piso de madera', 0, lugar: Lugar.pisoDorm),
+    Cosa('piso_dorm_moqueta', 'Alfombrado gris', 60, lugar: Lugar.pisoDorm),
+    Cosa('piso_dorm_rosa', 'Alfombrado rosa', 60, lugar: Lugar.pisoDorm),
+
+    // ---- Más para el jardín ----
+    Cosa('cielo_dia', 'Cielo de día', 0, lugar: Lugar.cielo),
+    Cosa('cielo_atardecer', 'Atardecer', 80, lugar: Lugar.cielo),
+    Cosa('cielo_noche', 'Noche estrellada', 80, lugar: Lugar.cielo),
+
+    // ---- Ropa casual y formal (conjuntos) ----
+    Cosa('camiseta', 'Camiseta a rayas', 50, parte: Parte.cuerpo),
+    Cosa('poleron', 'Polerón con capucha', 70, parte: Parte.cuerpo),
+    Cosa('overol', 'Overol de jean', 70, parte: Parte.cuerpo),
+    Cosa('pijama', 'Pijama de puntitos', 60, parte: Parte.cuerpo),
+    Cosa('pijama_estrellas', 'Pijama de estrellas', 60, parte: Parte.cuerpo),
+    Cosa('pijama_rayas', 'Pijama a rayas', 60, parte: Parte.cuerpo),
+    Cosa('pijama_corazones', 'Pijama de corazones', 60, parte: Parte.cuerpo),
+    Cosa('pijama_dino', 'Pijama de dinosaurio', 80, parte: Parte.cuerpo),
+    Cosa('traje', 'Traje con corbata', 120, parte: Parte.cuerpo),
+    Cosa('esmoquin', 'Esmoquin', 150, parte: Parte.cuerpo),
+
+    // ---- Ropa de época y de otras culturas ----
+    Cosa('hanfu', 'Hanfu', 160, parte: Parte.cuerpo, deEpoca: true),
+    Cosa('guan', 'Moño con guan', 60, parte: Parte.cabeza, deEpoca: true),
+    Cosa('kimono', 'Kimono', 160, parte: Parte.cuerpo, deEpoca: true),
+    Cosa('hanbok', 'Hanbok', 160, parte: Parte.cuerpo, deEpoca: true),
+    Cosa('poncho', 'Poncho de aguayo', 120, parte: Parte.cuerpo, deEpoca: true),
+    Cosa('chullu', "Ch'ullu", 50, parte: Parte.cabeza, deEpoca: true),
+    Cosa(
+      'levita',
+      'Levita victoriana',
+      150,
+      parte: Parte.cuerpo,
+      deEpoca: true,
+    ),
+    Cosa(
+      'sombrero_copa',
+      'Sombrero de copa',
+      70,
+      parte: Parte.cabeza,
+      deEpoca: true,
+    ),
+    Cosa(
+      'armadura',
+      'Armadura de caballero',
+      180,
+      parte: Parte.cuerpo,
+      deEpoca: true,
+    ),
+    Cosa('casco', 'Casco con penacho', 80, parte: Parte.cabeza, deEpoca: true),
+    Cosa('toga', 'Toga romana', 130, parte: Parte.cuerpo, deEpoca: true),
+    Cosa('laurel', 'Corona de laurel', 60, parte: Parte.cabeza, deEpoca: true),
+
+    // ---- De temporada (solo se compran en su festividad) ----
+    Cosa(
+      'adorno_anio_nuevo',
+      'Banderín de estrellas',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.anioNuevo,
+    ),
+    Cosa(
+      'temporada_globos_dorados',
+      'Globos dorados',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.anioNuevo,
+    ),
+    Cosa(
+      'gorro_fiesta',
+      'Gorrito de fiesta',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.anioNuevo,
+    ),
+    Cosa(
+      'adorno_faroles_chinos',
+      'Faroles rojos',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'temporada_mandarino',
+      'Mandarino de la suerte',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'gorro_leon',
+      'Gorro de león',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'adorno_corazones',
+      'Corazones colgantes',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.sanValentin,
+    ),
+    Cosa(
+      'temporada_oso_corazon',
+      'Osito con corazón',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.sanValentin,
+    ),
+    Cosa(
+      'diadema',
+      'Diadema de corazones',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.sanValentin,
+    ),
+    Cosa(
+      'adorno_serpentinas',
+      'Serpentinas',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.carnaval,
+    ),
+    Cosa(
+      'temporada_globos_agua',
+      'Balde de globos de agua',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.carnaval,
+    ),
+    Cosa(
+      'antifaz',
+      'Antifaz de carnaval',
+      70,
+      parte: Parte.cara,
+      fiesta: Festividad.carnaval,
+    ),
+    Cosa(
+      'adorno_huevitos',
+      'Banderín de huevitos',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.pascua,
+    ),
+    Cosa(
+      'temporada_canasta_huevos',
+      'Canasta de huevitos',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.pascua,
+    ),
+    Cosa(
+      'orejas_conejo',
+      'Orejas de conejo',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.pascua,
+    ),
+    Cosa(
+      'adorno_dragon',
+      'Banderines de colores',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.barcoDragon,
+    ),
+    Cosa(
+      'temporada_barquito_dragon',
+      'Barquito dragón',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.barcoDragon,
+    ),
+    Cosa(
+      'cordon',
+      'Cordón de cinco colores',
+      70,
+      parte: Parte.cuello,
+      fiesta: Festividad.barcoDragon,
+    ),
+    Cosa(
+      'adorno_huellitas',
+      'Banderín de huellitas',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.diaDelGato,
+    ),
+    Cosa(
+      'temporada_rascador',
+      'Rascador',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.diaDelGato,
+    ),
+    Cosa(
+      'cascabel',
+      'Collar con cascabel',
+      70,
+      parte: Parte.cuello,
+      fiesta: Festividad.diaDelGato,
+    ),
+    Cosa(
+      'adorno_via_lactea',
+      'Vía Láctea con urracas',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.qixi,
+    ),
+    Cosa(
+      'temporada_farol_estrellas',
+      'Farol de estrellas',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.qixi,
+    ),
+    Cosa(
+      'horquilla',
+      'Florcita para la oreja',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.qixi,
+    ),
+    Cosa(
+      'adorno_flores',
+      'Guirnalda de flores',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.primavera,
+    ),
+    Cosa(
+      'temporada_regadera_flores',
+      'Regadera con flores',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.primavera,
+    ),
+    Cosa(
+      'corona_flores',
+      'Corona de flores',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.primavera,
+    ),
+    Cosa(
+      'adorno_faroles_luna',
+      'Farolitos de luna',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.medioOtono,
+    ),
+    Cosa(
+      'temporada_pastelitos_luna',
+      'Pastelitos de luna',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.medioOtono,
+    ),
+    Cosa(
+      'bufanda_otono',
+      'Bufanda de otoño',
+      70,
+      parte: Parte.cuello,
+      fiesta: Festividad.medioOtono,
+    ),
+    Cosa(
+      'adorno_murcielagos',
+      'Murciélagos y telaraña',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.halloween,
+    ),
+    Cosa(
+      'temporada_calabaza',
+      'Calabaza',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.halloween,
+    ),
+    Cosa(
+      'sombrero_brujo',
+      'Sombrero de brujo',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.halloween,
+    ),
+    Cosa(
+      'adorno_flores_moradas',
+      'Flores moradas',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.todosSantos,
+    ),
+    Cosa(
+      'temporada_tantawawas',
+      'Tantawawas',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.todosSantos,
+    ),
+    Cosa(
+      'adorno_navidad',
+      'Guirnalda navideña',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'temporada_arbolito',
+      'Arbolito de Navidad',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'gorro_santa',
+      'Gorrito de Santa',
+      70,
+      parte: Parte.cabeza,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'adorno_aniversario',
+      'Banderín de aniversario',
+      60,
+      lugar: Lugar.adorno,
+      fiesta: Festividad.aniversario,
+    ),
+    Cosa(
+      'temporada_pastel_aniversario',
+      'Pastel de aniversario',
+      90,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.aniversario,
+    ),
+    Cosa(
+      'corbatin_dorado',
+      'Corbatín dorado',
+      70,
+      parte: Parte.cuello,
+      fiesta: Festividad.aniversario,
+    ),
+    Cosa(
+      'ventana_nieve',
+      'Ventana con nieve',
+      70,
+      lugar: Lugar.ventana,
+      fiesta: Festividad.navidad,
+    ),
   ];
 
   static Cosa? porId(String? id) {
@@ -314,6 +829,7 @@ class EstadoCasita {
     this.tenemos = const {},
     this.puestos = const {},
     this.ropa = const {},
+    this.foto,
   });
 
   static const vacio = EstadoCasita();
@@ -331,6 +847,10 @@ class EstadoCasita {
   /// Ropa de cada gatito: `{naranja: {cabeza: 'gorrito'}, blanco: {...}}`.
   final Map<String, Map<String, String>> ropa;
 
+  /// Su foto pixelada para el cuadro: [Casita.fotoAncho] × [Casita.fotoAlto]
+  /// colores ARGB, fila por fila. `null` si no subieron ninguna.
+  final List<int>? foto;
+
   factory EstadoCasita.fromMap(Map<String, dynamic>? d) {
     if (d == null) return vacio;
     Map<String, String> strings(Object? m) => {
@@ -344,6 +864,13 @@ class EstadoCasita {
       ropa: {
         for (final e in ((d['ropa'] as Map?) ?? const {}).entries)
           e.key as String: strings(e.value),
+      },
+      foto: switch (d['foto']) {
+        final List l
+            when l.length == Casita.fotoAncho * Casita.fotoAlto &&
+                l.every((c) => c is int) =>
+          l.cast<int>(),
+        _ => null,
       },
     );
   }
@@ -385,17 +912,64 @@ class EstadoCasita {
 
   /// Capas para dibujar [cuarto], de atrás hacia adelante. Con
   /// [conMuebles] en false sale vacío (para mostrar un cuarto cerrado).
-  List<String> capas([Cuarto cuarto = Cuarto.sala, bool conMuebles = true]) => [
-    if (cuarto.base case final b?) Casita.asset(b),
-    for (final l in cuarto.lugares)
-      if (puesto(l) case final c? when conMuebles || l.siempreLleno) c.asset,
-    for (final g in const ['naranja', 'blanco']) ...[
-      Casita.asset('gatito_$g'),
-      for (final p in Parte.values)
-        if (prenda(g, p) case final c?) c.assetRopa(g),
-    ],
-    Casita.asset(cuarto.marco),
-  ];
+  /// ¿Los gatitos duermen en este cuarto? De noche, si hay camita (en la
+  /// sala) o cama (en el dormitorio).
+  bool duermen(Cuarto cuarto, Momento momento) =>
+      momento == Momento.noche &&
+      switch (cuarto) {
+        Cuarto.sala => puesto(Lugar.camita) != null,
+        Cuarto.dormitorio => puesto(Lugar.cama) != null,
+        _ => false,
+      };
+
+  /// Las capas del cuarto, de atrás hacia adelante. [tick] avanza solo
+  /// (unas tres veces por segundo) para que la casita se mueva: los
+  /// gatitos parpadean y mueven la cola, y los visitantes se mueven.
+  List<String> capas([
+    Cuarto cuarto = Cuarto.sala,
+    bool conMuebles = true,
+    Momento momento = Momento.dia,
+    int tick = 0,
+  ]) {
+    String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
+        ? Casita.asset('${c.id}_2')
+        : c.asset;
+    final duermen = conMuebles && this.duermen(cuarto, momento);
+    final cama = cuarto == Cuarto.sala ? 'camita' : 'cama';
+    return [
+      for (final l in cuarto.lugares)
+        if (l.fijo)
+          if (puesto(l) case final c?) c.asset,
+      if (cuarto.base case final b?) Casita.asset(b),
+      for (final l in cuarto.lugares)
+        if (!l.fijo && conMuebles)
+          // La comida solo se ve si hay una mesa donde ponerla.
+          if (l != Lugar.comida || puesto(Lugar.mesa) != null)
+            if (puesto(l) case final c?) dibujo(c),
+      if (duermen) ...[
+        Casita.asset('dormidos_$cama'),
+        Casita.asset('zzz_${cama}_${tick % 6 < 3 ? 1 : 2}'),
+      ] else
+        for (final g in const ['naranja', 'blanco']) ...[
+          // Cada gatito mueve la cola a su ritmo y parpadea de vez en cuando.
+          Casita.asset(
+            (tick + (g == 'blanco' ? 3 : 0)) % 8 >= 6
+                ? 'gatito_${g}_cola'
+                : 'gatito_$g',
+          ),
+          if ((tick + (g == 'blanco' ? 7 : 0)) % 13 == 12)
+            Casita.asset('parpadeo_$g'),
+          for (final p in Parte.values)
+            if (prenda(g, p) case final c?) c.assetRopa(g),
+        ],
+      if (momento != Momento.dia) Casita.asset(momento.name),
+      if (momento == Momento.noche && conMuebles)
+        for (final l in cuarto.lugares)
+          if (puesto(l) case final c? when Casita.conLuz.contains(c.id))
+            Casita.asset('luz_${c.id}'),
+      Casita.asset(cuarto.marco),
+    ];
+  }
 }
 
 /// Un movimiento del monedero: `couples/{id}/casitaMovs/{id}`.

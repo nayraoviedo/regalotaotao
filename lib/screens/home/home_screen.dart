@@ -370,7 +370,12 @@ class _HomeBodyState extends State<_HomeBody> {
             casita: CasitaInicio(
               coupleId: couple.id,
               onTap: () => _open(
-                CasitaScreen(coupleId: couple.id, me: me, partner: partner),
+                CasitaScreen(
+                  coupleId: couple.id,
+                  me: me,
+                  partner: partner,
+                  inicioPareja: couple.startDate,
+                ),
               ),
             ),
             recomendacion: RecomendacionInicio(

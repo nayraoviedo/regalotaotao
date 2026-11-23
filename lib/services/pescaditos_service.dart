@@ -244,6 +244,11 @@ class PescaditosService {
         'puestos': {lugar.name: cosa?.id ?? ''},
       }, SetOptions(merge: true));
 
+  /// Pone su foto pixelada en el cuadro (o la quita, con `null`).
+  Future<void> ponerFoto(String coupleId, List<int>? foto) =>
+      _estado(coupleId)
+          .set({'foto': foto ?? FieldValue.delete()}, SetOptions(merge: true));
+
   /// Le pone (o quita, con `null`) una prenda a [gatito].
   Future<void> vestir(
     String coupleId,

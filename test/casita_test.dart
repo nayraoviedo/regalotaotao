@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,6 +7,7 @@ import 'package:taotao/models/app_user.dart';
 import 'package:taotao/models/casita.dart';
 import 'package:taotao/screens/casita/casita_screen.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
+import 'package:taotao/services/foto_pixelada.dart';
 
 void main() {
   group('Catálogo', () {
@@ -44,7 +46,110 @@ void main() {
           expect(Catalogo.porId(id)!.gratis, isTrue);
         }
       }
-      expect(Catalogo.cosas.where((c) => c.gratis).length, 3);
+      expect(Catalogo.cosas.where((c) => c.gratis).length, 8);
+    });
+  });
+
+  group('Casita viva', () {
+    test('día, tarde y noche según la hora', () {
+      expect(Momento.de(DateTime(2026, 1, 1, 9)), Momento.dia);
+      expect(Momento.de(DateTime(2026, 1, 1, 18, 30)), Momento.tarde);
+      expect(Momento.de(DateTime(2026, 1, 1, 23)), Momento.noche);
+      expect(Momento.de(DateTime(2026, 1, 1, 3)), Momento.noche);
+      expect(Momento.de(DateTime(2026, 1, 1, 7)), Momento.dia);
+    });
+
+    test('los dibujos de la casita viva existen', () {
+      for (final n in [
+        'noche',
+        'tarde',
+        for (final g in ['naranja', 'blanco']) ...[
+          'gatito_${g}_cola',
+          'parpadeo_$g',
+        ],
+        for (final c in ['camita', 'cama']) ...[
+          'dormidos_$c',
+          'zzz_${c}_1',
+          'zzz_${c}_2',
+        ],
+        for (final id in Casita.animadas) '${id}_2',
+        for (final id in Casita.conLuz) 'luz_$id',
+      ]) {
+        expect(File(Casita.asset(n)).existsSync(), isTrue, reason: 'falta $n');
+      }
+      for (final id in [...Casita.animadas, ...Casita.conLuz]) {
+        expect(Catalogo.porId(id), isNotNull, reason: id);
+      }
+    });
+
+    test('de noche se prenden las luces y duermen en la camita', () {
+      const e = EstadoCasita(
+        tenemos: {'camita_cojin', 'lampara_pie'},
+        puestos: {'camita': 'camita_cojin', 'lampara': 'lampara_pie'},
+        ropa: {
+          'naranja': {'cabeza': 'gorrito'},
+        },
+      );
+      final noche = e.capas(Cuarto.sala, true, Momento.noche);
+      expect(noche, contains(Casita.asset('dormidos_camita')));
+      expect(noche, contains(Casita.asset('noche')));
+      expect(noche, contains(Casita.asset('luz_lampara_pie')));
+      expect(noche, isNot(contains(Casita.asset('gatito_naranja'))));
+      // La luz va encima de la noche.
+      expect(
+        noche.indexOf(Casita.asset('luz_lampara_pie')),
+        greaterThan(noche.indexOf(Casita.asset('noche'))),
+      );
+
+      final dia = e.capas(Cuarto.sala, true, Momento.dia);
+      expect(dia, contains(Casita.asset('gatito_naranja')));
+      expect(dia, isNot(contains(Casita.asset('luz_lampara_pie'))));
+
+      // Sin camita, de noche se quedan despiertos.
+      expect(
+        EstadoCasita.vacio.capas(Cuarto.sala, true, Momento.noche),
+        contains(Casita.asset('gatito_naranja')),
+      );
+      // En la cocina no hay dónde dormir.
+      expect(e.duermen(Cuarto.cocina, Momento.noche), isFalse);
+    });
+
+    test('los gatitos parpadean y mueven la cola, y el pajarito se mueve', () {
+      const e = EstadoCasita(
+        tenemos: {'pajarito_azul'},
+        puestos: {'pajarito': 'pajarito_azul'},
+      );
+      final vistas = [
+        for (var t = 0; t < 26; t++) e.capas(Cuarto.sala, true, Momento.dia, t),
+      ];
+      bool alguna(String a) => vistas.any((v) => v.contains(Casita.asset(a)));
+      expect(alguna('parpadeo_naranja'), isTrue);
+      expect(alguna('parpadeo_blanco'), isTrue);
+      expect(alguna('gatito_naranja_cola'), isTrue);
+      expect(alguna('pajarito_azul_2'), isTrue);
+      // Quieto (tick 0), todo normal.
+      expect(vistas.first, contains(Casita.asset('gatito_naranja')));
+      expect(vistas.first, contains(Casita.asset('pajarito_azul')));
+      expect(
+        alguna('parpadeo_naranja') &&
+            !vistas.first.contains(Casita.asset('parpadeo_naranja')),
+        isTrue,
+      );
+    });
+
+    test('la foto pixelada se lee de Firestore y se baja de tonos', () {
+      final px = List.filled(Casita.fotoAncho * Casita.fotoAlto, 0xFF112233);
+      expect(EstadoCasita.fromMap({'foto': px}).foto, px);
+      expect(
+        EstadoCasita.fromMap({
+          'foto': [1, 2],
+        }).foto,
+        isNull,
+      );
+      expect(EstadoCasita.fromMap({}).foto, isNull);
+
+      final c = colores(Uint8List.fromList([250, 13, 100, 255, 0, 0, 0, 255]));
+      expect(c, [0xFFF01860, 0xFF000000]);
     });
   });
 
@@ -100,6 +205,30 @@ void main() {
       expect(CuartoCasita.queHay(66, 88, Cuarto.jardin), Lugar.estanque);
     });
 
+    test('las festividades caen en sus fechas', () {
+      bool activa(Festividad f, DateTime d) =>
+          f.activaEn(d, inicioPareja: DateTime(2024, 3, 9)) != null;
+      expect(Festividad.pascuaDe(2027), DateTime(2027, 3, 28));
+      expect(Festividad.pascuaDe(2026), DateTime(2026, 4, 5));
+      expect(activa(Festividad.navidad, DateTime(2026, 12, 24)), isTrue);
+      expect(activa(Festividad.navidad, DateTime(2026, 11, 23)), isFalse);
+      // Año Nuevo cruza de un año al otro.
+      expect(activa(Festividad.anioNuevo, DateTime(2026, 12, 31)), isTrue);
+      expect(activa(Festividad.anioNuevo, DateTime(2027, 1, 3)), isTrue);
+      expect(activa(Festividad.anioNuevoChino, DateTime(2027, 2, 6)), isTrue);
+      expect(activa(Festividad.anioNuevoChino, DateTime(2027, 2, 20)), isTrue);
+      expect(activa(Festividad.medioOtono, DateTime(2027, 9, 15)), isTrue);
+      expect(activa(Festividad.carnaval, DateTime(2027, 2, 6)), isTrue);
+      expect(activa(Festividad.aniversario, DateTime(2027, 3, 10)), isTrue);
+      expect(activa(Festividad.primavera, DateTime(2027, 9, 21)), isTrue);
+      final proximas = Festividad.proximas(DateTime(2026, 11, 23));
+      expect(proximas.first.$1, Festividad.navidad);
+      // Cada festividad tiene cosas a la venta.
+      for (final f in Festividad.values) {
+        expect(Catalogo.cosas.where((c) => c.fiesta == f), isNotEmpty);
+      }
+    });
+
     test('los cuartos nuevos se abren comprándolos', () {
       const cerrado = EstadoCasita.vacio;
       expect(cerrado.abierto(Cuarto.sala), isTrue);
@@ -110,6 +239,8 @@ void main() {
       });
       expect(e.abierto(Cuarto.cocina), isTrue);
       expect(e.capas(Cuarto.cocina), [
+        'assets/casita/pared_cocina_azulejos.png',
+        'assets/casita/piso_cocina_terracota.png',
         'assets/casita/cuarto_cocina.png',
         'assets/casita/refri_azul.png',
         'assets/casita/gatito_naranja.png',
@@ -144,7 +275,7 @@ void main() {
     setUp(() {
       final view =
           TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
-      view.physicalSize = const Size(390, 1600);
+      view.physicalSize = const Size(390, 2600);
       view.devicePixelRatio = 1;
     });
     tearDown(() {
@@ -161,6 +292,7 @@ void main() {
       List<(Cosa, String?)>? compras,
       List<(Lugar, Cosa?)>? puestos,
       Cuarto? cuarto,
+      DateTime? hoy,
     }) => MaterialApp(
       home: CasitaView(
         estado: estado,
@@ -178,6 +310,8 @@ void main() {
         onPoner: (l, c) async => puestos?.add((l, c)),
         onVestir: (_, _, _) async {},
         cuartoInicial: cuarto,
+        hoy: hoy ?? DateTime(2026, 11, 23),
+        inicioPareja: DateTime(2024, 3, 9),
       ),
     );
 
@@ -187,7 +321,6 @@ void main() {
         pantalla(const EstadoCasita(pescaditos: 130), compras: compras),
       );
       expect(find.text('130'), findsOneWidget);
-      expect(find.text('Xixi respondió la pregunta del día'), findsOneWidget);
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
       expect(find.text('¿Comprar Sofá azul?'), findsOneWidget);
@@ -250,12 +383,53 @@ void main() {
       expect(compras.single.$1.id, 'cuarto_cocina');
     });
 
+    testWidgets('los movimientos dicen quién hizo qué', (t) async {
+      await t.pumpWidget(pantalla(EstadoCasita.vacio));
+      await t.scrollUntilVisible(
+        find.text('Xixi respondió la pregunta del día'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Xixi respondió la pregunta del día'), findsOneWidget);
+      expect(find.text('Próximas festividades'), findsOneWidget);
+    });
+
+    testWidgets('en diciembre se venden cosas de Navidad', (t) async {
+      final compras = <(Cosa, String?)>[];
+      // En noviembre no aparece el arbolito.
+      await t.pumpWidget(pantalla(const EstadoCasita(pescaditos: 300)));
+      expect(find.textContaining('De temporada'), findsNothing);
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 300),
+          compras: compras,
+          hoy: DateTime(2026, 12, 10),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(
+        find.textContaining(
+          'Navidad: cosas especiales hasta el 26 de diciembre',
+        ),
+        findsOneWidget,
+      );
+      await t.tap(find.text('🎄 De temporada'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Arbolito de Navidad'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'temporada_arbolito');
+    });
+
     testWidgets('la ropita se compra para un gatito', (t) async {
       final compras = <(Cosa, String?)>[];
       await t.pumpWidget(
         pantalla(const EstadoCasita(pescaditos: 200), compras: compras),
       );
-      await t.tap(find.text('Ropita'));
+      await t.ensureVisible(find.text('Accesorios'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Accesorios'));
       await t.pumpAndSettle();
       await t.tap(find.text('Corbatín'));
       await t.pumpAndSettle();

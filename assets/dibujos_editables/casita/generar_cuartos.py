@@ -31,22 +31,33 @@ NARANJA = (242, 166, 90)
 
 
 # ================================================================ bases
-def base_cocina():
+def pared_cocina(fondo, azulejo, junta):
     c = Capa()
-    # Pared crema con azulejos celestes a media altura
-    c.rect(2, TECHO, ANCHO - 4, PARED_FIN - TECHO, (240, 232, 214))
+    c.rect(2, TECHO, ANCHO - 4, PARED_FIN - TECHO, fondo)
     for y in range(34, PARED_FIN - 2, 4):
         for x in range(2, ANCHO - 2, 4):
-            c.rect(x, y, 4, 4, CELESTE)
+            c.rect(x, y, 4, 4, azulejo)
             c.px(x, y, BLANCO)
-        c.hline(2, y + 3, ANCHO - 4, (170, 200, 224))
-    # Piso de baldosas terracota
-    for y in range(PARED_FIN, PISO_FIN, 6):
-        for x in range(2, ANCHO - 2, 6):
-            claro = ((x // 6) + (y // 6)) % 2 == 0
-            c.rect(x, y, 6, 6, (222, 160, 120) if claro else (206, 140, 102))
+        c.hline(2, y + 3, ANCHO - 4, junta)
+    return c
+
+
+def piso_cocina(a, b, tam=6, linea=None):
+    c = Capa()
+    for y in range(PARED_FIN, PISO_FIN, tam):
+        for x in range(2, ANCHO - 2, tam):
+            claro = ((x // tam) + (y // tam)) % 2 == 0
+            c.rect(x, y, tam, tam, a if claro else b)
+    if linea:
+        for y in range(PARED_FIN + 3, PISO_FIN, 4):
+            c.hline(2, y, ANCHO - 4, linea)
     c.hline(2, PARED_FIN, ANCHO - 4, MADERA_OSC)
-    # Mesón con lavaplatos (entre la estufa y la mesa)
+    return c
+
+
+def base_cocina():
+    """Lo fijo de la cocina: el mesón con lavaplatos."""
+    c = Capa()
     c.caja(36, 46, 22, 15, (236, 228, 214), TRAZO)
     c.rect(37, 46, 20, 3, BLANCO)
     c.hline(36, 49, 22, TRAZO)
@@ -57,24 +68,43 @@ def base_cocina():
     return c
 
 
-def base_dormitorio():
+def pared_dorm(fondo, raya, punto=BLANCO):
     c = Capa()
-    c.rect(2, TECHO, ANCHO - 4, PARED_FIN - TECHO, (214, 222, 242))
+    c.rect(2, TECHO, ANCHO - 4, PARED_FIN - TECHO, fondo)
     for x in range(6, ANCHO - 2, 8):
-        c.vline(x, TECHO, PARED_FIN - TECHO, (200, 210, 236))
+        c.vline(x, TECHO, PARED_FIN - TECHO, raya)
     for y in range(TECHO + 4, PARED_FIN - 4, 8):
         for x in range(10 + (y // 8) % 2 * 4, ANCHO - 4, 8):
-            c.px(x, y, BLANCO)
+            c.px(x, y, punto)
     c.rect(2, PARED_FIN - 3, ANCHO - 4, 3, MADERA_CLARA)
     c.hline(2, PARED_FIN - 3, ANCHO - 4, BLANCO)
     c.hline(2, PARED_FIN - 1, ANCHO - 4, MADERA_OSC)
+    return c
+
+
+def piso_dorm_madera():
+    c = Capa()
     tonos = [(150, 104, 74), (164, 114, 80), (140, 96, 68)]
     for i, y in enumerate(range(PARED_FIN, PISO_FIN, 4)):
         c.rect(2, y, ANCHO - 4, 4, tonos[i % 3])
         c.hline(2, y + 3, ANCHO - 4, (110, 74, 52))
         for x in range(10 + (i * 11) % 20, ANCHO - 2, 22):
             c.vline(x, y, 3, (110, 74, 52))
-    # Ventanita redonda
+    return c
+
+
+def piso_dorm_moqueta(color, punto):
+    c = Capa()
+    c.rect(2, PARED_FIN, ANCHO - 4, PISO_FIN - PARED_FIN, color)
+    for y in range(PARED_FIN + 2, PISO_FIN, 3):
+        for x in range(3 + (y % 2) * 2, ANCHO - 2, 4):
+            c.px(x, y, punto)
+    return c
+
+
+def base_dormitorio():
+    """Lo fijo del dormitorio: la ventanita redonda."""
+    c = Capa()
     c.elipse(34, 26, 6, 6, BLANCO, TRAZO)
     c.elipse(34, 26, 4, 4, AZUL_OSC)
     c.px(35, 24, AMARILLO)
@@ -82,34 +112,49 @@ def base_dormitorio():
     return c
 
 
-def base_jardin():
+def cielo(tonos, adorno):
     c = Capa()
-    # Cielo con degradé
-    cielos = [(170, 210, 240), (186, 220, 244), (202, 230, 248), (218, 238, 250)]
     for i, y in enumerate(range(TECHO, 50)):
-        c.hline(2, y, ANCHO - 4, cielos[min(3, i // 9)])
-    # Nubes y sol
+        c.hline(2, y, ANCHO - 4, tonos[min(len(tonos) - 1, i * len(tonos) // 36)])
+    adorno(c)
+    return c
+
+
+def cielo_dia_adorno(c):
     c.sprite(8, 20, ["..www..", ".wwwwww", "wwwwwww"], {"w": BLANCO})
     c.sprite(30, 26, [".www.", "wwwww"], {"w": BLANCO})
     c.elipse(42, 20, 3, 3, AMARILLO)
-    # Lomas
+
+
+def cielo_atardecer_adorno(c):
+    c.elipse(40, 44, 6, 6, (252, 210, 120))
+    c.sprite(10, 22, ["..ppp..", ".pppppp"], {"p": (250, 200, 190)})
+    c.sprite(28, 30, [".pp.", "pppp"], {"p": (250, 200, 190)})
+
+
+def cielo_noche_adorno(c):
+    c.sprite(36, 18, [".yy.", "yy..", "yy..", ".yy."], {"y": AMARILLO})
+    for (x, y) in [(8, 18), (16, 30), (24, 22), (48, 26), (12, 40), (28, 38), (44, 36), (6, 28), (52, 18)]:
+        c.px(x, y, BLANCO)
+
+
+def base_jardin():
+    """Lo fijo del jardín: lomas, cerca, pasto y caminito."""
+    c = Capa()
     for x in range(2, ANCHO - 2):
         alto = int(4 + 3 * abs(((x % 40) - 20) / 20.0))
         c.vline(x, 50 - alto, alto, PASTO_CLARO)
-    # Cerca
     c.rect(2, 46, ANCHO - 4, 2, BLANCO)
     c.rect(2, 52, ANCHO - 4, 2, BLANCO)
     for x in range(4, ANCHO - 2, 6):
         c.rect(x, 42, 3, 15, BLANCO)
         c.px(x + 1, 41, BLANCO)
         c.vline(x + 2, 43, 14, GRIS_CLARO)
-    # Pasto
     for y in range(56, PISO_FIN):
         c.hline(2, y, ANCHO - 4, PASTO if (y // 3) % 2 else (140, 196, 116))
     c.hline(2, 56, ANCHO - 4, PASTO_OSC)
     for (x, y) in [(6, 62), (18, 90), (30, 60), (64, 64), (72, 70), (10, 78), (46, 96), (70, 92), (38, 64)]:
         c.sprite(x, y, ["g.g", ".g."], {"g": PASTO_OSC})
-    # Caminito de piedras
     for (x, y) in [(36, 92), (44, 94), (40, 98)]:
         c.elipse(x, y, 3, 1, PIEDRA, PIEDRA_OSC)
     return c
@@ -230,9 +275,8 @@ def mesa(mantel, raya):
     c.hline(x + 1, y + 7, 16, TRAZO)
     c.vline(x + 3, y + 8, 8, MADERA_OSC)
     c.vline(x + 14, y + 8, 8, MADERA_OSC)
-    # Pastelito y florero
-    c.sprite(x + 2, y - 5, [".pp.", "pPPp", "kkkk"], {"p": ROSA_CLARO, "P": ROSA_OSC, "k": BLANCO})
-    c.sprite(x + 11, y - 7, [".r.", "rgr", ".g.", "bbb", "bbb"],
+    # Florerito (la comida va al lado, en su propia capa)
+    c.sprite(x + 14, y - 5, [".r.", "rgr", ".g.", "bbb", "bbb"],
              {"r": ROJO, "g": VERDE, "b": AGUA_CLARA})
     return c
 
@@ -535,6 +579,26 @@ def main():
     base_cocina().guardar("cuarto_cocina")
     base_dormitorio().guardar("cuarto_dormitorio")
     base_jardin().guardar("cuarto_jardin")
+
+    pared_cocina((240, 232, 214), CELESTE, (170, 200, 224)).guardar("pared_cocina_azulejos")
+    pared_cocina((248, 226, 226), ROSA_CLARO, (226, 170, 170)).guardar("pared_cocina_rosa")
+    pared_cocina((228, 240, 226), (196, 226, 200), (150, 196, 160)).guardar("pared_cocina_menta")
+    pared_cocina((250, 240, 206), (250, 222, 150), (220, 180, 100)).guardar("pared_cocina_amarilla")
+    piso_cocina((222, 160, 120), (206, 140, 102)).guardar("piso_cocina_terracota")
+    piso_cocina((245, 242, 236), (60, 64, 80), tam=7).guardar("piso_cocina_ajedrez")
+    piso_cocina(MADERA_CLARA, MADERA_CLARA, linea=MADERA_OSC).guardar("piso_cocina_madera")
+
+    pared_dorm((214, 222, 242), (200, 210, 236)).guardar("pared_dorm_celeste")
+    pared_dorm(LILA, (190, 184, 224)).guardar("pared_dorm_lila")
+    pared_dorm((244, 236, 222), (234, 224, 206), ROSA).guardar("pared_dorm_crema")
+    pared_dorm(AZUL_OSC, (36, 48, 100), AMARILLO).guardar("pared_dorm_noche")
+    piso_dorm_madera().guardar("piso_dorm_madera")
+    piso_dorm_moqueta((200, 200, 206), (184, 184, 192)).guardar("piso_dorm_moqueta")
+    piso_dorm_moqueta((240, 210, 214), (226, 190, 196)).guardar("piso_dorm_rosa")
+
+    cielo([(170, 210, 240), (186, 220, 244), (202, 230, 248), (218, 238, 250)], cielo_dia_adorno).guardar("cielo_dia")
+    cielo([(120, 110, 180), (220, 140, 160), (246, 180, 140), (250, 214, 160)], cielo_atardecer_adorno).guardar("cielo_atardecer")
+    cielo([(24, 30, 70), (34, 44, 96), (44, 58, 120)], cielo_noche_adorno).guardar("cielo_noche")
     marco_jardin().guardar("marco_jardin")
 
     refri((244, 238, 226), BLANCO, GRIS).guardar("refri_crema")
