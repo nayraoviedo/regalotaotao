@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
+import '../tutorial/tutorial_screen.dart';
 import '../../widgets/user_avatar.dart';
 import '../together/elegir_gatito.dart';
 import 'datos_curiosos_screen.dart';
@@ -261,6 +262,24 @@ class ProfileScreen extends StatelessWidget {
                             const SnackBar(content: Text('Código copiado')),
                           );
                         },
+                      ),
+                    ),
+                  ),
+                  Card(
+                    child: ListTile(
+                      leading: Doodle(
+                        Icons.lightbulb_outline,
+                        color: AppTheme.azul,
+                      ),
+                      title: const Text('Ver el tutorial'),
+                      subtitle: const Text(
+                        'Los gatitos te muestran la app otra vez',
+                      ),
+                      trailing: const Doodle(Icons.chevron_right),
+                      onTap: () => TutorialScreen.abrir(
+                        context,
+                        me: user,
+                        partner: partner,
                       ),
                     ),
                   ),
