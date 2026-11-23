@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,8 +18,8 @@ import '../together/gatitos.dart';
 ///   - `guia_naranja.png`, `guia_blanco.png`: los gatitos que hablan.
 ///   - `<clave>.png` de cada página (`bienvenida`, `inicio`, `animo`,
 ///     `pomodoro`, `pregunta`, `notas`, `nosotros`, `casita`, `widget`,
-///     `listo`): la ilustración de arriba. Si no existe, se usa un dibujo
-///     que ya tiene la app.
+///     `listo`): la ilustración de arriba. Las que no vienen con PNG
+///     (`pregunta`, `notas`, `nosotros`, `widget`) muestran doodles.
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key, required this.me, this.partner});
 
@@ -81,7 +80,6 @@ class PaginaTutorial {
     required this.guia,
     required this.titulo,
     required this.texto,
-    this.dibujo,
     this.doodles = const [],
     this.donde,
   });
@@ -94,10 +92,7 @@ class PaginaTutorial {
   /// `{pareja}` se cambia por el nombre de la pareja.
   final String texto;
 
-  /// Dibujo de la app que se usa si no hay PNG propio.
-  final String? dibujo;
-
-  /// Si no hay [dibujo]: doodles que se muestran en fila.
+  /// Si no hay `assets/tutorial/<clave>.png`: doodles que se muestran en fila.
   final List<String> doodles;
 
   /// Dónde se encuentra (se muestra como etiqueta).
@@ -112,7 +107,6 @@ const _todas = [
     texto:
         'Somos sus gatitos y les vamos a mostrar su rinconcito. '
         'Es cortito, lo prometemos.',
-    dibujo: 'assets/images/inicio_cielo.png',
   ),
   PaginaTutorial(
     clave: 'inicio',
@@ -121,7 +115,6 @@ const _todas = [
     texto:
         'En el Inicio ven el ánimo de los dos y su racha. Con Te extraño, '
         'Beso y Abrazo le mandas un mimo a {pareja} y le llega al momento.',
-    dibujo: 'assets/animaciones/abrazo_naranja_1.png',
     donde: 'Inicio',
   ),
   PaginaTutorial(
@@ -131,7 +124,6 @@ const _todas = [
     texto:
         'Cuéntanos tu ánimo con un dibujito. Si hay estrés, tristeza o '
         'ansiedad, te invitamos a respirar con nosotros un ratito.',
-    dibujo: 'assets/images/respira_inhala.png',
     donde: 'Inicio › Mi ánimo',
   ),
   PaginaTutorial(
@@ -141,7 +133,6 @@ const _todas = [
     texto:
         'Uno invita y el otro acepta. Se concentran al mismo tiempo, pueden '
         'poner música juntos y al terminar les avisamos con un maullido.',
-    dibujo: 'assets/images/pomodoro_juntos.png',
     donde: 'Inicio › Pomodoro',
   ),
   PaginaTutorial(
@@ -183,7 +174,6 @@ const _todas = [
     texto:
         'Todo lo que hacen juntos les da pescaditos. Con ellos nos compran '
         'muebles, ropita y stickers en la tienda.',
-    dibujo: 'assets/casita/casa_fachada.png',
     donde: 'Inicio › Casita',
   ),
   PaginaTutorial(
@@ -203,7 +193,6 @@ const _todas = [
     texto:
         'Si quieren volver a vernos explicar, entren a Perfil y toquen '
         '"Ver el tutorial".',
-    dibujo: 'assets/animaciones/beso_naranja_2.png',
   ),
 ];
 
@@ -420,47 +409,46 @@ class _Pagina extends StatelessWidget {
   }
 }
 
-/// Dibujo de arriba: el PNG propio de `assets/tutorial/` o uno de la app.
+/// Dibujo de arriba: `assets/tutorial/<clave>.png`. Si no está (o no se
+/// puede leer), se muestran los doodles de la página o los dos gatitos.
 class _Ilustracion extends StatelessWidget {
   const _Ilustracion({required this.pagina});
   final PaginaTutorial pagina;
 
   @override
   Widget build(BuildContext context) {
+    // El cielo del inicio va pegado abajo y arriba sigue el azul del cielo.
+    final cielo = pagina.clave == 'bienvenida';
+
     Widget respaldo() {
-      final dibujo = pagina.dibujo;
-      if (dibujo != null) {
-        final cielo = pagina.clave == 'bienvenida';
-        return Image.asset(
-          dibujo,
-          width: double.infinity,
-          height: double.infinity,
-          fit: cielo ? BoxFit.fitWidth : BoxFit.contain,
-          alignment: cielo ? Alignment.bottomCenter : Alignment.center,
-          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-        );
-      }
+      final doodles = pagina.doodles;
       return FittedBox(
         fit: BoxFit.scaleDown,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final (i, d) in pagina.doodles.indexed)
-              Transform.rotate(
-                angle: (i.isEven ? -1 : 1) * 0.08,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Doodle(null, nombre: d, size: 96),
+            if (doodles.isEmpty)
+              for (final g in Gatito.values)
+                Image.asset(
+                  'assets/tutorial/guia_${g.id}.png',
+                  width: 160,
+                  height: 160,
+                  errorBuilder: (_, _, _) => GatitoImagen(g, size: 160),
+                )
+            else
+              for (final (i, d) in doodles.indexed)
+                Transform.rotate(
+                  angle: (i.isEven ? -1 : 1) * 0.08,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Doodle(null, nombre: d, size: 96),
+                  ),
                 ),
-              ),
           ],
         ),
       );
     }
 
-    // El cielo del inicio va pegado abajo y arriba sigue el azul del cielo.
-    final cielo = pagina.clave == 'bienvenida';
-    final propio = 'assets/tutorial/${pagina.clave}.png';
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -473,17 +461,14 @@ class _Ilustracion extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       padding: cielo ? EdgeInsets.zero : const EdgeInsets.all(16),
-      child: FutureBuilder<bool>(
-        future: _existe(propio),
-        builder: (context, snap) {
-          if (!snap.hasData) return const SizedBox.shrink();
-          if (snap.data != true) return respaldo();
-          return Image.asset(
-            propio,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => respaldo(),
-          );
-        },
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/tutorial/${pagina.clave}.png',
+        width: double.infinity,
+        height: double.infinity,
+        fit: cielo ? BoxFit.fitWidth : BoxFit.contain,
+        alignment: cielo ? Alignment.bottomCenter : Alignment.center,
+        errorBuilder: (_, _, _) => respaldo(),
       ),
     );
   }
@@ -491,22 +476,6 @@ class _Ilustracion extends StatelessWidget {
 
 /// Color de arriba de `inicio_cielo.png`.
 const _azulCielo = Color(0xFF202C64);
-
-/// Los dibujos propios de `assets/tutorial/` que existen (se lee una vez, así
-/// en la web no se piden archivos que no están).
-Future<Set<String>>? _assetsTutorial;
-
-Future<bool> _existe(String asset) async {
-  _assetsTutorial ??= AssetManifest.loadFromAssetBundle(rootBundle)
-      .then(
-        (m) => m
-            .listAssets()
-            .where((a) => a.startsWith('assets/tutorial/'))
-            .toSet(),
-      )
-      .catchError((_) => <String>{});
-  return (await _assetsTutorial!).contains(asset);
-}
 
 /// El gatito que habla, rebotando despacito.
 class _GatitoGuia extends StatelessWidget {
