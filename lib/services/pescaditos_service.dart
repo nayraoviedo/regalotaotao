@@ -192,6 +192,7 @@ class PescaditosService {
     Cosa cosa, {
     String? gatito,
     Regalo? regalo,
+    bool aprobada = false,
   }) async {
     final estadoRef = _estado(coupleId);
     final movRef = _movs(coupleId).doc('compra_${cosa.id}');
@@ -214,6 +215,8 @@ class PescaditosService {
         'pescaditos': hay - cosa.precio,
         'ultimoMov': movRef.id,
         'tenemos': FieldValue.arrayUnion([cosa.id]),
+        // Al aprobar una compra grande, la propuesta se cierra.
+        if (aprobada) 'propuesta': FieldValue.delete(),
         // Con esto se llenó la alcancía.
         if (d['meta'] == cosa.id) 'meta': FieldValue.delete(),
         if (regalo != null)
@@ -254,6 +257,33 @@ class PescaditosService {
       _estado(coupleId).set({
         'puestos': {lugar.name: cosa?.id ?? ''},
       }, SetOptions(merge: true));
+
+  /// Propone una compra grande: la pareja la tiene que aprobar.
+  Future<void> proponer(
+    String coupleId,
+    String uid,
+    Cosa cosa, {
+    String? gatito,
+  }) async {
+    final p = Propuesta(
+      id: '${cosa.id}_${DateTime.now().millisecondsSinceEpoch}',
+      cosa: cosa.id,
+      de: uid,
+      gatito: gatito,
+    );
+    await _estado(coupleId)
+        .set({'propuesta': p.toMap()}, SetOptions(merge: true));
+    NotifyService.instance.send(NotifyKind.propuesta, coupleId, 'estado');
+  }
+
+  /// La pareja aprueba la compra propuesta: se compra con los pescaditos
+  /// de los dos.
+  Future<void> aprobar(String coupleId, String uid, Propuesta p) =>
+      comprar(coupleId, uid, p.queCosa!, gatito: p.gatito, aprobada: true);
+
+  /// Cancela o rechaza la compra propuesta.
+  Future<void> descartarPropuesta(String coupleId) =>
+      _estado(coupleId).update({'propuesta': FieldValue.delete()});
 
   /// Abre un regalo sorpresa: deja de estar envuelto y se pone en la
   /// casita (la ropita, al gatito que eligió quien lo regaló).

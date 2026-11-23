@@ -328,6 +328,8 @@ void main() {
       List<Cosa?>? metas,
       List<(Cosa, String?, String)>? regalos,
       List<Cosa>? abiertos,
+      List<Cosa>? propuestas,
+      List<Propuesta>? aprobadas,
       AppUser? yo,
     }) => MaterialApp(
       home: CasitaView(
@@ -350,6 +352,11 @@ void main() {
         onAbrirRegalo: abiertos == null
             ? null
             : (c, _) async => abiertos.add(c),
+        onProponer: propuestas == null
+            ? null
+            : (c, _) async => propuestas.add(c),
+        onAprobar: aprobadas == null ? null : (p) async => aprobadas.add(p),
+        onDescartar: () async {},
         onPoner: (l, c) async => puestos?.add((l, c)),
         onVestir: (_, _, _) async {},
         cuartoInicial: cuarto,
@@ -467,6 +474,67 @@ void main() {
       await t.tap(find.text('¡Gracias! Ponerlo en la casita'));
       await t.pumpAndSettle();
       expect(abiertos.single.id, 'sofa_rosa');
+    });
+
+    testWidgets('una compra grande la aprueba la pareja', (t) async {
+      final propuestas = <Cosa>[];
+      final compras = <(Cosa, String?)>[];
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 300),
+          propuestas: propuestas,
+          compras: compras,
+          aprobadas: [],
+        ),
+      );
+      // Lo chiquito se compra directo.
+      await t.ensureVisible(find.text('Planta'));
+      await t.tap(find.text('Planta'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Cactus'));
+      await t.pumpAndSettle();
+      expect(find.text('Comprar'), findsOneWidget);
+      await t.tap(find.text('Todavía no'));
+      await t.pumpAndSettle();
+
+      // Lo grande (más de 100) se le pide a la pareja.
+      await t.ensureVisible(find.text('Sofá'));
+      await t.tap(find.text('Sofá'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Sofá azul'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('Xixi tiene que aprobarla'), findsOneWidget);
+      await t.tap(find.text('Pedirle el sí'));
+      await t.pumpAndSettle();
+      expect(propuestas.single.id, 'sofa_azul');
+      expect(compras, isEmpty);
+    });
+
+    testWidgets('la pareja ve la propuesta y la aprueba', (t) async {
+      const estado = EstadoCasita(
+        pescaditos: 300,
+        propuesta: Propuesta(id: 'p1', cosa: 'sofa_azul', de: 'a'),
+      );
+      final aprobadas = <Propuesta>[];
+      // nayra la propuso: espera.
+      await t.pumpWidget(pantalla(estado, aprobadas: aprobadas));
+      await t.pumpAndSettle();
+      expect(find.text('Esperando que Xixi apruebe Sofá azul'), findsOneWidget);
+      expect(find.text('¡Sí, comprarlo!'), findsNothing);
+
+      // Xixi la aprueba.
+      await t.pumpWidget(
+        pantalla(
+          estado,
+          aprobadas: aprobadas,
+          yo: AppUser(uid: 'b', name: 'Xixi', pairCode: ''),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('nayra quiere comprar Sofá azul'), findsOneWidget);
+      await t.tap(find.text('¡Sí, comprarlo!'));
+      await t.pumpAndSettle();
+      expect(aprobadas.single.cosa, 'sofa_azul');
     });
 
     testWidgets('lo que ya tienen se pone o se quita', (t) async {
