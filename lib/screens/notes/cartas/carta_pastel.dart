@@ -252,16 +252,16 @@ class CelebracionInicio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titulo = switch (celebracion) {
-      Celebracion.cumple => '¡Hoy es el cumple de $partnerName! 🎂',
+      Celebracion.cumple => '¡Hoy es el cumple de $partnerName!',
       Celebracion.aniversario =>
         anios == null
-            ? '¡Hoy es su aniversario! 💞'
+            ? '¡Hoy es su aniversario!'
             : '¡Hoy cumplen ${anios == 1 ? 'un año' : '$anios años'} '
-                  'juntos! 💞',
+                  'juntos!',
     };
     final texto = yaMandaste
-        ? 'Ya le mandaste su pastel y su carta. ¿Le escribes otra?'
-        : 'Mándale un pastel con velitas y una carta especial.';
+        ? 'Ya le mandaste sus regalos y su carta. ¿Le escribes otra?'
+        : 'Mándale un pastel, flores o regalitos con una carta especial.';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -361,7 +361,7 @@ Future<bool> mostrarLlegadaPastel(
   return showGeneralDialog<bool>(
     context: context,
     barrierDismissible: false,
-    barrierColor: CartasStyle.azul.withValues(alpha: 0.6),
+    barrierColor: CartasStyle.azul.withValues(alpha: 0.88),
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (_, _, _) => LlegadaPastel(carta: carta, de: de),
     transitionBuilder: (_, anim, _, child) =>

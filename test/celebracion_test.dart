@@ -225,9 +225,9 @@ void main() {
     final hoy = DateTime(2026, 11, 23, 10);
     await t.pumpWidget(inicio(hoy));
     await t.pump();
-    expect(find.text('¡Hoy es el cumple de Xixi! 🎂'), findsOneWidget);
-    expect(find.text('¡Hoy cumplen 2 años juntos! 💞'), findsOneWidget);
-    await t.tap(find.text('¡Hoy es el cumple de Xixi! 🎂'));
+    expect(find.text('¡Hoy es el cumple de Xixi!'), findsOneWidget);
+    expect(find.text('¡Hoy cumplen 2 años juntos!'), findsOneWidget);
+    await t.tap(find.text('¡Hoy es el cumple de Xixi!'));
     expect(pedidos, [Celebracion.cumple]);
 
     // Si ya le mandó su pastel, se lo dice.
@@ -249,6 +249,6 @@ void main() {
       ),
     );
     await t.pump();
-    expect(find.textContaining('Ya le mandaste su pastel'), findsOneWidget);
+    expect(find.textContaining('Ya le mandaste sus regalos'), findsOneWidget);
   });
 }
