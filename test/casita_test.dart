@@ -595,8 +595,8 @@ void main() {
       await t.pumpWidget(
         pantalla(const EstadoCasita(tenemos: {'tema_lavanda'})),
       );
-      await t.ensureVisible(find.text('✨ Temas y stickers'));
-      await t.tap(find.text('✨ Temas y stickers'));
+      await t.ensureVisible(find.text('✨ Especiales'));
+      await t.tap(find.text('✨ Especiales'));
       await t.pumpAndSettle();
       expect(find.text('Stickers de gatitos'), findsOneWidget);
       await t.tap(find.text('Tema lavanda'));

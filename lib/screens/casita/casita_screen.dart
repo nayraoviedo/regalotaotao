@@ -12,6 +12,9 @@ import '../notes/tablero/formas.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
 import 'cuarto.dart';
+import '../../widgets/doodle.dart';
+import '../notes/cartas/carta_screen.dart';
+import '../notes/cartas/carta_sorpresa.dart';
 
 /// "Nuestra casita": el cuarto de los gatitos, la tienda y cómo se ganan
 /// los pescaditos.
@@ -63,6 +66,18 @@ class CasitaScreen extends StatelessWidget {
               servicio.proponer(coupleId, me.uid, cosa, gatito: gatito),
           onAprobar: (p) => servicio.aprobar(coupleId, me.uid, p),
           onDescartar: () => servicio.descartarPropuesta(coupleId),
+          onCartaSorpresa: partner == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => EscribirCartaScreen(
+                      uid: me.uid,
+                      partnerUid: partner!.uid,
+                      coupleId: coupleId,
+                      sorpresa: true,
+                    ),
+                  ),
+                ),
         ),
       ),
     );
@@ -87,6 +102,7 @@ class CasitaView extends StatefulWidget {
     this.onProponer,
     this.onAprobar,
     this.onDescartar,
+    this.onCartaSorpresa,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -116,6 +132,9 @@ class CasitaView extends StatefulWidget {
   final Future<void> Function(Cosa cosa, String? gatito)? onProponer;
   final Future<void> Function(Propuesta propuesta)? onAprobar;
   final Future<void> Function()? onDescartar;
+
+  /// Escribir una carta sorpresa animada (se paga al mandarla).
+  final VoidCallback? onCartaSorpresa;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -167,7 +186,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catRopa => 'Ropa',
     _catRopita => 'Accesorios',
     _catEpoca => 'De época',
-    _catEspecial => '✨ Temas y stickers',
+    _catEspecial => '✨ Especiales',
     _ => Lugar.deId(cat)?.nombre ?? cat,
   };
 
@@ -824,6 +843,8 @@ class _CasitaViewState extends State<CasitaView> {
               onElegir: () => _elegirFoto(_cuadroFoto),
               onQuitar: () => widget.onFoto!(null),
             ),
+          if (_categoria == _catEspecial && widget.onCartaSorpresa != null)
+            _CartaSorpresaEnTienda(onTap: widget.onCartaSorpresa!),
           _Vitrina(
             cosas: _cosasDe(_categoria),
             estado: _estado,
@@ -1759,6 +1780,68 @@ class VistaEspecial extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// En la tienda: la carta sorpresa (no se compra para la casita, se paga
+/// cada vez que se manda una).
+class _CartaSorpresaEnTienda extends StatelessWidget {
+  const _CartaSorpresaEnTienda({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 84,
+                  height: 64,
+                  child: GatitosConSobre(paso: 0.1, alto: 64),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Carta sorpresa',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.azul,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Los gatitos se la llevan a tu pareja con un sobre '
+                        'animado.',
+                        style: TextStyle(fontSize: 12.5, color: AppTheme.gris),
+                      ),
+                      const SizedBox(height: 4),
+                      Pescaditos(
+                        Casita.precioCartaSorpresa,
+                        tamano: 14,
+                        color: AppTheme.azul,
+                      ),
+                    ],
+                  ),
+                ),
+                Doodle(Icons.edit, color: AppTheme.azul),
+              ],
+            ),
+          ),
         ),
       ),
     );

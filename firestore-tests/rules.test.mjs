@@ -211,6 +211,19 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('nadie borra un movimiento', deleteDoc(doc(db('B'),'couples/c1/casitaMovs/pomodoro_l1')));
   await no('un movimiento suelto no entra', setDoc(doc(db('A'),'couples/c1/casitaMovs/pomodoro_l2'),{uid:'A',creadoEn:serverTimestamp(),tipo:'pomodoro',cantidad:10,ref:'l1'}));
   await ok('B ve la casita y los pescaditos', getDoc(doc(db('B'),'couples/c1/casita/estado')).then(s=>{ if(s.data().pescaditos!==115) throw new Error('pescaditos='+s.data().pescaditos); }));
+  // Cartas sorpresa animadas: 30 pescaditos, carta y pago juntos.
+  const sorpresa = (u, id, cantidad, pescaditos, carta={}) => {
+    const d = db(u); const b = writeBatch(d);
+    b.set(doc(d,'couples/c1/letters',id), {from:u,to:u==='A'?'B':'A',motivo:'sorpresa',cuando:'te llegue esta sorpresa',text:'¡Sorpresa!',papel:'cuadricula',sorpresa:true,openedAt:null,...carta});
+    b.set(doc(d,'couples/c1/casitaMovs','carta_'+id), {uid:u,creadoEn:serverTimestamp(),tipo:'carta',cantidad,ref:id});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos, ultimoMov:'carta_'+id}, {merge:true});
+    return b.commit();
+  };
+  await no('una carta sorpresa no sale gratis', setDoc(doc(db('A'),'couples/c1/letters/s0'),{from:'A',to:'B',motivo:'sorpresa',cuando:'te llegue esta sorpresa',text:'hola',papel:'cuadricula',sorpresa:true,openedAt:null}));
+  await no('la carta sorpresa cuesta 30, no 5', sorpresa('A','s1',-5,110));
+  await no('no se paga la carta de otro', sorpresa('A','s1',-30,85,{from:'B',to:'A'}));
+  await ok('A manda una carta sorpresa con 30 pescaditos', sorpresa('A','s1',-30,85));
+  await ok('B abre la carta sorpresa', updateDoc(doc(db('B'),'couples/c1/letters/s1'),{openedAt:serverTimestamp()}));
   await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
 }

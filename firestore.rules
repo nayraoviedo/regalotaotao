@@ -151,7 +151,11 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 5000
           && request.resource.data.cuando is string
           && request.resource.data.cuando.size() > 0
-          && request.resource.data.cuando.size() <= 60;
+          && request.resource.data.cuando.size() <= 60
+          // Una carta sorpresa se paga con pescaditos en el mismo momento.
+          && (request.resource.data.get('sorpresa', false) == false
+              || (request.resource.data.sorpresa == true
+                  && existsAfter(/databases/$(database)/documents/couples/$(coupleId)/casitaMovs/$('carta_' + letterId))));
         allow update: if isMember(coupleId)
           && me() == resource.data.to
           && resource.data.openedAt == null
@@ -235,6 +239,17 @@ service cloud.firestore {
             && s.status in ['accepted', 'finished']
             && s.startedAt is timestamp
             && request.time > s.startedAt + duration.value(s.minutes * 60 - 10, 's');
+        }
+        // Una carta sorpresa animada: 30 pescaditos por carta, y la carta
+        // (de esta persona, marcada como sorpresa) se crea a la vez.
+        function carta(d) {
+          let c = getAfter(/databases/$(database)/documents/couples/$(coupleId)/letters/$(d.ref));
+          return d.tipo == 'carta'
+            && d.ref is string
+            && movId == 'carta_' + d.ref
+            && d.cantidad == -30
+            && c.data.from == me()
+            && c.data.get('sorpresa', false) == true;
         }
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
@@ -582,12 +597,24 @@ service cloud.firestore {
             && (d.cantidad >= -100 || d.get('regalo', false) == true || aprobada(d))
             && d.ref in getAfter(estadoPath()).data.get('tenemos', []);
         }
+        // Una carta sorpresa animada: 30 pescaditos por carta, y la carta
+        // (de esta persona, marcada como sorpresa) se crea a la vez.
+        function carta(d) {
+          let c = getAfter(/databases/$(database)/documents/couples/$(coupleId)/letters/$(d.ref));
+          return d.tipo == 'carta'
+            && d.ref is string
+            && movId == 'carta_' + d.ref
+            && d.cantidad == -30
+            && c.data.from == me()
+            && c.data.get('sorpresa', false) == true;
+        }
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.uid == me()
           && request.resource.data.creadoEn == request.time
           && getAfter(estadoPath()).data.get('ultimoMov', null) == movId
-          && (ganancia(request.resource.data) || compra(request.resource.data));
+          && (ganancia(request.resource.data) || compra(request.resource.data)
+              || carta(request.resource.data));
         // Nadie los cambia ni los borra (el Worker marca el aviso con su
         // propia cuenta de servicio).
         allow update, delete: if false;

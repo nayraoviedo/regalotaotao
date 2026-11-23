@@ -15,6 +15,7 @@ class Carta {
     this.papel = Papel.cuadricula,
     this.createdAt,
     this.openedAt,
+    this.sorpresa = false,
   });
 
   final String id;
@@ -31,9 +32,18 @@ class Carta {
   final DateTime? createdAt;
   final DateTime? openedAt;
 
+  /// Carta sorpresa animada: se paga con pescaditos de la casita, llega
+  /// con los gatitos y se abre al momento.
+  final bool sorpresa;
+
+  /// Motivo y "cuándo" de las cartas sorpresa.
+  static const motivoSorpresa = 'sorpresa';
+  static const cuandoSorpresa = 'te llegue esta sorpresa';
+
   bool get abierta => openedAt != null;
 
-  String get etiqueta => 'Ábrelo cuando $cuando';
+  String get etiqueta =>
+      sorpresa ? 'Carta sorpresa ✨' : 'Ábrelo cuando $cuando';
 
   factory Carta.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
       Carta.fromData(doc.id, doc.data() ?? {});
@@ -48,6 +58,7 @@ class Carta {
     papel: Papel.byName(d['papel'] as String?),
     createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     openedAt: (d['openedAt'] as Timestamp?)?.toDate(),
+    sorpresa: d['sorpresa'] == true,
   );
 }
 

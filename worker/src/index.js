@@ -342,10 +342,16 @@ const KINDS = {
     collection: "letters",
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
     dedupeKey: () => "enviado",
-    message: (name, d) => ({
-      title: "✉️ Te llegó una carta",
-      body: `${name} te mandó un avioncito: ábrelo cuando ${String(d.cuando || "lo necesites").slice(0, 60)}`,
-    }),
+    message: (name, d) =>
+      d.sorpresa === true
+        ? {
+            title: "✨ ¡Carta sorpresa!",
+            body: `${name} te mandó una carta sorpresa: los gatitos te la están llevando`,
+          }
+        : {
+            title: "✉️ Te llegó una carta",
+            body: `${name} te mandó un avioncito: ábrelo cuando ${String(d.cuando || "lo necesites").slice(0, 60)}`,
+          },
   },
 };
 
