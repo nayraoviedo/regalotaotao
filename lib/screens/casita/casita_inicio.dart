@@ -39,7 +39,7 @@ class TarjetaCasita extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              SizedBox(width: 76, child: CuartoCasita(estado: estado)),
+              SizedBox(width: 76, child: CuartoVivo(estado: estado)),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

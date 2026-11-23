@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/casita.dart';
@@ -13,10 +15,18 @@ class CuartoCasita extends StatelessWidget {
     this.cuarto = Cuarto.sala,
     this.conMuebles = true,
     this.onToque,
+    this.momento = Momento.dia,
+    this.tick = 0,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
+
+  /// Día, tarde o noche (de noche se prenden las luces y duermen).
+  final Momento momento;
+
+  /// Paso de la animación (ver [EstadoCasita.capas]).
+  final int tick;
 
   /// En false se dibuja vacío (un cuarto que todavía no abren).
   final bool conMuebles;
@@ -42,11 +52,20 @@ class CuartoCasita extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foto = estado.foto;
+    final cuadroFoto = Catalogo.porId('cuadro_foto')?.asset;
     final capas = Stack(
       fit: StackFit.expand,
       children: [
-        for (final a in estado.capas(cuarto, conMuebles))
+        for (final a in estado.capas(cuarto, conMuebles, momento, tick)) ...[
           CapaCasita(a, key: ValueKey(a)),
+          // Su foto, pixelada, dentro del marco del cuadro.
+          if (foto != null && a == cuadroFoto && cuarto == Cuarto.sala)
+            CustomPaint(
+              key: const ValueKey('foto'),
+              painter: FotoPixelada(foto),
+            ),
+        ],
       ],
     );
     return AspectRatio(
@@ -68,6 +87,98 @@ class CuartoCasita extends StatelessWidget {
             ),
     );
   }
+}
+
+/// [CuartoCasita] que se mueve solo: cambia de día a noche según la hora
+/// real y anima a los gatitos y a los visitantes.
+class CuartoVivo extends StatefulWidget {
+  const CuartoVivo({
+    super.key,
+    required this.estado,
+    this.cuarto = Cuarto.sala,
+    this.onToque,
+    this.ahora,
+  });
+
+  final EstadoCasita estado;
+  final Cuarto cuarto;
+  final ToqueCasita? onToque;
+
+  /// Para fijar la hora (en las pruebas). Si falta, la hora real.
+  final DateTime? ahora;
+
+  /// En false no se anima (las pruebas lo apagan para poder esperar a que
+  /// todo quede quieto).
+  static bool animar = true;
+
+  static const paso = Duration(milliseconds: 350);
+
+  @override
+  State<CuartoVivo> createState() => _CuartoVivoState();
+}
+
+class _CuartoVivoState extends State<CuartoVivo> {
+  Timer? _timer;
+  int _tick = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (CuartoVivo.animar) {
+      _timer = Timer.periodic(CuartoVivo.paso, (_) {
+        if (mounted) setState(() => _tick++);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final quieto = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return CuartoCasita(
+      estado: widget.estado,
+      cuarto: widget.cuarto,
+      onToque: widget.onToque,
+      momento: Momento.de(widget.ahora ?? DateTime.now()),
+      tick: quieto ? 0 : _tick,
+    );
+  }
+}
+
+/// Pinta la foto pixelada en el hueco del cuadro (en un lienzo del tamaño
+/// del cuarto).
+class FotoPixelada extends CustomPainter {
+  FotoPixelada(this.colores);
+  final List<int> colores;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final px = size.width / Casita.ancho;
+    final py = size.height / Casita.alto;
+    final pincel = Paint()..isAntiAlias = false;
+    for (var j = 0; j < Casita.fotoAlto; j++) {
+      for (var i = 0; i < Casita.fotoAncho; i++) {
+        pincel.color = Color(colores[j * Casita.fotoAncho + i]);
+        canvas.drawRect(
+          Rect.fromLTWH(
+            (Casita.fotoX + i) * px,
+            (Casita.fotoY + j) * py,
+            px + 0.5,
+            py + 0.5,
+          ),
+          pincel,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(FotoPixelada old) => old.colores != colores;
 }
 
 /// Una capa PNG de la casita, sin suavizar los píxeles. Si falta el PNG,

@@ -1,6 +1,8 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
+import '../../services/foto_pixelada.dart';
 import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
@@ -42,6 +44,7 @@ class CasitaScreen extends StatelessWidget {
           onPoner: (lugar, cosa) => servicio.poner(coupleId, lugar, cosa),
           onVestir: (gatito, parte, cosa) =>
               servicio.vestir(coupleId, gatito, parte, cosa),
+          onFoto: (foto) => servicio.ponerFoto(coupleId, foto),
         ),
       ),
     );
@@ -59,6 +62,7 @@ class CasitaView extends StatefulWidget {
     required this.onComprar,
     required this.onPoner,
     required this.onVestir,
+    this.onFoto,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -72,6 +76,9 @@ class CasitaView extends StatefulWidget {
   final Future<void> Function(Cosa cosa, String? gatito) onComprar;
   final Future<void> Function(Lugar lugar, Cosa? cosa) onPoner;
   final Future<void> Function(String gatito, Parte parte, Cosa? cosa) onVestir;
+
+  /// Guarda (o quita, con `null`) su foto pixelada del cuadro.
+  final Future<void> Function(List<int>? foto)? onFoto;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -235,6 +242,32 @@ class _CasitaViewState extends State<CasitaView> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(texto)));
+  }
+
+  bool _subiendoFoto = false;
+  static final _cuadroFoto = Catalogo.porId('cuadro_foto')!;
+
+  /// Elige una foto, la pixela y la pone en el cuadro "Foto de los dos".
+  Future<void> _elegirFoto(Cosa cuadro) async {
+    setState(() => _subiendoFoto = true);
+    try {
+      final img = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      if (img == null) return;
+      final foto = await pixelarFoto(await img.readAsBytes());
+      await widget.onFoto!(foto);
+      if (_estado.puesto(Lugar.cuadro)?.id != cuadro.id) {
+        await widget.onPoner(Lugar.cuadro, cuadro);
+      }
+      _aviso('¡Listo! Su foto ya está en el cuadro de la sala.');
+    } catch (_) {
+      _aviso('No se pudo poner la foto. Prueba con otra.');
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
   }
 
   Future<void> _tocar(Cosa cosa) async {
@@ -462,11 +495,12 @@ class _CasitaViewState extends State<CasitaView> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),
               child: _estado.abierto(_cuarto)
-                  ? CuartoCasita(
+                  ? CuartoVivo(
                       key: ValueKey(_cuarto),
                       estado: _estado,
                       cuarto: _cuarto,
                       onToque: _elegir,
+                      ahora: widget.hoy,
                     )
                   : _CuartoCerrado(
                       key: ValueKey(_cuarto),
@@ -512,6 +546,15 @@ class _CasitaViewState extends State<CasitaView> {
                 'La comida se sirve en la mesa: primero pongan una.',
                 style: TextStyle(color: AppTheme.gris, fontSize: 13),
               ),
+            ),
+          if (_categoria == Lugar.cuadro.name &&
+              widget.onFoto != null &&
+              _estado.tiene(_cuadroFoto))
+            _FotoDelCuadro(
+              hayFoto: _estado.foto != null,
+              cargando: _subiendoFoto,
+              onElegir: () => _elegirFoto(_cuadroFoto),
+              onQuitar: () => widget.onFoto!(null),
             ),
           _Vitrina(
             cosas: _cosasDe(_categoria),
@@ -985,6 +1028,67 @@ class _ComoGanar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Para poner una foto real de los dos (pixelada) en el cuadro.
+class _FotoDelCuadro extends StatelessWidget {
+  const _FotoDelCuadro({
+    required this.hayFoto,
+    required this.cargando,
+    required this.onElegir,
+    required this.onQuitar,
+  });
+
+  final bool hayFoto;
+  final bool cargando;
+  final VoidCallback onElegir;
+  final VoidCallback onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.azul.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hayFoto
+                ? 'Su foto está en el cuadro "Foto de los dos".'
+                : 'Pongan una foto real de los dos en el cuadro: '
+                      'aparece pixelada en la pared.',
+            style: const TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonal(
+                onPressed: cargando ? null : onElegir,
+                child: Text(
+                  cargando
+                      ? 'Pixelando…'
+                      : hayFoto
+                      ? 'Cambiar foto'
+                      : 'Elegir foto',
+                ),
+              ),
+              if (hayFoto)
+                TextButton(
+                  onPressed: cargando ? null : onQuitar,
+                  child: const Text('Quitar foto'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

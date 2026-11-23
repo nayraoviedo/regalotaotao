@@ -32,6 +32,45 @@ class Casita {
 
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
+
+  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes.
+  static const animadas = {
+    'pajarito_azul',
+    'pajarito_canario',
+    'pajarito_rosa',
+    'pecera_pececito',
+    'pecera_pareja',
+  };
+
+  /// Cosas que se prenden de noche (tienen su halo `luz_{id}`).
+  static const conLuz = {
+    'lampara_pie',
+    'lampara_guirnalda',
+    'lampara_luna',
+    'lampara_papel',
+    'velador_lampara',
+    'farol',
+  };
+
+  /// Tamaño de la foto pixelada del cuadro y dónde va (en la sala).
+  static const fotoAncho = 14;
+  static const fotoAlto = 12;
+  static const fotoX = 50;
+  static const fotoY = 21;
+}
+
+/// Momento del día en la casita, según la hora real.
+enum Momento {
+  dia,
+  tarde,
+  noche;
+
+  /// De 7 a 17 es de día, de 18 a 19 de tarde y de 20 a 6 de noche.
+  static Momento de(DateTime t) => t.hour >= 20 || t.hour < 7
+      ? noche
+      : t.hour >= 18
+      ? tarde
+      : dia;
 }
 
 /// Los cuartos de la casita. La sala viene con la casita; los demás se
@@ -69,6 +108,8 @@ enum Lugar {
   piso('Piso', ZonaCasita(2, 60, 76, 40), inicial: 'piso_madera', fijo: true),
   alfombra('Alfombra', ZonaCasita(12, 72, 56, 26)),
   ventana('Ventana', ZonaCasita(4, 16, 34, 34), inicial: 'ventana_simple'),
+  pecera('Pecera', ZonaCasita(7, 34, 14, 12)),
+  pajarito('Pajarito', ZonaCasita(24, 36, 10, 10)),
   cuadro('Cuadro', ZonaCasita(46, 16, 22, 20)),
   adorno('Adorno', ZonaCasita(2, 14, 76, 14)),
   lampara('Luces', ZonaCasita(63, 28, 15, 34)),
@@ -270,6 +311,12 @@ class Catalogo {
     Cosa('cuadro_pescadito', 'Cuadro de pescadito', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_corazon', 'Cuadro de corazón', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_foto', 'Foto de los dos', 60, lugar: Lugar.cuadro),
+    // Visitantes (en la repisa de la ventana)
+    Cosa('pajarito_azul', 'Pajarito azul', 100, lugar: Lugar.pajarito),
+    Cosa('pajarito_canario', 'Canario', 100, lugar: Lugar.pajarito),
+    Cosa('pajarito_rosa', 'Pajarito rosado', 120, lugar: Lugar.pajarito),
+    Cosa('pecera_pececito', 'Pecera con pececito', 120, lugar: Lugar.pecera),
+    Cosa('pecera_pareja', 'Pecera de dos peces', 180, lugar: Lugar.pecera),
     // Luces
     Cosa('lampara_pie', 'Lámpara de pie', 50, lugar: Lugar.lampara),
     Cosa(
@@ -778,6 +825,7 @@ class EstadoCasita {
     this.tenemos = const {},
     this.puestos = const {},
     this.ropa = const {},
+    this.foto,
   });
 
   static const vacio = EstadoCasita();
@@ -795,6 +843,10 @@ class EstadoCasita {
   /// Ropa de cada gatito: `{naranja: {cabeza: 'gorrito'}, blanco: {...}}`.
   final Map<String, Map<String, String>> ropa;
 
+  /// Su foto pixelada para el cuadro: [Casita.fotoAncho] × [Casita.fotoAlto]
+  /// colores ARGB, fila por fila. `null` si no subieron ninguna.
+  final List<int>? foto;
+
   factory EstadoCasita.fromMap(Map<String, dynamic>? d) {
     if (d == null) return vacio;
     Map<String, String> strings(Object? m) => {
@@ -808,6 +860,13 @@ class EstadoCasita {
       ropa: {
         for (final e in ((d['ropa'] as Map?) ?? const {}).entries)
           e.key as String: strings(e.value),
+      },
+      foto: switch (d['foto']) {
+        final List l
+            when l.length == Casita.fotoAncho * Casita.fotoAlto &&
+                l.every((c) => c is int) =>
+          l.cast<int>(),
+        _ => null,
       },
     );
   }
@@ -849,23 +908,64 @@ class EstadoCasita {
 
   /// Capas para dibujar [cuarto], de atrás hacia adelante. Con
   /// [conMuebles] en false sale vacío (para mostrar un cuarto cerrado).
-  List<String> capas([Cuarto cuarto = Cuarto.sala, bool conMuebles = true]) => [
-    for (final l in cuarto.lugares)
-      if (l.fijo)
-        if (puesto(l) case final c?) c.asset,
-    if (cuarto.base case final b?) Casita.asset(b),
-    for (final l in cuarto.lugares)
-      if (!l.fijo && conMuebles)
-        // La comida solo se ve si hay una mesa donde ponerla.
-        if (l != Lugar.comida || puesto(Lugar.mesa) != null)
+  /// ¿Los gatitos duermen en este cuarto? De noche, si hay camita (en la
+  /// sala) o cama (en el dormitorio).
+  bool duermen(Cuarto cuarto, Momento momento) =>
+      momento == Momento.noche &&
+      switch (cuarto) {
+        Cuarto.sala => puesto(Lugar.camita) != null,
+        Cuarto.dormitorio => puesto(Lugar.cama) != null,
+        _ => false,
+      };
+
+  /// Las capas del cuarto, de atrás hacia adelante. [tick] avanza solo
+  /// (unas tres veces por segundo) para que la casita se mueva: los
+  /// gatitos parpadean y mueven la cola, y los visitantes se mueven.
+  List<String> capas([
+    Cuarto cuarto = Cuarto.sala,
+    bool conMuebles = true,
+    Momento momento = Momento.dia,
+    int tick = 0,
+  ]) {
+    String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
+        ? Casita.asset('${c.id}_2')
+        : c.asset;
+    final duermen = conMuebles && this.duermen(cuarto, momento);
+    final cama = cuarto == Cuarto.sala ? 'camita' : 'cama';
+    return [
+      for (final l in cuarto.lugares)
+        if (l.fijo)
           if (puesto(l) case final c?) c.asset,
-    for (final g in const ['naranja', 'blanco']) ...[
-      Casita.asset('gatito_$g'),
-      for (final p in Parte.values)
-        if (prenda(g, p) case final c?) c.assetRopa(g),
-    ],
-    Casita.asset(cuarto.marco),
-  ];
+      if (cuarto.base case final b?) Casita.asset(b),
+      for (final l in cuarto.lugares)
+        if (!l.fijo && conMuebles)
+          // La comida solo se ve si hay una mesa donde ponerla.
+          if (l != Lugar.comida || puesto(Lugar.mesa) != null)
+            if (puesto(l) case final c?) dibujo(c),
+      if (duermen) ...[
+        Casita.asset('dormidos_$cama'),
+        Casita.asset('zzz_${cama}_${tick % 6 < 3 ? 1 : 2}'),
+      ] else
+        for (final g in const ['naranja', 'blanco']) ...[
+          // Cada gatito mueve la cola a su ritmo y parpadea de vez en cuando.
+          Casita.asset(
+            (tick + (g == 'blanco' ? 3 : 0)) % 8 >= 6
+                ? 'gatito_${g}_cola'
+                : 'gatito_$g',
+          ),
+          if ((tick + (g == 'blanco' ? 7 : 0)) % 13 == 12)
+            Casita.asset('parpadeo_$g'),
+          for (final p in Parte.values)
+            if (prenda(g, p) case final c?) c.assetRopa(g),
+        ],
+      if (momento != Momento.dia) Casita.asset(momento.name),
+      if (momento == Momento.noche && conMuebles)
+        for (final l in cuarto.lugares)
+          if (puesto(l) case final c? when Casita.conLuz.contains(c.id))
+            Casita.asset('luz_${c.id}'),
+      Casita.asset(cuarto.marco),
+    ];
+  }
 }
 
 /// Un movimiento del monedero: `couples/{id}/casitaMovs/{id}`.
