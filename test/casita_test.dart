@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/app_user.dart';
 import 'package:taotao/models/casita.dart';
 import 'package:taotao/screens/casita/casita_screen.dart';
+import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
 import 'package:taotao/theme.dart';
@@ -343,6 +344,35 @@ void main() {
           e.bebesEn(Cuarto.cocina, hora.add(Duration(minutes: m))).length,
       ];
       expect(otraHora.toSet().length, greaterThan(1));
+    });
+
+    test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
+      expect(CasaEnCorte.queCuarto(120, 100), Cuarto.dormitorio);
+      expect(CasaEnCorte.queCuarto(200, 200), Cuarto.cocina);
+      expect(CasaEnCorte.queCuarto(40, 200), Cuarto.jardin);
+      expect(CasaEnCorte.queCuarto(167, 30), isNull); // el techo
+      expect(File(CasaEnCorte.marco).existsSync(), isTrue);
+      expect(File(CasaEnCorte.fachada).existsSync(), isTrue);
+      final conCama = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_dormitorio', 'cama_estrellas', 'cuarto_cocina'],
+        'puestos': {'cama': 'cama_estrellas'},
+      });
+      expect(conCama.dondeEstan(DateTime(2026, 11, 23, 23)), Cuarto.dormitorio);
+      expect(
+        EstadoCasita.vacio.dondeEstan(DateTime(2026, 11, 23, 23)),
+        Cuarto.sala,
+      );
+      // De día andan por un cuarto abierto (nunca uno cerrado).
+      for (var h = 0; h < 48; h++) {
+        final d = conCama.dondeEstan(
+          DateTime(2026, 11, 23, 8).add(Duration(minutes: 30 * h ~/ 4)),
+        );
+        expect(conCama.abierto(d), isTrue);
+      }
+      expect(
+        conCama.capas(Cuarto.sala, true, Momento.dia, 0, false, null, false),
+        isNot(contains('assets/casita/gatito_naranja.png')),
+      );
     });
 
     test('en el baño, con tina, se bañan los gatitos', () {
@@ -756,6 +786,27 @@ void main() {
       await t.tap(find.text('Listo'));
       await t.pumpAndSettle();
       expect(nombres, ['calico:Mochi']);
+    });
+
+    testWidgets('en la casa en corte, tocar un cuarto lo abre', (t) async {
+      final tocados = <Cuarto>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: CasaView(
+            estado: const EstadoCasita(tenemos: {'cuarto_cocina'}),
+            onCuarto: tocados.add,
+            ahora: DateTime(2026, 11, 23, 23),
+          ),
+        ),
+      );
+      expect(find.text('Los gatitos están en la sala'), findsOneWidget);
+      // Los cuartos cerrados tienen candado.
+      expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
+      final casa = t.getRect(find.byType(CasaEnCorte));
+      final s = casa.width / CasaEnCorte.ancho;
+      await t.tapAt(casa.topLeft + Offset(200 * s, 200 * s));
+      await t.tapAt(casa.topLeft + Offset(120 * s, 200 * s));
+      expect(tocados, [Cuarto.cocina, Cuarto.sala]);
     });
 
     testWidgets('bañar a los gatitos en la tina', (t) async {

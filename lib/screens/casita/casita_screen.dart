@@ -25,11 +25,15 @@ class CasitaScreen extends StatelessWidget {
     required this.me,
     required this.partner,
     this.inicioPareja,
+    this.cuartoInicial,
   });
 
   final String coupleId;
   final AppUser me;
   final AppUser? partner;
+
+  /// El cuarto que se abre primero (desde la casa en corte).
+  final Cuarto? cuartoInicial;
 
   /// Desde cuándo están juntos (para las cosas de su aniversario).
   final DateTime? inicioPareja;
@@ -47,6 +51,7 @@ class CasitaScreen extends StatelessWidget {
           me: me,
           partner: partner,
           inicioPareja: inicioPareja,
+          cuartoInicial: cuartoInicial,
           onComprar: (cosa, gatito) =>
               servicio.comprar(coupleId, me.uid, cosa, gatito: gatito),
           onPoner: (lugar, cosa) => servicio.poner(coupleId, lugar, cosa),

@@ -20,7 +20,11 @@ class CuartoCasita extends StatelessWidget {
     this.banando = false,
     this.onBebe,
     this.ahora,
+    this.conGatitos = true,
   });
+
+  /// En false los gatitos grandes no están (andan en otro cuarto).
+  final bool conGatitos;
 
   final EstadoCasita estado;
   final Cuarto cuarto;
@@ -76,6 +80,7 @@ class CuartoCasita extends StatelessWidget {
           tick,
           banando,
           ahora,
+          conGatitos,
         )) ...[
           if (a == Casita.bebesPaseando ||
               a == Casita.bebesDurmiendo ||

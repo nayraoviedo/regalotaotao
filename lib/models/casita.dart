@@ -1166,6 +1166,26 @@ class EstadoCasita {
         _ => false,
       };
 
+  /// En qué cuarto andan los gatitos grandes (para la casa en corte): de
+  /// noche en el dormitorio (si tienen cama) o en la sala, y de día en un
+  /// cuarto abierto al azar que cambia cada media hora.
+  Cuarto dondeEstan([DateTime? ahora]) {
+    final hora = ahora ?? DateTime.now();
+    if (Momento.de(hora) == Momento.noche) {
+      return abierto(Cuarto.dormitorio) && puesto(Lugar.cama) != null
+          ? Cuarto.dormitorio
+          : Cuarto.sala;
+    }
+    final abiertos = [
+      for (final c in Cuarto.values)
+        if (abierto(c)) c,
+    ];
+    final rato =
+        hora.millisecondsSinceEpoch ~/
+        const Duration(minutes: 30).inMilliseconds;
+    return abiertos[_azar(99, rato) % abiertos.length];
+  }
+
   /// ¿Hay tina para bañar a los gatitos? (en el baño)
   bool sePuedenBanar(Cuarto cuarto) =>
       cuarto == Cuarto.bano && puesto(Lugar.tina) != null;
@@ -1182,6 +1202,7 @@ class EstadoCasita {
     int tick = 0,
     bool banando = false,
     DateTime? ahora,
+    bool conGatitos = true,
   ]) {
     final bebes = bebesEn(cuarto, ahora);
     String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
@@ -1204,7 +1225,9 @@ class EstadoCasita {
         Casita.regaloEnvuelto,
       if (conMuebles && bebes.isNotEmpty && momento != Momento.noche)
         Casita.bebesAtras,
-      if (enLaTina)
+      if (!conGatitos)
+        ...const <String>[]
+      else if (enLaTina)
         Casita.asset('banando_${tick % 4 < 2 ? 1 : 2}')
       else if (duermen) ...[
         Casita.asset('dormidos_$cama'),
