@@ -93,4 +93,35 @@ void main() {
     expect(find.text('Premio a los 7 días'), findsOneWidget);
     expect(find.text('Faltan 3 días'), findsOneWidget);
   });
+
+  testWidgets('racha de preguntas: sin atajos y con su propia explicación', (
+    tester,
+  ) async {
+    final r = calcular(ambos([0, 1, 2]));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            actions: [RachaPreguntas(racha: r, onTap: () {})],
+          ),
+          body: RachaDetalle(
+            racha: r,
+            gatitos: (Gatito.naranja, Gatito.blanco),
+            partnerName: 'Ale',
+            explicacion: 'Un día cuenta cuando los dos responden.',
+          ),
+        ),
+      ),
+    );
+    expect(find.text('3'), findsNWidgets(2));
+    expect(
+      find.text('Un día cuenta cuando los dos responden.'),
+      findsOneWidget,
+    );
+    expect(find.text('Mi ánimo'), findsNothing);
+    expect(
+      find.text('¡Hoy ya cuenta! Los dos hicieron su parte.'),
+      findsOneWidget,
+    );
+  });
 }
