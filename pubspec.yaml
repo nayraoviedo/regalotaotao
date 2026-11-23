@@ -92,6 +92,8 @@ flutter:
     - assets/casita/
     # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
     - assets/cartas/
+    # Tutorial de bienvenida (ver lib/screens/tutorial/tutorial_screen.dart).
+    - assets/tutorial/
     # Maullido al terminar el pomodoro (también lo usa la notificación de
     # Android: ver android/app/build.gradle.kts).
     - assets/sonidos/raw/
