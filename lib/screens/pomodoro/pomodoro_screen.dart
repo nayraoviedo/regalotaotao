@@ -1526,6 +1526,7 @@ class _RewardFeed extends StatelessWidget {
     final quien = mine ? 'Completaste' : '$partnerName completó';
     final quienT = mine ? 'Terminaste' : '$partnerName terminó';
     if (a.kind == Achievement.tarea) return '$quienT "${a.taskTitle}"';
+    if (a.kind == Achievement.racha) return '${a.taskTitle} juntos';
     if (a.taskTitle != null) {
       return '$quien un pomodoro en "${a.taskTitle}"';
     }

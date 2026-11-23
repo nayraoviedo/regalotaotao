@@ -87,6 +87,16 @@ await no('A no se marca su premio como entregado', updateDoc(doc(db('A'),'couple
 await ok('B marca el premio como entregado', updateDoc(doc(db('B'),'couples/c1/achievements/l1'),{delivered:true}));
 await no('A no cambia un premio ya entregado', updateDoc(doc(db('A'),'couples/c1/achievements/l1'),{rewardTitle:'Otro'}));
 await no('C no ve los logros', getDoc(doc(db('C'),'couples/c1/achievements/l1')));
+await ok('A marca su parte de hoy en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-22'),{hechos:{A:true}},{merge:true}));
+await ok('B marca su parte del mismo día', setDoc(doc(db('B'),'couples/c1/racha/2026-11-22'),{hechos:{B:true}},{merge:true}));
+await no('A no marca a B en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-23'),{hechos:{B:true}},{merge:true}));
+await no('A no se desmarca en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-22'),{hechos:{A:false}},{merge:true}));
+await no('A no usa un id que no es fecha', setDoc(doc(db('A'),'couples/c1/racha/hola'),{hechos:{A:true}}));
+await no('C no ve la racha', getDoc(doc(db('C'),'couples/c1/racha/2026-11-22')));
+await ok('A guarda su premio de 7 días de racha', setDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',taskTitle:'Racha de 7 días',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+await no('A no inventa una meta de 5 días', setDoc(doc(db('A'),'couples/c1/achievements/racha5_2026-11-16_A'),{uid:'A',kind:'racha',meta:5,inicio:'2026-11-16',delivered:false}));
+await no('A no repite el premio de racha con otro id', setDoc(doc(db('A'),'couples/c1/achievements/otro'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',delivered:false}));
+await ok('A elige su premio de la racha', updateDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{rewardId:'r1',rewardTitle:'Un abrazo largo',rewardChosenAt:serverTimestamp()}));
 await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
 await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
 await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Te quiero',papel:'cuadricula',openedAt:null}));

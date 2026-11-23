@@ -3,9 +3,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
 import '../../models/mood.dart';
+import '../../models/racha.dart';
 import '../../theme.dart';
 import '../../widgets/mood_image.dart';
 import '../../widgets/user_avatar.dart';
+import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
 
 /// Secciones a las que se entra desde las tarjetas del inicio.
@@ -65,7 +67,13 @@ class InicioView extends StatelessWidget {
     this.onAbrazo,
     this.misTeExtrano,
     this.susTeExtrano,
+    this.racha,
+    this.onRacha,
   });
+
+  /// Racha de pareja; `null` mientras carga (no se muestra).
+  final Racha? racha;
+  final VoidCallback? onRacha;
 
   final AppUser me;
   final AppUser? partner;
@@ -111,6 +119,8 @@ class InicioView extends StatelessWidget {
                     partner: partner,
                     dias: dias,
                     onDiasJuntos: onDiasJuntos,
+                    racha: racha,
+                    onRacha: onRacha,
                   ),
                 ),
               ],
@@ -197,8 +207,12 @@ class _Pareja extends StatelessWidget {
     required this.partner,
     required this.dias,
     required this.onDiasJuntos,
+    this.racha,
+    this.onRacha,
   });
 
+  final Racha? racha;
+  final VoidCallback? onRacha;
   final AppUser me;
   final AppUser? partner;
   final int? dias;
@@ -264,6 +278,10 @@ class _Pareja extends StatelessWidget {
             ),
           ),
         ),
+        if (racha case final r?) ...[
+          const SizedBox(height: 8),
+          RachaPastilla(racha: r, onTap: onRacha ?? () {}),
+        ],
       ],
     );
   }
