@@ -183,11 +183,15 @@ class PescaditosService {
 
   /// Compra [cosa] con los pescaditos de los dos y la pone en la casita
   /// (la ropita se le pone a [gatito], si se indica).
+  ///
+  /// Con [regalo] es una sorpresa para la pareja: queda envuelta (no se
+  /// pone) hasta que la abra.
   Future<void> comprar(
     String coupleId,
     String uid,
     Cosa cosa, {
     String? gatito,
+    Regalo? regalo,
   }) async {
     final estadoRef = _estado(coupleId);
     final movRef = _movs(coupleId).doc('compra_${cosa.id}');
@@ -203,15 +207,22 @@ class PescaditosService {
         'uid': uid,
         'cantidad': -cosa.precio,
         'ref': cosa.id,
+        if (regalo != null) 'regalo': true,
         'creadoEn': FieldValue.serverTimestamp(),
       });
       final cambios = <String, Object?>{
         'pescaditos': hay - cosa.precio,
         'ultimoMov': movRef.id,
         'tenemos': FieldValue.arrayUnion([cosa.id]),
-        if (cosa.lugar case final l?) 'puestos.${l.name}': cosa.id,
-        if (cosa.parte case final p? when gatito != null)
-          'ropa.$gatito.${p.name}': cosa.id,
+        // Con esto se llenó la alcancía.
+        if (d['meta'] == cosa.id) 'meta': FieldValue.delete(),
+        if (regalo != null)
+          'regalos.${cosa.id}': regalo.toMap()
+        else ...{
+          if (cosa.lugar case final l?) 'puestos.${l.name}': cosa.id,
+          if (cosa.parte case final p? when gatito != null)
+            'ropa.$gatito.${p.name}': cosa.id,
+        },
       };
       if (estado.exists) {
         tx.update(estadoRef, cambios);
@@ -243,6 +254,20 @@ class PescaditosService {
       _estado(coupleId).set({
         'puestos': {lugar.name: cosa?.id ?? ''},
       }, SetOptions(merge: true));
+
+  /// Abre un regalo sorpresa: deja de estar envuelto y se pone en la
+  /// casita (la ropita, al gatito que eligió quien lo regaló).
+  Future<void> abrirRegalo(String coupleId, Cosa cosa, Regalo regalo) =>
+      _estado(coupleId).update({
+        'regalos.${cosa.id}': FieldValue.delete(),
+        if (cosa.lugar case final l?) 'puestos.${l.name}': cosa.id,
+        if (cosa.parte case final p? when regalo.gatito != null)
+          'ropa.${regalo.gatito}.${p.name}': cosa.id,
+      });
+
+  /// Alcancía: elige para qué ahorran juntos (o nada, con `null`).
+  Future<void> ponerMeta(String coupleId, Cosa? cosa) => _estado(coupleId)
+      .set({'meta': cosa?.id ?? FieldValue.delete()}, SetOptions(merge: true));
 
   /// Pone su foto pixelada en el cuadro (o la quita, con `null`).
   Future<void> ponerFoto(String coupleId, List<int>? foto) =>

@@ -190,6 +190,10 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('A pone su foto pixelada en el cuadro', setDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:Array(168).fill(4294967295)},{merge:true}));
   await no('la foto tiene que ser de 14 × 12', setDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:Array(5000).fill(1)},{merge:true}));
   await ok('A quita la foto', updateDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:deleteField()}));
+  await ok('A elige una meta para la alcancía', setDoc(doc(db('A'),'couples/c1/casita/estado'),{meta:'cuarto_jardin'},{merge:true}));
+  await ok('A deja un regalo envuelto', setDoc(doc(db('A'),'couples/c1/casita/estado'),{regalos:{cuadro_corazon:{de:'A',mensaje:'para ti'}}},{merge:true}));
+  await ok('B abre el regalo', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{'regalos.cuadro_corazon':deleteField(),'puestos.cuadro':'cuadro_corazon'}));
+  await no('los regalos tienen que ser un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{regalos:'x'},{merge:true}));
   await ok('B quita el cuadro', setDoc(doc(db('B'),'couples/c1/casita/estado'),{puestos:{cuadro:''}},{merge:true}));
   await no('B no se regala pescaditos', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{pescaditos:999}));
   await no('B no borra lo que compraron', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{tenemos:[]}));

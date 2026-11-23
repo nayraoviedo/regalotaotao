@@ -8,4 +8,10 @@ class WidgetCelular {
   static Future<void> iniciar() async {}
   static Future<void> guardar(DatosWidget datos) async {}
   static Future<void> guardarImagen(String clave, Uint8List png) async {}
+  static Future<void> guardarCasita({
+    required Map<String, Uint8List> dibujos,
+    required int pescaditos,
+    String? metaNombre,
+    int? metaPrecio,
+  }) async {}
 }

@@ -20,6 +20,7 @@ class Casita {
 
   static String asset(String nombre) => 'assets/casita/$nombre.png';
   static const iconoPescadito = 'assets/casita/pescadito.png';
+  static const regaloEnvuelto = 'assets/casita/regalo_envuelto.png';
 
   // ---- Cuántos pescaditos da cada cosa ----
   static const porPregunta = 10;
@@ -830,6 +831,8 @@ class EstadoCasita {
     this.puestos = const {},
     this.ropa = const {},
     this.foto,
+    this.regalos = const {},
+    this.meta,
   });
 
   static const vacio = EstadoCasita();
@@ -851,6 +854,28 @@ class EstadoCasita {
   /// colores ARGB, fila por fila. `null` si no subieron ninguna.
   final List<int>? foto;
 
+  /// Regalos sorpresa todavía envueltos, por id de la [Cosa].
+  final Map<String, Regalo> regalos;
+
+  /// Alcancía: id de la [Cosa] para la que están ahorrando juntos.
+  final String? meta;
+
+  /// La meta de la alcancía, si todavía no la compraron.
+  Cosa? get metaCosa => switch (Catalogo.porId(meta)) {
+    final c? when !tiene(c) => c,
+    _ => null,
+  };
+
+  /// Regalos envueltos que le dejaron a [uid] (para abrir).
+  List<(Cosa, Regalo)> regalosPara(String uid) => [
+    for (final e in regalos.entries)
+      if (e.value.de != uid)
+        if (Catalogo.porId(e.key) case final c?) (c, e.value),
+  ];
+
+  /// ¿[c] es un regalo que todavía no abren?
+  bool envuelto(Cosa c) => regalos.containsKey(c.id);
+
   factory EstadoCasita.fromMap(Map<String, dynamic>? d) {
     if (d == null) return vacio;
     Map<String, String> strings(Object? m) => {
@@ -865,6 +890,14 @@ class EstadoCasita {
         for (final e in ((d['ropa'] as Map?) ?? const {}).entries)
           e.key as String: strings(e.value),
       },
+      regalos: {
+        for (final e in ((d['regalos'] as Map?) ?? const {}).entries)
+          if (e.value is Map)
+            e.key as String: Regalo.fromMap(
+              Map<String, dynamic>.from(e.value as Map),
+            ),
+      },
+      meta: d['meta'] as String?,
       foto: switch (d['foto']) {
         final List l
             when l.length == Casita.fotoAncho * Casita.fotoAlto &&
@@ -910,8 +943,6 @@ class EstadoCasita {
       ? tiene(c)
       : puesto(c.lugar!)?.id == c.id;
 
-  /// Capas para dibujar [cuarto], de atrás hacia adelante. Con
-  /// [conMuebles] en false sale vacío (para mostrar un cuarto cerrado).
   /// ¿Los gatitos duermen en este cuarto? De noche, si hay camita (en la
   /// sala) o cama (en el dormitorio).
   bool duermen(Cuarto cuarto, Momento momento) =>
@@ -922,7 +953,8 @@ class EstadoCasita {
         _ => false,
       };
 
-  /// Las capas del cuarto, de atrás hacia adelante. [tick] avanza solo
+  /// Las capas del cuarto, de atrás hacia adelante. Con [conMuebles] en
+  /// false sale vacío (para mostrar un cuarto cerrado). [tick] avanza solo
   /// (unas tres veces por segundo) para que la casita se mueva: los
   /// gatitos parpadean y mueven la cola, y los visitantes se mueven.
   List<String> capas([
@@ -946,6 +978,8 @@ class EstadoCasita {
           // La comida solo se ve si hay una mesa donde ponerla.
           if (l != Lugar.comida || puesto(Lugar.mesa) != null)
             if (puesto(l) case final c?) dibujo(c),
+      if (cuarto == Cuarto.sala && conMuebles && regalos.isNotEmpty)
+        Casita.regaloEnvuelto,
       if (duermen) ...[
         Casita.asset('dormidos_$cama'),
         Casita.asset('zzz_${cama}_${tick % 6 < 3 ? 1 : 2}'),
@@ -970,6 +1004,31 @@ class EstadoCasita {
       Casita.asset(cuarto.marco),
     ];
   }
+}
+
+/// Un regalo sorpresa: lo compra uno "para el otro" con un mensajito. Le
+/// aparece envuelto en la casita hasta que lo abre.
+class Regalo {
+  const Regalo({required this.de, this.mensaje = '', this.gatito});
+
+  /// uid de quien lo regaló.
+  final String de;
+  final String mensaje;
+
+  /// Si es ropita: a qué gatito se la ponen al abrirlo.
+  final String? gatito;
+
+  factory Regalo.fromMap(Map<String, dynamic> d) => Regalo(
+    de: d['de'] as String? ?? '',
+    mensaje: d['mensaje'] as String? ?? '',
+    gatito: d['gatito'] as String?,
+  );
+
+  Map<String, Object> toMap() => {
+    'de': de,
+    'mensaje': mensaje,
+    'gatito': ?gatito,
+  };
 }
 
 /// Un movimiento del monedero: `couples/{id}/casitaMovs/{id}`.

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget "La casita". Lo llena CasitaWidget.kt con lo que guarda la app:
+     un dibujo de la sala de día, de tarde y de noche (PNG), los pescaditos
+     y la alcancía. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/casita_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/taotao_widget_fondo"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/casita_dibujo"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:contentDescription="La casita de los gatitos"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/casita_texto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:fontFamily="casual"
+        android:maxLines="1"
+        android:text="Abre Taotao"
+        android:textColor="@color/taotao_widget_azul"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <ProgressBar
+        android:id="@+id/casita_alcancia"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="12dp"
+        android:max="100"
+        android:visibility="gone" />
+</LinearLayout>

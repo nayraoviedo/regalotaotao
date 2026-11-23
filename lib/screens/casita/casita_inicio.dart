@@ -8,25 +8,56 @@ import 'cuarto.dart';
 
 /// Tarjeta del inicio con la casita en chiquito y los pescaditos.
 class CasitaInicio extends StatelessWidget {
-  const CasitaInicio({super.key, required this.coupleId, required this.onTap});
+  const CasitaInicio({
+    super.key,
+    required this.coupleId,
+    required this.onTap,
+    this.uid,
+  });
 
   final String coupleId;
   final VoidCallback onTap;
 
+  /// Quién mira (para avisarle si le dejaron un regalo).
+  final String? uid;
+
   @override
   Widget build(BuildContext context) => StreamBuilder<EstadoCasita>(
     stream: PescaditosService.instance.watch(coupleId),
-    builder: (context, s) =>
-        TarjetaCasita(estado: s.data ?? EstadoCasita.vacio, onTap: onTap),
+    builder: (context, s) => TarjetaCasita(
+      estado: s.data ?? EstadoCasita.vacio,
+      onTap: onTap,
+      uid: uid,
+    ),
   );
 }
 
 /// La tarjeta sin Firebase.
 class TarjetaCasita extends StatelessWidget {
-  const TarjetaCasita({super.key, required this.estado, required this.onTap});
+  const TarjetaCasita({
+    super.key,
+    required this.estado,
+    required this.onTap,
+    this.uid,
+  });
 
   final EstadoCasita estado;
   final VoidCallback onTap;
+  final String? uid;
+
+  /// Lo más importante para contar debajo de los pescaditos.
+  String get _texto {
+    if (uid != null && estado.regalosPara(uid!).isNotEmpty) {
+      return '🎁 Te dejaron un regalo sorpresa. ¡Ábrelo!';
+    }
+    if (estado.metaCosa case final m?) {
+      return estado.pescaditos >= m.precio
+          ? '🐷 ¡Ya les alcanza para ${m.nombre}!'
+          : '🐷 Ahorrando para ${m.nombre}: '
+                '${estado.pescaditos} de ${m.precio}';
+    }
+    return 'Ganen pescaditos juntos y decoren la casa de los gatitos';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +91,12 @@ class TarjetaCasita extends StatelessWidget {
                       color: AppTheme.azul,
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Ganen pescaditos juntos y decoren la casa de los gatitos',
-                      style: TextStyle(color: AppTheme.gris, fontSize: 13),
+                    Text(
+                      _texto,
+                      style: const TextStyle(
+                        color: AppTheme.gris,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
