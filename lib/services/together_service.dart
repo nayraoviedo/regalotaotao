@@ -133,4 +133,16 @@ class TogetherService {
     ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
     NotifyService.instance.send(NotifyKind.missYou, coupleId, ref.id);
   }
+
+  /// Cuántos "te extraño" mandó [from] en esta pareja.
+  ///
+  /// Usa una consulta de conteo: Firestore cobra 1 lectura por cada 1000
+  /// documentos contados, así que cabe de sobra en el plan Spark.
+  Future<int> countMissYou(String coupleId, String from) async {
+    final snap = await Db.coupleSub(
+      coupleId,
+      'missYou',
+    ).where('from', isEqualTo: from).count().get();
+    return snap.count ?? 0;
+  }
 }
