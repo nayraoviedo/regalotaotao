@@ -305,6 +305,55 @@ service cloud.firestore {
           && keepsCard();
       }
 
+      // Preguntas propias para el mazo de la pregunta del día. Cada uno
+      // escribe, edita o borra las suyas; cualquiera de los dos la marca
+      // como usada (una sola vez) el día que sale.
+      match /preguntas/{preguntaId} {
+        function textoValido(t) {
+          return t is string && t.size() > 0 && t.size() <= 200;
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['texto', 'autor', 'createdAt', 'usadaEn'])
+          && request.resource.data.autor == me()
+          && textoValido(request.resource.data.texto)
+          && request.resource.data.get('usadaEn', null) == null;
+        allow update: if isMember(coupleId)
+          && resource.data.get('usadaEn', null) == null
+          && (
+            (resource.data.autor == me()
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['texto'])
+              && textoValido(request.resource.data.texto))
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['usadaEn'])
+              && request.resource.data.usadaEn is string
+              && request.resource.data.usadaEn
+                   .matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'))
+          );
+        allow delete: if isMember(coupleId) && resource.data.autor == me();
+      }
+
+      // Datos curiosos: cada uno escribe los suyos, los dos los leen.
+      match /datosCuriosos/{datoId} {
+        function datoValido(t) {
+          return t is string && t.size() > 0 && t.size() <= 300;
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['texto', 'autor', 'createdAt'])
+          && request.resource.data.autor == me()
+          && datoValido(request.resource.data.texto);
+        allow update: if isMember(coupleId)
+          && resource.data.autor == me()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['texto'])
+          && datoValido(request.resource.data.texto);
+        allow delete: if isMember(coupleId) && resource.data.autor == me();
+      }
+
       // Racha de pareja: un doc por día con quién hizo su parte
       // ({hechos: {uid: true}}). Cada uno solo se marca a sí mismo.
       match /racha/{day} {

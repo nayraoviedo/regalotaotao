@@ -4,9 +4,11 @@ import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
+import '../../services/datos_curiosos_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
+import 'dato_del_dia.dart';
 import 'fondo_flotante.dart';
 import 'gatitos.dart';
 import 'hitos.dart';
@@ -49,11 +51,18 @@ class TogetherScreen extends StatelessWidget {
           stream: UserService.instance.watchUser(myUid),
           builder: (context, meSnap) => StreamBuilder<AppUser?>(
             stream: UserService.instance.watchUser(c.partnerOf(myUid)),
-            builder: (context, partnerSnap) => DiasJuntosView(
-              couple: c,
-              me: meSnap.data,
-              partner: partnerSnap.data,
-              onCambiarFecha: () => _elegirFecha(context, c),
+            builder: (context, partnerSnap) => StreamBuilder<List<DatoCurioso>>(
+              stream: DatosCuriososService.instance.watchDe(
+                c.id,
+                c.partnerOf(myUid),
+              ),
+              builder: (context, datosSnap) => DiasJuntosView(
+                couple: c,
+                me: meSnap.data,
+                partner: partnerSnap.data,
+                onCambiarFecha: () => _elegirFecha(context, c),
+                datosPareja: datosSnap.data,
+              ),
             ),
           ),
         );
@@ -84,12 +93,17 @@ class DiasJuntosView extends StatelessWidget {
     required this.partner,
     required this.onCambiarFecha,
     this.hoy,
+    this.datosPareja,
   });
 
   final Couple couple;
   final AppUser? me;
   final AppUser? partner;
   final VoidCallback onCambiarFecha;
+
+  /// Datos curiosos que escribió tu pareja; se muestra uno por día.
+  /// null mientras cargan (no se muestra nada).
+  final List<DatoCurioso>? datosPareja;
 
   /// Solo para pruebas; por defecto es hoy.
   final DateTime? hoy;
@@ -142,6 +156,13 @@ class DiasJuntosView extends StatelessWidget {
                           _Contador(dias: dias, desde: start),
                           const SizedBox(height: 32),
                           _BarraHito(hito: Hito.proximo(start, today)),
+                        ],
+                        if (datosPareja != null) ...[
+                          const SizedBox(height: 28),
+                          DatoDelDia(
+                            dato: DatoCurioso.delDia(datosPareja!, today),
+                            nombre: partner?.name ?? 'tu pareja',
+                          ),
                         ],
                       ],
                     ),
