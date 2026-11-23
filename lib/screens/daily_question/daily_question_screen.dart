@@ -86,7 +86,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
         actions: [
           IconButton(
             tooltip: 'Agregar mis preguntas al mazo',
-            icon: const Icon(Icons.edit_note),
+            icon: const Doodle(Icons.edit_note),
             onPressed: _misPreguntas,
           ),
         ],
@@ -222,7 +222,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
         const SizedBox(height: 20),
         TextButton.icon(
           onPressed: _misPreguntas,
-          icon: const Icon(Icons.edit_note),
+          icon: const Doodle(Icons.edit_note),
           label: const Text('Agregar una pregunta al mazo'),
         ),
       ],

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../widgets/doodle.dart';
+
 /// Respiración guiada 4-4-4 (inhala, sostén, exhala) durante ~2 minutos.
 class MindfulnessScreen extends StatefulWidget {
   const MindfulnessScreen({super.key});
@@ -72,34 +74,46 @@ class _MindfulnessScreenState extends State<MindfulnessScreen>
     final color = Theme.of(context).colorScheme.primaryContainer;
     return Scaffold(
       appBar: AppBar(title: const Text('Respira conmigo')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: _circle,
-              child: Container(
-                width: 240,
-                height: 240,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Text(
-                  _running ? _phase : '🌿',
-                  style: Theme.of(context).textTheme.headlineMedium,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaleTransition(
+                scale: _circle,
+                child: Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: _running
+                      ? Text(
+                          _phase,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        )
+                      : const Doodle(
+                          Icons.spa_outlined,
+                          nombre: 'calma',
+                          size: 72,
+                        ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            if (_running)
-              Text('Ciclo ${_cycle + 1} de $_totalCycles')
-            else
-              const Text('Unos minutos para ti. Busca un lugar cómodo.'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _running ? _stop : _start,
-              child: Text(_running ? 'Terminar' : 'Empezar'),
-            ),
-          ],
+              const SizedBox(height: 32),
+              if (_running)
+                Text('Ciclo ${_cycle + 1} de $_totalCycles')
+              else
+                const Text('Unos minutos para ti. Busca un lugar cómodo.'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _running ? _stop : _start,
+                child: Text(_running ? 'Terminar' : 'Empezar'),
+              ),
+            ],
+          ),
         ),
       ),
     );

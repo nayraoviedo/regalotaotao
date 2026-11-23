@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../services/datos_curiosos_service.dart';
+import '../../widgets/doodle.dart';
 import '../../theme.dart';
 import '../../widgets/editar_texto.dart';
 
@@ -22,7 +23,10 @@ class DatosCuriososCard extends StatelessWidget {
         final n = snap.data?.length ?? 0;
         return Card(
           child: ListTile(
-            leading: const Icon(Icons.lightbulb_outline, color: AppTheme.azul),
+            leading: const Doodle(
+              Icons.lightbulb_outline,
+              color: AppTheme.azul,
+            ),
             title: const Text('Datos curiosos sobre mí'),
             subtitle: Text(
               n == 0
@@ -30,7 +34,7 @@ class DatosCuriososCard extends StatelessWidget {
                   : '$n ${n == 1 ? 'dato' : 'datos'} · tu pareja ve uno '
                         'distinto cada día',
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Doodle(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) =>
@@ -151,7 +155,7 @@ class _DatosCuriososViewState extends State<DatosCuriososView> {
           ),
           FilledButton.icon(
             onPressed: _guardando ? null : _agregar,
-            icon: const Icon(Icons.add),
+            icon: const Doodle(Icons.add),
             label: const Text('Agregar dato'),
           ),
           const SizedBox(height: 20),
@@ -223,12 +227,12 @@ class _FilaDato extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Editar',
-            icon: const Icon(Icons.edit, size: 20, color: AppTheme.azul),
+            icon: const Doodle(Icons.edit, size: 20, color: AppTheme.azul),
             onPressed: onEditar,
           ),
           IconButton(
             tooltip: 'Borrar',
-            icon: const Icon(Icons.delete_outline, color: AppTheme.gris),
+            icon: const Doodle(Icons.delete_outline, color: AppTheme.gris),
             onPressed: onBorrar,
           ),
         ],
