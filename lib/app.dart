@@ -5,6 +5,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
+import 'screens/together/elegir_gatito.dart';
 import 'services/auth_service.dart';
 import 'services/push_service.dart';
 import 'services/user_service.dart';
@@ -25,7 +26,8 @@ class TaotaoApp extends StatelessWidget {
 }
 
 /// Decide qué pantalla mostrar:
-/// primera vez -> Bienvenida, sin sesión -> Login, sin pareja -> Vincular, con pareja -> Inicio.
+/// primera vez -> Bienvenida, sin sesión -> Login, sin gatito -> Elegir gatito,
+/// sin pareja -> Vincular, con pareja -> Inicio.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -71,6 +73,7 @@ class _AuthGateState extends State<AuthGate> {
           builder: (context, userSnap) {
             final user = userSnap.data;
             if (user == null) return const _Loading();
+            if (user.gatito == null) return ElegirGatitoScreen(me: user);
             if (user.coupleId == null) return PairingScreen(me: user);
             return HomeScreen(me: user);
           },

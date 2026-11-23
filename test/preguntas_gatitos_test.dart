@@ -5,8 +5,8 @@ import 'package:taotao/models/app_user.dart';
 import 'package:taotao/screens/together/gatitos.dart';
 import 'package:taotao/services/together_service.dart';
 
-AppUser _u(String uid, [String? gatito]) =>
-    AppUser(uid: uid, name: uid, pairCode: 'X', gatito: gatito);
+AppUser _u(String uid, [String? gatito, DateTime? en]) =>
+    AppUser(uid: uid, name: uid, pairCode: 'X', gatito: gatito, gatitoEn: en);
 
 void main() {
   group('pregunta del día sin repetirse', () {
@@ -42,21 +42,37 @@ void main() {
 
   group('qué gatito es cada uno', () {
     test('si nadie eligió, yo soy el naranja', () {
-      expect(Gatito.dePareja(_u('a'), _u('b')), (Gatito.naranja, Gatito.negro));
+      expect(Gatito.dePareja(_u('a'), _u('b')), (
+        Gatito.naranja,
+        Gatito.blanco,
+      ));
     });
 
     test('mi elección manda', () {
-      expect(Gatito.dePareja(_u('a', 'negro'), _u('b')), (
-        Gatito.negro,
+      expect(Gatito.dePareja(_u('a', 'blanco'), _u('b')), (
+        Gatito.blanco,
         Gatito.naranja,
       ));
     });
 
     test('si solo eligió mi pareja, me toca el otro', () {
       expect(Gatito.dePareja(_u('a'), _u('b', 'naranja')), (
-        Gatito.negro,
+        Gatito.blanco,
         Gatito.naranja,
       ));
+    });
+
+    test('si los dos eligieron el mismo, gana quien eligió primero', () {
+      final antes = DateTime(2026, 11, 1);
+      final despues = DateTime(2026, 11, 2);
+      final yo = _u('a', 'naranja', despues);
+      final pareja = _u('b', 'naranja', antes);
+      expect(Gatito.dePareja(yo, pareja), (Gatito.blanco, Gatito.naranja));
+      expect(Gatito.dePareja(pareja, yo), (Gatito.naranja, Gatito.blanco));
+    });
+
+    test('lo guardado como "negro" ahora es el gatito blanco', () {
+      expect(Gatito.deId('negro'), Gatito.blanco);
     });
   });
 }

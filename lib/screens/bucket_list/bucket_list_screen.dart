@@ -23,7 +23,7 @@ import 'escalera.dart';
 /// Para poner tu propio dibujo en vez de los gatitos, sube un PNG con fondo
 /// transparente a `assets/images/escalera_compania.png` (unos 600×400, con
 /// los pies tocando el borde de abajo). Si no existe, salen los gatitos
-/// `gatito_naranja.png` y `gatito_negro.png` (los mismos de "Días juntos").
+/// `gatito_naranja.png` y `gatito_blanco.png` (los mismos de "Días juntos").
 class BucketListScreen extends StatefulWidget {
   const BucketListScreen({
     super.key,
