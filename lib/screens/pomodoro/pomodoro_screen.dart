@@ -833,6 +833,13 @@ class _CoupleTimerState extends State<_CoupleTimer> {
   Timer? _ticker;
   int _minutes = 25;
 
+  /// Minutos que la persona invitada ajustó (para la invitación [_ajusteDe]).
+  String? _ajusteDe;
+  int _ajuste = 25;
+
+  int _minutosPara(PomodoroSession s) =>
+      _ajusteDe == s.id ? _ajuste : s.minutes;
+
   String get _coupleId => widget.couple.id;
 
   @override
@@ -963,49 +970,73 @@ class _CoupleTimerState extends State<_CoupleTimer> {
 
     if (s.status == PomodoroStatus.pending) {
       final iInvited = s.invitedBy == widget.me.uid;
-      return Column(
-        children: [
-          const SizedBox(height: 8),
-          Text(_fmt(Duration(minutes: s.minutes)), style: _timerStyle),
-          _message(
-            iInvited
-                ? 'Esperando que $name acepte… ⏳'
-                : '¡$name te invita a un pomodoro de ${s.minutes} min!',
-          ),
-          const SizedBox(height: 8),
-          if (iInvited)
+      if (iInvited) {
+        return Column(
+          children: [
+            const SizedBox(height: 8),
+            Text(_fmt(Duration(minutes: s.minutes)), style: _timerStyle),
+            _message('Esperando que $name acepte… ⏳'),
+            const SizedBox(height: 4),
+            Text(
+              '$name puede confirmar, bajar o subir el tiempo.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => _service.cancel(_coupleId, s.id),
               child: const Text('Cancelar invitación'),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      foregroundColor: PomodoroStyle.azul,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: () => _service.decline(_coupleId, s.id),
-                    child: const Text('Ahora no'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      backgroundColor: PomodoroStyle.azul,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: () => _service.accept(_coupleId, s.id),
-                    child: const Text('Aceptar'),
-                  ),
-                ),
-              ],
             ),
+          ],
+        );
+      }
+      final elegidos = _minutosPara(s);
+      final cambio = elegidos != s.minutes;
+      return Column(
+        children: [
+          _message('¡$name te invita a un pomodoro de ${s.minutes} min!'),
+          const Text(
+            'Puedes confirmar ese tiempo, o bajarlo o subirlo:',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          _MinutesPicker(
+            minutes: elegidos,
+            onChanged: (m) => setState(() {
+              _ajusteDe = s.id;
+              _ajuste = m;
+            }),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    foregroundColor: PomodoroStyle.azul,
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () => _service.decline(_coupleId, s.id),
+                  child: const Text('Ahora no'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    backgroundColor: PomodoroStyle.azul,
+                    shape: const StadiumBorder(),
+                  ),
+                  onPressed: () =>
+                      _service.accept(_coupleId, s.id, minutes: elegidos),
+                  child: Text(cambio ? 'Aceptar con $elegidos min' : 'Aceptar'),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
