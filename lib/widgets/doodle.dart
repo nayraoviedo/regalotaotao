@@ -104,6 +104,10 @@ final Map<int, String> _doodles = {
     Icons.edit: 'editar',
     Icons.edit_outlined: 'editar',
     Icons.delete_outline: 'borrar',
+    Icons.delete_outline_rounded: 'borrar',
+    Icons.remove: 'quitar',
+    // Racha
+    Icons.local_fire_department_rounded: 'fuego',
     Icons.check: 'palomita',
     Icons.check_rounded: 'palomita',
     Icons.edit_calendar: 'calendario',

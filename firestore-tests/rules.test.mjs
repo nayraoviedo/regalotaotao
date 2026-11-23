@@ -32,6 +32,11 @@ await no('B no borra la nota de A', deleteDoc(doc(db('B'),'couples/c1/notes/nl1'
 await no('C no marca pendientes', updateDoc(doc(db('C'),'couples/c1/notes/nl1'),{items:[]}));
 await ok('A invita pomodoro', setDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
 await no('A no puede aceptar su propia invitación', updateDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{status:'accepted'}));
+await ok('A invita a otra sesión', setDoc(doc(db('A'),'couples/c1/pomodoros/p2'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
+await no('A no cambia el tiempo de su invitación pendiente', updateDoc(doc(db('A'),'couples/c1/pomodoros/p2'),{minutes:50}));
+await no('B no acepta con más de 60 min', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'accepted',startedAt:serverTimestamp(),minutes:90}));
+await ok('B acepta subiendo el tiempo a 30 min', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'accepted',startedAt:serverTimestamp(),minutes:30}));
+await no('ya aceptada, nadie cambia el tiempo', updateDoc(doc(db('B'),'couples/c1/pomodoros/p2'),{status:'finished',minutes:5}));
 await ok('B acepta', updateDoc(doc(db('B'),'couples/c1/pomodoros/p1'),{status:'accepted',startedAt:serverTimestamp()}));
 await ok('A responde pregunta', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{A:'hola'}},{merge:true}));
 await ok('B responde pregunta', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026-11-21'),{question:'q',answers:{B:'chau'}},{merge:true}));
@@ -42,6 +47,8 @@ await ok('B responde el naipe', setDoc(doc(db('B'),'couples/c1/dailyAnswers/2026
 await no('C no saca naipe', setDoc(doc(db('C'),'couples/c1/dailyAnswers/2026-11-23'),{carta:1,question:'q1',drawnBy:'C'},{merge:true}));
 await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'A',to:'B'}));
 await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
+await ok('A abraza a B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'A',to:'B',mood:'triste'}));
+await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
 await ok('A agrega un premio', setDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo',createdBy:'A'}));
 await ok('A cambia su premio', updateDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo largo'}));
@@ -80,6 +87,16 @@ await no('A no se marca su premio como entregado', updateDoc(doc(db('A'),'couple
 await ok('B marca el premio como entregado', updateDoc(doc(db('B'),'couples/c1/achievements/l1'),{delivered:true}));
 await no('A no cambia un premio ya entregado', updateDoc(doc(db('A'),'couples/c1/achievements/l1'),{rewardTitle:'Otro'}));
 await no('C no ve los logros', getDoc(doc(db('C'),'couples/c1/achievements/l1')));
+await ok('A marca su parte de hoy en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-22'),{hechos:{A:true}},{merge:true}));
+await ok('B marca su parte del mismo día', setDoc(doc(db('B'),'couples/c1/racha/2026-11-22'),{hechos:{B:true}},{merge:true}));
+await no('A no marca a B en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-23'),{hechos:{B:true}},{merge:true}));
+await no('A no se desmarca en la racha', setDoc(doc(db('A'),'couples/c1/racha/2026-11-22'),{hechos:{A:false}},{merge:true}));
+await no('A no usa un id que no es fecha', setDoc(doc(db('A'),'couples/c1/racha/hola'),{hechos:{A:true}}));
+await no('C no ve la racha', getDoc(doc(db('C'),'couples/c1/racha/2026-11-22')));
+await ok('A guarda su premio de 7 días de racha', setDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',taskTitle:'Racha de 7 días',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+await no('A no inventa una meta de 5 días', setDoc(doc(db('A'),'couples/c1/achievements/racha5_2026-11-16_A'),{uid:'A',kind:'racha',meta:5,inicio:'2026-11-16',delivered:false}));
+await no('A no repite el premio de racha con otro id', setDoc(doc(db('A'),'couples/c1/achievements/otro'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',delivered:false}));
+await ok('A elige su premio de la racha', updateDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{rewardId:'r1',rewardTitle:'Un abrazo largo',rewardChosenAt:serverTimestamp()}));
 await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
 await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
 await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Te quiero',papel:'cuadricula',openedAt:null}));

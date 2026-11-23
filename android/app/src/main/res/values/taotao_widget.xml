@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="taotao_widget_crema">#FFF7F2EC</color>
+    <color name="taotao_widget_azul">#FF2B3A75</color>
+    <color name="taotao_widget_gris">#FF8A8FA3</color>
+    <color name="taotao_widget_rosa">#FFE8798E</color>
+    <string name="taotao_widget_descripcion">Días juntos y el ánimo de tu pareja</string>
+</resources>

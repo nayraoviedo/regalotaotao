@@ -165,17 +165,18 @@ class _Pareja extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (mio, suyo) = Gatito.dePareja(me, partner);
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          _GatitoConFoto(gatito: Gatito.naranja, user: me, retraso: 0),
+          _GatitoConFoto(gatito: mio, user: me, retraso: 0),
           const Padding(
             padding: EdgeInsets.only(bottom: 70, left: 6, right: 6),
             child: _CorazonLatiendo(),
           ),
-          _GatitoConFoto(gatito: Gatito.negro, user: partner, retraso: 0.5),
+          _GatitoConFoto(gatito: suyo, user: partner, retraso: 0.5),
         ],
       ),
     );

@@ -7,4 +7,5 @@
 ///
 /// No es un secreto: el Worker solo acepta pedidos de personas que iniciaron
 /// sesión, y solo avisa a su pareja.
-const notificationsUrl = 'https://taotao-notificaciones.nayraoviedo.workers.dev';
+const notificationsUrl =
+    'https://taotao-notificaciones.nayraoviedo.workers.dev';

@@ -173,25 +173,33 @@ service cloud.firestore {
           && request.resource.data.minutes >= 5
           && request.resource.data.minutes <= 60
           && request.resource.data.get('startedAt', null) == null;
-        // Nadie puede cambiar la duración ni la hora de inicio: de eso
-        // depende que la sesión juntos dé premio. Una sesión cancelada
-        // (alguien se salió) o terminada ya no cambia más.
+        // Al aceptar, la persona invitada puede confirmar, bajar o subir la
+        // duración. Después nadie puede cambiar la duración ni la hora de
+        // inicio: de eso depende que la sesión juntos dé premio. Una sesión
+        // cancelada (alguien se salió) o terminada ya no cambia más.
         allow update: if isMember(coupleId)
           && request.resource.data.invitedBy == resource.data.invitedBy
           && request.resource.data.invitee == resource.data.invitee
-          && request.resource.data.minutes == resource.data.minutes
           && (
             (resource.data.status == 'pending'
               && me() == resource.data.invitee
-              && ((request.resource.data.status == 'accepted'
-                    && request.resource.data.startedAt == request.time)
-                || (request.resource.data.status == 'declined'
-                    && request.resource.data.get('startedAt', null) == null)))
+              && request.resource.data.status == 'accepted'
+              && request.resource.data.startedAt == request.time
+              && request.resource.data.minutes is int
+              && request.resource.data.minutes >= 5
+              && request.resource.data.minutes <= 60)
+            || (resource.data.status == 'pending'
+              && me() == resource.data.invitee
+              && request.resource.data.status == 'declined'
+              && request.resource.data.minutes == resource.data.minutes
+              && request.resource.data.get('startedAt', null) == null)
             || (request.resource.data.status == 'cancelled'
               && resource.data.status in ['pending', 'accepted']
+              && request.resource.data.minutes == resource.data.minutes
               && request.resource.data.get('startedAt', null) == resource.data.get('startedAt', null))
             || (request.resource.data.status == 'finished'
               && resource.data.status == 'accepted'
+              && request.resource.data.minutes == resource.data.minutes
               && request.resource.data.startedAt == resource.data.startedAt)
           );
       }
@@ -235,7 +243,17 @@ service cloud.firestore {
             || (request.resource.data.kind == 'pomodoro'
               && achievementId == request.resource.data.sessionId + '_' + me()
               && sessionDone(request.resource.data.sessionId)))
-          && request.resource.data.kind in ['pomodoro', 'tarea']
+          && request.resource.data.kind in ['pomodoro', 'tarea', 'racha']
+          // Premio de la racha: uno por meta (7, 30, 60…) y por racha.
+          && (request.resource.data.kind != 'racha'
+            || (request.resource.data.meta is int
+              && (request.resource.data.meta == 7
+                || (request.resource.data.meta > 0
+                  && request.resource.data.meta % 30 == 0))
+              && request.resource.data.inicio is string
+              && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && achievementId == 'racha' + string(request.resource.data.meta)
+                   + '_' + request.resource.data.inicio + '_' + me()))
           && request.resource.data.delivered == false
           && request.resource.data.get('rewardId', null) == null
           && request.resource.data.get('rewardTitle', null) == null;
@@ -287,6 +305,21 @@ service cloud.firestore {
           && keepsCard();
       }
 
+      // Racha de pareja: un doc por día con quién hizo su parte
+      // ({hechos: {uid: true}}). Cada uno solo se marca a sí mismo.
+      match /racha/{day} {
+        function previousHechos() {
+          return resource == null ? {} : resource.data.get('hechos', {});
+        }
+        allow read: if isMember(coupleId);
+        allow create, update: if isMember(coupleId)
+          && day.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+          && request.resource.data.keys().hasOnly(['hechos'])
+          && request.resource.data.hechos.diff(previousHechos())
+               .affectedKeys().hasOnly([me()])
+          && request.resource.data.hechos[me()] == true;
+      }
+
       // Cosas por hacer juntos.
       match /bucketList/{itemId} {
         allow read, write: if isMember(coupleId);
@@ -294,6 +327,13 @@ service cloud.firestore {
 
       // "Te extraño": la app le pide al Worker (worker/) que avise a la pareja.
       match /missYou/{id} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me();
+      }
+
+      // Abrazos que se mandan desde el inicio cuando la pareja no está bien.
+      match /abrazos/{id} {
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.from == me();

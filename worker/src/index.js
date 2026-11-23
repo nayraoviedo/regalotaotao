@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter",
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug",
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -99,7 +99,16 @@ const KINDS = {
     dedupeKey: (d) => `${d.rewardId || ""}|${d.rewardTitle}`,
     message: (name, d) => ({
       title: "🎁 Premio elegido",
-      body: `${name} ${d.kind === "tarea" ? "terminó una tarea" : "completó un pomodoro"} y eligió: ${d.rewardTitle}`,
+      body: `${name} ${d.kind === "tarea" ? "terminó una tarea" : d.kind === "racha" ? `llegó a ${d.meta} días de racha` : "completó un pomodoro"} y eligió: ${d.rewardTitle}`,
+    }),
+  },
+  hug: {
+    collection: "abrazos",
+    check: (d, uid, partner) => d.from === uid && d.to === partner,
+    dedupeKey: () => "enviado",
+    message: (name) => ({
+      title: "🤗 Un abrazo para ti",
+      body: `${name} vio cómo te sientes y te manda un abrazo apretado`,
     }),
   },
   letter: {

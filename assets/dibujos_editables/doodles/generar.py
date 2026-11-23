@@ -89,6 +89,8 @@ D['avion'] = '<g transform="rotate(45 48 48)">' + ambos('M48 8 C53 8 55 14 55 22
 D['comida'] = linea('M28 12 L28 36 Q28 46 36 46 Q44 46 44 36 L44 12 M36 12 L36 86') + ambos('M64 12 C76 14 78 34 72 46 L66 46 C58 34 56 14 64 12 Z', AM) + linea('M68 46 L68 86')
 D['montana'] = ambos('M6 82 L36 30 L52 56 L62 42 L90 82 Z', VE) + relleno('M30 40 L36 30 L42 40 L38 38 L34 42 Z', CR, 0, 0) + f'<circle cx="72" cy="20" r="8" fill="{AM}"/>'
 
+D['fuego'] = ambos('M48 86 C30 86 18 74 18 58 C18 44 28 34 32 22 C38 30 40 36 40 42 C46 32 50 20 48 8 C64 18 78 36 78 58 C78 74 66 86 48 86 Z', TO) + relleno('M48 84 C40 84 34 78 34 70 C34 62 42 56 46 48 C52 56 62 62 62 70 C62 78 56 84 48 84 Z', AM, 0, 0)
+D['quitar'] = linea('M20 48 L76 48', 6)
 
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
