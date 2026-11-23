@@ -47,6 +47,9 @@ dependencies:
   workmanager: ^0.10.10
   webview_flutter: ^4.14.1
   url_launcher: ^6.3.3
+  audioplayers: ^6.8.1
+  flutter_local_notifications: ^22.3.3
+  timezone: ^0.11.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -87,6 +90,9 @@ flutter:
     - assets/casita/
     # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
     - assets/cartas/
+    # Maullido al terminar el pomodoro (también lo usa la notificación de
+    # Android: ver android/app/build.gradle.kts).
+    - assets/sonidos/raw/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:
