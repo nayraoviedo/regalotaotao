@@ -15,7 +15,6 @@ class Casita {
   static const alto = 104.0;
 
   static String asset(String nombre) => 'assets/casita/$nombre.png';
-  static const marco = 'marco';
   static const iconoPescadito = 'assets/casita/pescadito.png';
 
   // ---- Cuántos pescaditos da cada cosa ----
@@ -31,7 +30,33 @@ class Casita {
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
 }
 
-/// Lugares del cuarto, en el orden en que se dibujan (de atrás hacia
+/// Los cuartos de la casita. La sala viene con la casita; los demás se
+/// abren con pescaditos (se compran como una [Cosa] con [Cosa.cuarto]).
+enum Cuarto {
+  sala('Sala', 0),
+  cocina('Cocina', 200, base: 'cuarto_cocina'),
+  dormitorio('Dormitorio', 250, base: 'cuarto_dormitorio'),
+  jardin('Jardín', 300, base: 'cuarto_jardin', marco: 'marco_jardin');
+
+  const Cuarto(this.nombre, this.precio, {this.base, this.marco = 'marco'});
+
+  final String nombre;
+  final int precio;
+
+  /// Capa de fondo (pared y piso fijos). La sala no tiene: ahí se eligen.
+  final String? base;
+
+  /// Capa del borde (techito o setos).
+  final String marco;
+
+  /// Id de la [Cosa] que abre este cuarto.
+  String get idCompra => 'cuarto_$name';
+
+  List<Lugar> get lugares =>
+      Lugar.values.where((l) => l.cuarto == this).toList();
+}
+
+/// Lugares de cada cuarto, en el orden en que se dibujan (de atrás hacia
 /// adelante). [zona] es dónde queda, en píxeles del dibujo, para recortar
 /// la vista previa en la tienda y para saber qué se tocó en el cuarto.
 enum Lugar {
@@ -43,11 +68,42 @@ enum Lugar {
   lampara('Luces', ZonaCasita(63, 28, 15, 34)),
   sofa('Sofá', ZonaCasita(22, 40, 40, 24)),
   planta('Planta', ZonaCasita(2, 40, 16, 22)),
-  camita('Camita', ZonaCasita(56, 76, 22, 20));
+  camita('Camita', ZonaCasita(56, 76, 22, 20)),
 
-  const Lugar(this.nombre, this.zona, {this.inicial});
+  // Cocina
+  repisa('Repisa', ZonaCasita(43, 16, 33, 18), cuarto: Cuarto.cocina),
+  refri('Refri', ZonaCasita(4, 18, 16, 46), cuarto: Cuarto.cocina),
+  estufa('Estufa', ZonaCasita(19, 32, 18, 31), cuarto: Cuarto.cocina),
+  mesa('Mesa', ZonaCasita(58, 50, 21, 30), cuarto: Cuarto.cocina),
+  comedero('Platito', ZonaCasita(3, 84, 21, 13), cuarto: Cuarto.cocina),
+
+  // Dormitorio
+  alfombraCama(
+    'Alfombra',
+    ZonaCasita(14, 76, 52, 22),
+    cuarto: Cuarto.dormitorio,
+  ),
+  ropero('Ropero', ZonaCasita(3, 15, 22, 49), cuarto: Cuarto.dormitorio),
+  cuadroCama('Cuadro', ZonaCasita(50, 16, 20, 17), cuarto: Cuarto.dormitorio),
+  velador('Velador', ZonaCasita(29, 40, 15, 25), cuarto: Cuarto.dormitorio),
+  cama('Cama', ZonaCasita(43, 36, 36, 34), cuarto: Cuarto.dormitorio),
+
+  // Jardín
+  arbol('Árbol', ZonaCasita(46, 14, 33, 53), cuarto: Cuarto.jardin),
+  farol('Farol', ZonaCasita(2, 24, 15, 40), cuarto: Cuarto.jardin),
+  flores('Flores', ZonaCasita(2, 50, 20, 22), cuarto: Cuarto.jardin),
+  asiento('Banca', ZonaCasita(22, 40, 28, 26), cuarto: Cuarto.jardin),
+  estanque('Estanque', ZonaCasita(53, 66, 26, 30), cuarto: Cuarto.jardin);
+
+  const Lugar(
+    this.nombre,
+    this.zona, {
+    this.inicial,
+    this.cuarto = Cuarto.sala,
+  });
 
   final String nombre;
+  final Cuarto cuarto;
   final ZonaCasita zona;
 
   /// Lo que hay al principio (gratis). Pared y piso siempre tienen algo.
@@ -91,7 +147,13 @@ class Cosa {
     this.lugar,
     this.parte,
     this.zonaPropia,
-  }) : assert((lugar == null) != (parte == null));
+    this.cuarto,
+  }) : assert(
+         (lugar != null ? 1 : 0) +
+                 (parte != null ? 1 : 0) +
+                 (cuarto != null ? 1 : 0) ==
+             1,
+       );
 
   final String id;
   final String nombre;
@@ -101,6 +163,9 @@ class Cosa {
   final Lugar? lugar;
   final Parte? parte;
 
+  /// Si es un cuarto nuevo para la casita.
+  final Cuarto? cuarto;
+
   /// Dónde queda en el dibujo, si no es la zona de siempre de su lugar.
   final ZonaCasita? zonaPropia;
 
@@ -108,6 +173,7 @@ class Cosa {
       zonaPropia ?? lugar?.zona ?? const ZonaCasita(0, 0, 80, 104);
 
   bool get esRopa => parte != null;
+  bool get esCuarto => cuarto != null;
   bool get gratis => precio == 0;
 
   /// PNG del mueble. La ropita tiene uno por gatito ([assetRopa]).
@@ -115,7 +181,7 @@ class Cosa {
   String assetRopa(String gatito) => Casita.asset('ropa_${id}_$gatito');
 }
 
-/// Todo lo que se puede tener en la casita (fase 1).
+/// Todo lo que se puede tener en la casita.
 class Catalogo {
   Catalogo._();
 
@@ -177,6 +243,51 @@ class Catalogo {
     Cosa('lentes', 'Lentes', 60, parte: Parte.cara),
     Cosa('gorrito', 'Gorrito de lana', 70, parte: Parte.cabeza),
     Cosa('corona', 'Coronita', 150, parte: Parte.cabeza),
+    Cosa('bandana', 'Pañuelo', 40, parte: Parte.cuello),
+    Cosa('gorra', 'Gorra', 60, parte: Parte.cabeza),
+    Cosa('lentes_sol', 'Lentes de sol', 80, parte: Parte.cara),
+    Cosa('copa', 'Sombrero de copa', 120, parte: Parte.cabeza),
+
+    // Cuartos nuevos
+    Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
+    Cosa('cuarto_dormitorio', 'Dormitorio', 250, cuarto: Cuarto.dormitorio),
+    Cosa('cuarto_jardin', 'Jardín', 300, cuarto: Cuarto.jardin),
+
+    // Cocina
+    Cosa('repisa_frascos', 'Repisa con frascos', 40, lugar: Lugar.repisa),
+    Cosa('repisa_tazas', 'Repisa con tazas', 40, lugar: Lugar.repisa),
+    Cosa('refri_crema', 'Refri crema', 90, lugar: Lugar.refri),
+    Cosa('refri_azul', 'Refri azul', 90, lugar: Lugar.refri),
+    Cosa('estufa_blanca', 'Estufa blanca', 80, lugar: Lugar.estufa),
+    Cosa('horno_retro', 'Estufa retro', 100, lugar: Lugar.estufa),
+    Cosa('mesa_cuadros', 'Mesa de picnic', 70, lugar: Lugar.mesa),
+    Cosa('mesa_azul', 'Mesa celeste', 60, lugar: Lugar.mesa),
+    Cosa('comedero_simple', 'Platito', 30, lugar: Lugar.comedero),
+    Cosa('comedero_doble', 'Platitos para dos', 50, lugar: Lugar.comedero),
+
+    // Dormitorio
+    Cosa('alfombra_nube', 'Alfombra nube', 50, lugar: Lugar.alfombraCama),
+    Cosa('alfombra_luna', 'Alfombra de luna', 60, lugar: Lugar.alfombraCama),
+    Cosa('ropero_madera', 'Ropero de madera', 90, lugar: Lugar.ropero),
+    Cosa('ropero_blanco', 'Ropero blanco', 90, lugar: Lugar.ropero),
+    Cosa('cuadro_constelacion', 'Constelación', 30, lugar: Lugar.cuadroCama),
+    Cosa('cuadro_amor', 'Dos corazones', 30, lugar: Lugar.cuadroCama),
+    Cosa('velador_lampara', 'Velador con lámpara', 50, lugar: Lugar.velador),
+    Cosa('velador_flores', 'Velador con flores', 50, lugar: Lugar.velador),
+    Cosa('cama_estrellas', 'Cama de estrellas', 150, lugar: Lugar.cama),
+    Cosa('cama_corazones', 'Cama de corazones', 150, lugar: Lugar.cama),
+
+    // Jardín
+    Cosa('arbol_manzano', 'Manzano', 120, lugar: Lugar.arbol),
+    Cosa('arbol_cerezo', 'Cerezo en flor', 140, lugar: Lugar.arbol),
+    Cosa('farol', 'Farol', 50, lugar: Lugar.farol),
+    Cosa('casita_pajaros', 'Casita de pájaros', 60, lugar: Lugar.farol),
+    Cosa('flores_tulipanes', 'Tulipanes', 40, lugar: Lugar.flores),
+    Cosa('flores_girasoles', 'Girasoles', 40, lugar: Lugar.flores),
+    Cosa('banca_madera', 'Banca', 70, lugar: Lugar.asiento),
+    Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
+    Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
+    Cosa('estanque_fuente', 'Fuente', 110, lugar: Lugar.estanque),
   ];
 
   static Cosa? porId(String? id) {
@@ -191,6 +302,9 @@ class Catalogo {
       cosas.where((c) => c.lugar == lugar).toList();
 
   static List<Cosa> get ropa => cosas.where((c) => c.esRopa).toList();
+
+  /// La cosa que abre [cuarto] (null para la sala, que ya viene).
+  static Cosa? abre(Cuarto cuarto) => porId(cuarto.idCompra);
 }
 
 /// Estado de la casita: `couples/{id}/casita/estado`.
@@ -236,6 +350,9 @@ class EstadoCasita {
 
   bool tiene(Cosa c) => c.gratis || tenemos.contains(c.id);
 
+  /// ¿Ya abrieron este cuarto?
+  bool abierto(Cuarto c) => c.precio == 0 || tenemos.contains(c.idCompra);
+
   /// Lo que se ve en [lugar] (o null si está vacío).
   Cosa? puesto(Lugar lugar) {
     final id = puestos.containsKey(lugar.name)
@@ -260,19 +377,24 @@ class EstadoCasita {
       if (prenda(g, c.parte!)?.id == c.id) g,
   ];
 
-  bool enUso(Cosa c) =>
-      c.esRopa ? quienLleva(c).isNotEmpty : puesto(c.lugar!)?.id == c.id;
+  bool enUso(Cosa c) => c.esRopa
+      ? quienLleva(c).isNotEmpty
+      : c.esCuarto
+      ? tiene(c)
+      : puesto(c.lugar!)?.id == c.id;
 
-  /// Capas para dibujar el cuarto, de atrás hacia adelante.
-  List<String> capas() => [
-    for (final l in Lugar.values)
-      if (puesto(l) case final c?) c.asset,
+  /// Capas para dibujar [cuarto], de atrás hacia adelante. Con
+  /// [conMuebles] en false sale vacío (para mostrar un cuarto cerrado).
+  List<String> capas([Cuarto cuarto = Cuarto.sala, bool conMuebles = true]) => [
+    if (cuarto.base case final b?) Casita.asset(b),
+    for (final l in cuarto.lugares)
+      if (puesto(l) case final c? when conMuebles || l.siempreLleno) c.asset,
     for (final g in const ['naranja', 'blanco']) ...[
       Casita.asset('gatito_$g'),
       for (final p in Parte.values)
         if (prenda(g, p) case final c?) c.assetRopa(g),
     ],
-    Casita.asset(Casita.marco),
+    Casita.asset(cuarto.marco),
   ];
 }
 
@@ -326,10 +448,17 @@ class Movimiento {
     animo => 'contó cómo se siente',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
-    compra => 'compró ${Catalogo.porId(ref)?.nombre ?? 'algo'}',
+    compra => switch (Catalogo.porId(ref)) {
+      final c? when c.esCuarto => 'abrió ${_el(c.cuarto!)}',
+      final c? => 'compró ${c.nombre}',
+      null => 'compró algo',
+    },
     _ => '',
   };
 }
+
+String _el(Cuarto c) =>
+    c == Cuarto.cocina ? 'la cocina' : 'el ${c.nombre.toLowerCase()}';
 
 /// Algo que se acaba de ganar (para el aviso "+10").
 class Ganancia {
