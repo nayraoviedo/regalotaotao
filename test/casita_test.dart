@@ -57,7 +57,7 @@ void main() {
           expect(Catalogo.porId(id)!.gratis, isTrue);
         }
       }
-      expect(Catalogo.cosas.where((c) => c.gratis).length, 8);
+      expect(Catalogo.cosas.where((c) => c.gratis).length, 10);
     });
   });
 
@@ -266,6 +266,28 @@ void main() {
       expect(CuartoCasita.queHay(10, 40, Cuarto.cocina), Lugar.refri);
       expect(CuartoCasita.queHay(60, 50, Cuarto.dormitorio), Lugar.cama);
       expect(CuartoCasita.queHay(66, 88, Cuarto.jardin), Lugar.estanque);
+      expect(CuartoCasita.queHay(60, 55, Cuarto.bano), Lugar.tina);
+      expect(CuartoCasita.queHay(10, 90, Cuarto.bano), Lugar.arenero);
+      expect(CuartoCasita.queHay(70, 90, Cuarto.bano), Lugar.patito);
+    });
+
+    test('en el baño, con tina, se bañan los gatitos', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_bano', 'tina_blanca'],
+        'puestos': {'tina': 'tina_blanca'},
+      });
+      expect(e.sePuedenBanar(Cuarto.bano), isTrue);
+      final banando = e.capas(Cuarto.bano, true, Momento.noche, 0, true);
+      expect(banando, contains('assets/casita/banando_1.png'));
+      expect(banando, isNot(contains('assets/casita/gatito_naranja.png')));
+      // Sin tina no hay baño (y en la sala tampoco).
+      const sinTina = EstadoCasita(tenemos: {'cuarto_bano'});
+      expect(sinTina.sePuedenBanar(Cuarto.bano), isFalse);
+      expect(
+        sinTina.capas(Cuarto.bano, true, Momento.dia, 0, true),
+        contains('assets/casita/gatito_naranja.png'),
+      );
+      expect(e.sePuedenBanar(Cuarto.sala), isFalse);
     });
 
     test('las festividades caen en sus fechas', () {
@@ -627,6 +649,23 @@ void main() {
       await t.tap(find.text('Comprar'));
       await t.pumpAndSettle();
       expect(compras.single.$1.id, 'cuarto_cocina');
+    });
+
+    testWidgets('bañar a los gatitos en la tina', (t) async {
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(
+            tenemos: {'cuarto_bano', 'tina_rosa'},
+            puestos: {'tina': 'tina_rosa'},
+          ),
+          cuarto: Cuarto.bano,
+        ),
+      );
+      await t.tap(find.text('Bañar a los gatitos'));
+      await t.pump();
+      expect(find.text('¡Qué rico bañito!'), findsOneWidget);
+      await t.pump(const Duration(seconds: 6));
+      expect(find.text('Bañar a los gatitos'), findsOneWidget);
     });
 
     testWidgets('los movimientos dicen quién hizo qué', (t) async {

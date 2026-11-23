@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:image_picker/image_picker.dart';
@@ -229,6 +230,17 @@ class _CasitaViewState extends State<CasitaView> {
             Lugar.paredDorm,
             Lugar.pisoDorm,
           ],
+          Cuarto.bano => const [
+            Lugar.tina,
+            Lugar.lavamanos,
+            Lugar.arenero,
+            Lugar.patito,
+            Lugar.tapete,
+            Lugar.toallero,
+            Lugar.repisaBano,
+            Lugar.paredBano,
+            Lugar.pisoBano,
+          ],
           _ => const [
             Lugar.arbol,
             Lugar.asiento,
@@ -239,8 +251,27 @@ class _CasitaViewState extends State<CasitaView> {
           ],
         };
 
+  /// Los gatitos están en la tina (un ratito, después salen solos).
+  bool _banando = false;
+  Timer? _finDelBano;
+
+  void _banar() {
+    setState(() => _banando = true);
+    _finDelBano?.cancel();
+    _finDelBano = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _banando = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _finDelBano?.cancel();
+    super.dispose();
+  }
+
   void _verCuarto(Cuarto c) => setState(() {
     _cuarto = c;
+    _banando = false;
     final cats = _categoriasDe(c);
     _categoria = cats[cats.length > 1 && cats.first == _catFiesta ? 1 : 0];
   });
@@ -716,6 +747,7 @@ class _CasitaViewState extends State<CasitaView> {
                       cuarto: _cuarto,
                       onToque: _elegir,
                       ahora: widget.hoy,
+                      banando: _banando,
                     )
                   : _CuartoCerrado(
                       key: ValueKey(_cuarto),
@@ -733,6 +765,18 @@ class _CasitaViewState extends State<CasitaView> {
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
+          if (_estado.abierto(_cuarto) && _estado.sePuedenBanar(_cuarto)) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: FilledButton.tonalIcon(
+                onPressed: _banando ? null : _banar,
+                icon: const Text('🫧'),
+                label: Text(
+                  _banando ? '¡Qué rico bañito!' : 'Bañar a los gatitos',
+                ),
+              ),
+            ),
+          ],
           if (_estado.metaCosa case final meta? when widget.onMeta != null) ...[
             const SizedBox(height: 16),
             Alcancia(

@@ -85,7 +85,8 @@ enum Cuarto {
   sala('Sala', 0),
   cocina('Cocina', 200, base: 'cuarto_cocina'),
   dormitorio('Dormitorio', 250, base: 'cuarto_dormitorio'),
-  jardin('Jardín', 300, base: 'cuarto_jardin', marco: 'marco_jardin');
+  jardin('Jardín', 300, base: 'cuarto_jardin', marco: 'marco_jardin'),
+  bano('Baño', 220, base: 'cuarto_bano');
 
   const Cuarto(this.nombre, this.precio, {this.base, this.marco = 'marco'});
 
@@ -183,7 +184,30 @@ enum Lugar {
   farol('Farol', ZonaCasita(2, 24, 15, 40), cuarto: Cuarto.jardin),
   flores('Flores', ZonaCasita(2, 50, 20, 22), cuarto: Cuarto.jardin),
   asiento('Banca', ZonaCasita(22, 40, 28, 26), cuarto: Cuarto.jardin),
-  estanque('Estanque', ZonaCasita(53, 66, 26, 30), cuarto: Cuarto.jardin);
+  estanque('Estanque', ZonaCasita(53, 66, 26, 30), cuarto: Cuarto.jardin),
+
+  // Baño
+  paredBano(
+    'Pared',
+    ZonaCasita(2, 14, 76, 46),
+    cuarto: Cuarto.bano,
+    inicial: 'pared_bano_menta',
+    fijo: true,
+  ),
+  pisoBano(
+    'Piso',
+    ZonaCasita(2, 60, 76, 40),
+    cuarto: Cuarto.bano,
+    inicial: 'piso_bano_blanco',
+    fijo: true,
+  ),
+  lavamanos('Lavamanos', ZonaCasita(3, 16, 18, 45), cuarto: Cuarto.bano),
+  toallero('Toallas', ZonaCasita(23, 33, 20, 16), cuarto: Cuarto.bano),
+  repisaBano('Repisa', ZonaCasita(49, 17, 29, 17), cuarto: Cuarto.bano),
+  tina('Tina', ZonaCasita(42, 38, 37, 28), cuarto: Cuarto.bano),
+  tapete('Tapete', ZonaCasita(17, 84, 46, 14), cuarto: Cuarto.bano),
+  arenero('Arenero', ZonaCasita(2, 77, 19, 21), cuarto: Cuarto.bano),
+  patito('Juguetes', ZonaCasita(62, 77, 17, 21), cuarto: Cuarto.bano);
 
   const Lugar(
     this.nombre,
@@ -386,6 +410,7 @@ class Catalogo {
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
     Cosa('cuarto_dormitorio', 'Dormitorio', 250, cuarto: Cuarto.dormitorio),
     Cosa('cuarto_jardin', 'Jardín', 300, cuarto: Cuarto.jardin),
+    Cosa('cuarto_bano', 'Baño', 220, cuarto: Cuarto.bano),
 
     // Cocina
     Cosa('repisa_frascos', 'Repisa con frascos', 40, lugar: Lugar.repisa),
@@ -422,6 +447,42 @@ class Catalogo {
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
     Cosa('estanque_fuente', 'Fuente', 110, lugar: Lugar.estanque),
+
+    // Baño
+    Cosa('pared_bano_menta', 'Azulejos menta', 0, lugar: Lugar.paredBano),
+    Cosa('pared_bano_rosa', 'Azulejos rosados', 50, lugar: Lugar.paredBano),
+    Cosa('pared_bano_lila', 'Azulejos lila', 50, lugar: Lugar.paredBano),
+    Cosa('piso_bano_blanco', 'Baldosas blancas', 0, lugar: Lugar.pisoBano),
+    Cosa('piso_bano_celeste', 'Baldosas celestes', 50, lugar: Lugar.pisoBano),
+    Cosa('tina_blanca', 'Tina con patitas', 120, lugar: Lugar.tina),
+    Cosa('tina_rosa', 'Tina rosada', 130, lugar: Lugar.tina),
+    Cosa('lavamanos_redondo', 'Lavamanos y espejo', 80, lugar: Lugar.lavamanos),
+    Cosa(
+      'lavamanos_corazon',
+      'Lavamanos y espejo corazón',
+      90,
+      lugar: Lugar.lavamanos,
+    ),
+    Cosa('toallas_rayas', 'Toallas a rayas', 30, lugar: Lugar.toallero),
+    Cosa('toallas_gatitos', 'Toallas de gatitos', 35, lugar: Lugar.toallero),
+    Cosa(
+      'repisa_bano_cepillos',
+      'Champú y cepillos',
+      40,
+      lugar: Lugar.repisaBano,
+    ),
+    Cosa(
+      'repisa_bano_velas',
+      'Velitas y plantita',
+      40,
+      lugar: Lugar.repisaBano,
+    ),
+    Cosa('arenero_azul', 'Arenero', 40, lugar: Lugar.arenero),
+    Cosa('arenero_casita', 'Arenero casita', 60, lugar: Lugar.arenero),
+    Cosa('tapete_celeste', 'Tapete esponjoso', 40, lugar: Lugar.tapete),
+    Cosa('tapete_huellitas', 'Tapete de huellitas', 45, lugar: Lugar.tapete),
+    Cosa('patito_hule', 'Patito de hule', 25, lugar: Lugar.patito),
+    Cosa('balde_juguetes', 'Balde con barquito', 35, lugar: Lugar.patito),
 
     // ---- Más para la sala ----
     Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
@@ -1033,20 +1094,27 @@ class EstadoCasita {
         _ => false,
       };
 
+  /// ¿Hay tina para bañar a los gatitos? (en el baño)
+  bool sePuedenBanar(Cuarto cuarto) =>
+      cuarto == Cuarto.bano && puesto(Lugar.tina) != null;
+
   /// Las capas del cuarto, de atrás hacia adelante. Con [conMuebles] en
   /// false sale vacío (para mostrar un cuarto cerrado). [tick] avanza solo
   /// (unas tres veces por segundo) para que la casita se mueva: los
-  /// gatitos parpadean y mueven la cola, y los visitantes se mueven.
+  /// gatitos parpadean y mueven la cola, y los visitantes se mueven. Con
+  /// [banando] (y una tina puesta en el baño) los gatitos están en la tina.
   List<String> capas([
     Cuarto cuarto = Cuarto.sala,
     bool conMuebles = true,
     Momento momento = Momento.dia,
     int tick = 0,
+    bool banando = false,
   ]) {
     String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
         ? Casita.asset('${c.id}_2')
         : c.asset;
-    final duermen = conMuebles && this.duermen(cuarto, momento);
+    final enLaTina = banando && conMuebles && sePuedenBanar(cuarto);
+    final duermen = !enLaTina && conMuebles && this.duermen(cuarto, momento);
     final cama = cuarto == Cuarto.sala ? 'camita' : 'cama';
     return [
       for (final l in cuarto.lugares)
@@ -1060,7 +1128,9 @@ class EstadoCasita {
             if (puesto(l) case final c?) dibujo(c),
       if (cuarto == Cuarto.sala && conMuebles && regalos.isNotEmpty)
         Casita.regaloEnvuelto,
-      if (duermen) ...[
+      if (enLaTina)
+        Casita.asset('banando_${tick % 4 < 2 ? 1 : 2}')
+      else if (duermen) ...[
         Casita.asset('dormidos_$cama'),
         Casita.asset('zzz_${cama}_${tick % 6 < 3 ? 1 : 2}'),
       ] else

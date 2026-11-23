@@ -17,10 +17,14 @@ class CuartoCasita extends StatelessWidget {
     this.onToque,
     this.momento = Momento.dia,
     this.tick = 0,
+    this.banando = false,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
+
+  /// Los gatitos están en la tina (ver [EstadoCasita.capas]).
+  final bool banando;
 
   /// Día, tarde o noche (de noche se prenden las luces y duermen).
   final Momento momento;
@@ -57,7 +61,13 @@ class CuartoCasita extends StatelessWidget {
     final capas = Stack(
       fit: StackFit.expand,
       children: [
-        for (final a in estado.capas(cuarto, conMuebles, momento, tick)) ...[
+        for (final a in estado.capas(
+          cuarto,
+          conMuebles,
+          momento,
+          tick,
+          banando,
+        )) ...[
           CapaCasita(a, key: ValueKey(a)),
           // Su foto, pixelada, dentro del marco del cuadro.
           if (foto != null && a == cuadroFoto && cuarto == Cuarto.sala)
@@ -98,11 +108,13 @@ class CuartoVivo extends StatefulWidget {
     this.cuarto = Cuarto.sala,
     this.onToque,
     this.ahora,
+    this.banando = false,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
   final ToqueCasita? onToque;
+  final bool banando;
 
   /// Para fijar la hora (en las pruebas). Si falta, la hora real.
   final DateTime? ahora;
@@ -146,6 +158,7 @@ class _CuartoVivoState extends State<CuartoVivo> {
       onToque: widget.onToque,
       momento: Momento.de(widget.ahora ?? DateTime.now()),
       tick: quieto ? 0 : _tick,
+      banando: widget.banando,
     );
   }
 }
