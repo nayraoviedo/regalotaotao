@@ -274,4 +274,21 @@ class TogetherService {
     ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
     NotifyService.instance.send(NotifyKind.missYou, coupleId, ref.id);
   }
+
+  /// Abrazo para la pareja cuando su ánimo no anda bien. Se guarda en
+  /// `couples/{id}/abrazos` y el Worker le manda la notificación.
+  Future<void> sendHug(
+    String coupleId, {
+    required String from,
+    required String to,
+    required String mood,
+  }) async {
+    final ref = await Db.coupleSub(coupleId, 'abrazos').add({
+      'from': from,
+      'to': to,
+      'mood': mood,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.hug, coupleId, ref.id);
+  }
 }
