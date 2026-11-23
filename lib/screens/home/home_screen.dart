@@ -15,6 +15,7 @@ import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
+import '../../widgets/casita_widget_sync.dart';
 import '../../widgets/widget_celular_sync.dart';
 import '../profile/profile_screen.dart';
 import '../bucket_list/bucket_list_screen.dart';
@@ -72,7 +73,10 @@ class HomeScreen extends StatelessWidget {
                 me: me,
                 couple: couple,
                 partner: partner,
-                child: _HomeBody(me: me, partner: partner, couple: couple),
+                child: CasitaWidgetSync(
+                  coupleId: couple.id,
+                  child: _HomeBody(me: me, partner: partner, couple: couple),
+                ),
               ),
             );
           },
@@ -369,6 +373,7 @@ class _HomeBodyState extends State<_HomeBody> {
             onRacha: _verRacha,
             casita: CasitaInicio(
               coupleId: couple.id,
+              uid: me.uid,
               onTap: () => _open(
                 CasitaScreen(
                   coupleId: couple.id,

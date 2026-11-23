@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -45,6 +47,15 @@ class CasitaScreen extends StatelessWidget {
           onVestir: (gatito, parte, cosa) =>
               servicio.vestir(coupleId, gatito, parte, cosa),
           onFoto: (foto) => servicio.ponerFoto(coupleId, foto),
+          onRegalar: (cosa, gatito, mensaje) => servicio.comprar(
+            coupleId,
+            me.uid,
+            cosa,
+            regalo: Regalo(de: me.uid, mensaje: mensaje, gatito: gatito),
+          ),
+          onAbrirRegalo: (cosa, regalo) =>
+              servicio.abrirRegalo(coupleId, cosa, regalo),
+          onMeta: (cosa) => servicio.ponerMeta(coupleId, cosa),
         ),
       ),
     );
@@ -63,6 +74,9 @@ class CasitaView extends StatefulWidget {
     required this.onPoner,
     required this.onVestir,
     this.onFoto,
+    this.onRegalar,
+    this.onAbrirRegalo,
+    this.onMeta,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -79,6 +93,14 @@ class CasitaView extends StatefulWidget {
 
   /// Guarda (o quita, con `null`) su foto pixelada del cuadro.
   final Future<void> Function(List<int>? foto)? onFoto;
+
+  /// Compra algo como regalo sorpresa para la pareja.
+  final Future<void> Function(Cosa cosa, String? gatito, String mensaje)?
+  onRegalar;
+  final Future<void> Function(Cosa cosa, Regalo regalo)? onAbrirRegalo;
+
+  /// Elige (o quita) la meta de la alcancía.
+  final Future<void> Function(Cosa? cosa)? onMeta;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -284,6 +306,16 @@ class _CasitaViewState extends State<CasitaView> {
       return;
     }
     if (!_estado.tiene(cosa)) return _comprar(cosa);
+    if (_estado.envuelto(cosa)) {
+      final r = _estado.regalos[cosa.id]!;
+      if (r.de != widget.me.uid && widget.onAbrirRegalo != null) {
+        return _abrirRegalo(cosa, r);
+      }
+      _aviso(
+        'Está envuelto hasta que ${widget.partner?.name ?? 'tu pareja'} lo abra 🎁',
+      );
+      return;
+    }
     if (cosa.esRopa) return _vestir(cosa);
     final lugar = cosa.lugar!;
     final enUso = _estado.enUso(cosa);
@@ -297,56 +329,79 @@ class _CasitaViewState extends State<CasitaView> {
 
   Future<void> _comprar(Cosa cosa) async {
     final hay = _estado.pescaditos;
-    if (hay < cosa.precio) {
-      _aviso(
-        'Les faltan ${cosa.precio - hay} pescaditos para ${cosa.nombre}. '
-        '¡Sigan respondiendo y haciendo pomodoros!',
-      );
-      return;
-    }
-    String? gatito = cosa.esRopa
-        ? Gatito.dePareja(widget.me, widget.partner).$1.id
-        : null;
+    if (hay < cosa.precio) return _faltan(cosa);
+    final (mio, suyo) = Gatito.dePareja(widget.me, widget.partner);
+    final pareja = widget.partner?.name;
+    final sePuedeRegalar =
+        widget.onRegalar != null && pareja != null && !cosa.esCuarto;
+    String? gatito = cosa.esRopa ? mio.id : null;
+    var regalo = false;
+    var texto = '';
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) => AlertDialog(
           title: Text('¿Comprar ${cosa.nombre}?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: SizedBox(
-                  height: 110,
-                  child: RecorteCasita(
-                    capas: _capasDe(cosa, gatito: gatito),
-                    zona: _zonaDe(cosa, gatito: gatito),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: SizedBox(
+                    height: 110,
+                    child: RecorteCasita(
+                      capas: _capasDe(cosa, gatito: gatito),
+                      zona: _zonaDe(cosa, gatito: gatito),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Cuesta ${cosa.precio} pescaditos de los dos. '
-                'Les quedarían ${hay - cosa.precio}.',
-              ),
-              if (cosa.esRopa) ...[
                 const SizedBox(height: 12),
-                const Text('¿Quién lo estrena?'),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final g in const ['naranja', 'blanco'])
-                      ChoiceChip(
-                        label: Text(_nombreGatito(g)),
-                        selected: gatito == g,
-                        onSelected: (_) => setDialog(() => gatito = g),
-                      ),
-                  ],
+                Text(
+                  'Cuesta ${cosa.precio} pescaditos de los dos. '
+                  'Les quedarían ${hay - cosa.precio}.',
                 ),
+                if (sePuedeRegalar) ...[
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: regalo,
+                    title: Text('🎁 Es un regalo sorpresa para $pareja'),
+                    subtitle: const Text('Le aparece envuelto en la casita'),
+                    onChanged: (v) => setDialog(() {
+                      regalo = v ?? false;
+                      if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
+                    }),
+                  ),
+                  if (regalo)
+                    TextField(
+                      onChanged: (v) => texto = v,
+                      maxLength: 120,
+                      maxLines: 2,
+                      minLines: 1,
+                      decoration: const InputDecoration(
+                        hintText: 'Un mensajito (opcional)',
+                      ),
+                    ),
+                ],
+                if (cosa.esRopa) ...[
+                  const SizedBox(height: 12),
+                  const Text('¿Quién lo estrena?'),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final g in const ['naranja', 'blanco'])
+                        ChoiceChip(
+                          label: Text(_nombreGatito(g)),
+                          selected: gatito == g,
+                          onSelected: (_) => setDialog(() => gatito = g),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -356,7 +411,7 @@ class _CasitaViewState extends State<CasitaView> {
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Comprar'),
+              child: Text(regalo ? 'Regalar' : 'Comprar'),
             ),
           ],
         ),
@@ -364,6 +419,11 @@ class _CasitaViewState extends State<CasitaView> {
     );
     if (ok != true) return;
     try {
+      if (regalo) {
+        await widget.onRegalar!(cosa, gatito, texto.trim());
+        _aviso('🎁 Listo: $pareja lo va a encontrar envuelto en la casita');
+        return;
+      }
       await widget.onComprar(cosa, gatito);
       if (cosa.cuarto case final c?) {
         _verCuarto(c);
@@ -375,6 +435,64 @@ class _CasitaViewState extends State<CasitaView> {
       _aviso('Les faltan ${e.faltan} pescaditos');
     } catch (_) {
       _aviso('No se pudo comprar, intenta otra vez');
+    }
+  }
+
+  /// No alcanza: ofrece ahorrar juntos para eso en la alcancía.
+  Future<void> _faltan(Cosa cosa) async {
+    final faltan = cosa.precio - _estado.pescaditos;
+    if (widget.onMeta == null || _estado.meta == cosa.id) {
+      _aviso(
+        'Les faltan $faltan pescaditos para ${cosa.nombre}. '
+        '¡Sigan respondiendo y haciendo pomodoros!',
+      );
+      return;
+    }
+    final ahorrar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Les faltan $faltan pescaditos'),
+        content: Text(
+          '¿Quieren ahorrar juntos para ${cosa.nombre}? '
+          'La alcancía les muestra cuánto les falta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ahora no'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('🐷 Ahorrar para esto'),
+          ),
+        ],
+      ),
+    );
+    if (ahorrar != true) return;
+    try {
+      await widget.onMeta!(cosa);
+    } catch (_) {
+      _aviso('No se pudo guardar, intenta otra vez');
+    }
+  }
+
+  /// Abre un regalo sorpresa con su animación.
+  Future<void> _abrirRegalo(Cosa cosa, Regalo regalo) async {
+    final abrir = await showDialog<bool>(
+      context: context,
+      builder: (context) => _AbrirRegalo(
+        cosa: cosa,
+        regalo: regalo,
+        de: widget.partner?.name ?? 'Tu pareja',
+        capas: _capasDe(cosa, gatito: regalo.gatito),
+        zona: _zonaDe(cosa, gatito: regalo.gatito),
+      ),
+    );
+    if (abrir != true) return;
+    try {
+      await widget.onAbrirRegalo!(cosa, regalo);
+    } catch (_) {
+      _aviso('No se pudo abrir, intenta otra vez');
     }
   }
 
@@ -489,6 +607,12 @@ class _CasitaViewState extends State<CasitaView> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
+          for (final (cosa, regalo) in _estado.regalosPara(widget.me.uid))
+            if (widget.onAbrirRegalo != null)
+              _AvisoRegalo(
+                de: widget.partner?.name ?? 'Tu pareja',
+                onAbrir: () => _abrirRegalo(cosa, regalo),
+              ),
           _Cuartos(elegido: _cuarto, estado: _estado, onElegir: _verCuarto),
           const SizedBox(height: 12),
           Center(
@@ -518,6 +642,15 @@ class _CasitaViewState extends State<CasitaView> {
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
+          if (_estado.metaCosa case final meta? when widget.onMeta != null) ...[
+            const SizedBox(height: 16),
+            Alcancia(
+              meta: meta,
+              pescaditos: _estado.pescaditos,
+              onComprar: () => _tocar(meta),
+              onQuitar: () => widget.onMeta!(null),
+            ),
+          ],
           const SizedBox(height: 20),
           _Titulo('Tienda', key: _tiendaKey),
           const SizedBox(height: 8),
@@ -881,6 +1014,7 @@ class _Vitrina extends StatelessWidget {
                   cosa: cosa,
                   tiene: estado.tiene(cosa),
                   enUso: estado.enUso(cosa),
+                  envuelto: estado.envuelto(cosa),
                   alcanza: estado.pescaditos >= cosa.precio,
                   capas: capasDe(cosa),
                   zona: zonaDe(cosa),
@@ -903,11 +1037,15 @@ class _Articulo extends StatelessWidget {
     required this.capas,
     required this.zona,
     required this.onTap,
+    this.envuelto = false,
   });
 
   final Cosa cosa;
   final bool tiene;
   final bool enUso;
+
+  /// Es un regalo sorpresa que todavía no abren.
+  final bool envuelto;
   final bool alcanza;
   final List<String> capas;
   final ZonaCasita zona;
@@ -920,6 +1058,15 @@ class _Articulo extends StatelessWidget {
       pie = Opacity(
         opacity: alcanza ? 1 : 0.45,
         child: Pescaditos(cosa.precio, tamano: 13, color: AppTheme.azul),
+      );
+    } else if (envuelto) {
+      pie = const Text(
+        'Envuelto 🎁',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.azul,
+        ),
       );
     } else {
       pie = Text(
@@ -1090,6 +1237,226 @@ class _FotoDelCuadro extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "🎁 Xixi te dejó un regalo": aparece arriba hasta que lo abren.
+class _AvisoRegalo extends StatelessWidget {
+  const _AvisoRegalo({required this.de, required this.onAbrir});
+
+  final String de;
+  final VoidCallback onAbrir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFFFCE4EC),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: const Text('🎁', style: TextStyle(fontSize: 28)),
+        title: Text('$de te dejó un regalo sorpresa'),
+        subtitle: const Text('Está envuelto en la sala'),
+        trailing: FilledButton(onPressed: onAbrir, child: const Text('Abrir')),
+      ),
+    );
+  }
+}
+
+/// Alcancía de pareja: para qué ahorran y cuánto les falta.
+class Alcancia extends StatelessWidget {
+  const Alcancia({
+    super.key,
+    required this.meta,
+    required this.pescaditos,
+    this.onComprar,
+    this.onQuitar,
+  });
+
+  final Cosa meta;
+  final int pescaditos;
+  final VoidCallback? onComprar;
+  final VoidCallback? onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    final listo = pescaditos >= meta.precio;
+    final avance = (pescaditos / meta.precio).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.azul.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          const Text('🐷', style: TextStyle(fontSize: 26)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  listo
+                      ? '¡Ya les alcanza para ${meta.nombre}!'
+                      : 'Ahorrando juntos para ${meta.nombre}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.azul,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: avance,
+                    minHeight: 10,
+                    color: AppTheme.amarillo,
+                    backgroundColor: AppTheme.azul.withValues(alpha: 0.08),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  listo
+                      ? 'Tienen $pescaditos de ${meta.precio} pescaditos'
+                      : 'Les faltan ${meta.precio - pescaditos} '
+                            '(${pescaditos.clamp(0, meta.precio)} de ${meta.precio})',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.gris),
+                ),
+              ],
+            ),
+          ),
+          if (listo && onComprar != null)
+            TextButton(onPressed: onComprar, child: const Text('Comprar'))
+          else if (onQuitar != null)
+            IconButton(
+              tooltip: 'Quitar la meta',
+              onPressed: onQuitar,
+              icon: const Icon(Icons.close, size: 18, color: AppTheme.gris),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Abrir un regalo: la cajita tiembla, se abre y aparece lo que es, con el
+/// mensajito.
+class _AbrirRegalo extends StatefulWidget {
+  const _AbrirRegalo({
+    required this.cosa,
+    required this.regalo,
+    required this.de,
+    required this.capas,
+    required this.zona,
+  });
+
+  final Cosa cosa;
+  final Regalo regalo;
+  final String de;
+  final List<String> capas;
+  final ZonaCasita zona;
+
+  @override
+  State<_AbrirRegalo> createState() => _AbrirRegaloState();
+}
+
+class _AbrirRegaloState extends State<_AbrirRegalo>
+    with SingleTickerProviderStateMixin {
+  late final _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+  bool _abierto = false;
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  Future<void> _abrir() async {
+    await _anim.forward();
+    if (mounted) setState(() => _abierto = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mensaje = widget.regalo.mensaje.trim();
+    return AlertDialog(
+      title: Text(
+        _abierto ? '¡${widget.cosa.nombre}!' : 'Regalo de ${widget.de}',
+        textAlign: TextAlign.center,
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 130,
+            width: 200,
+            child: AnimatedSwitcher(
+              layoutBuilder: (actual, anteriores) => Stack(
+                fit: StackFit.expand,
+                children: [...anteriores, ?actual],
+              ),
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, a) => ScaleTransition(
+                scale: CurvedAnimation(parent: a, curve: Curves.elasticOut),
+                child: child,
+              ),
+              child: _abierto
+                  ? RecorteCasita(
+                      key: const ValueKey('cosa'),
+                      capas: widget.capas,
+                      zona: widget.zona,
+                    )
+                  : GestureDetector(
+                      key: const ValueKey('caja'),
+                      onTap: _anim.isAnimating ? null : _abrir,
+                      child: AnimatedBuilder(
+                        animation: _anim,
+                        builder: (context, child) {
+                          final t = _anim.value;
+                          // Tiembla cada vez más y al final crece.
+                          final giro = math.sin(t * math.pi * 10) * 0.18 * t;
+                          final escala = 1.0 + (t > 0.8 ? (t - 0.8) * 2 : 0.0);
+                          return Transform.rotate(
+                            angle: giro,
+                            child: Transform.scale(scale: escala, child: child),
+                          );
+                        },
+                        child: const RecorteCasita(
+                          capas: [Casita.regaloEnvuelto],
+                          zona: ZonaCasita(5, 84, 14, 13),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_abierto && mensaje.isNotEmpty)
+            Text(
+              '"$mensaje"\n— ${widget.de}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            )
+          else if (!_abierto)
+            const Text('Tócalo para abrirlo', textAlign: TextAlign.center),
+        ],
+      ),
+      actions: [
+        if (_abierto)
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('¡Gracias! Ponerlo en la casita'),
+          )
+        else
+          FilledButton(
+            onPressed: _anim.isAnimating ? null : _abrir,
+            child: const Text('Abrir 🎁'),
+          ),
+      ],
     );
   }
 }

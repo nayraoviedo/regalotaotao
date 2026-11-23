@@ -292,10 +292,14 @@ const KINDS = {
     collection: "casitaMovs",
     check: (d, uid) => d.uid === uid && d.tipo === "compra",
     dedupeKey: () => "enviado",
-    message: (name, d) => ({
-      title: "🏠 Algo nuevo en la casita",
-      body: `${name} compró ${NOMBRES_CASITA[d.ref] || "algo"} para los gatitos`,
-    }),
+    // Un regalo sorpresa no dice qué es: se descubre al abrirlo.
+    message: (name, d) =>
+      d.regalo === true
+        ? { title: "🎁 Un regalo sorpresa", body: `${name} te dejó un regalo envuelto en la casita. ¡Ábrelo!` }
+        : {
+            title: "🏠 Algo nuevo en la casita",
+            body: `${name} compró ${NOMBRES_CASITA[d.ref] || "algo"} para los gatitos`,
+          },
   },
   letter: {
     collection: "letters",

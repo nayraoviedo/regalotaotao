@@ -843,7 +843,29 @@ ADORNOS = {
 }
 
 
+# ---------------------------------------------------------------- regalo
+def regalo_envuelto():
+    """Cajita de regalo en el piso de la sala (para los regalos sorpresa)."""
+    c = Capa()
+    c.sprite(6, 85, [
+        "...rr..rr...",
+        "....rrrr....",
+        "kkkkkrrkkkkk",
+        "kppppyyppppk",
+        "kppppyyppppk",
+        "kkkkkkkkkkkk",
+        ".kppppyyppk.",
+        ".kppppyyppk.",
+        ".kppppyyppk.",
+        ".kppppyyppk.",
+        ".kppppyyppk.",
+        ".kkkkkkkkkk.",
+    ], {"r": ROJO, "k": TRAZO, "p": ROSA, "y": AMARILLO})
+    return c
+
+
 def main():
+    regalo_envuelto().guardar("regalo_envuelto")
     for nombre, (filas, pal) in COMIDAS.items():
         comida(filas, pal).guardar(f"comida_{nombre}")
 

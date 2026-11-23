@@ -516,7 +516,11 @@ service cloud.firestore {
         allow create, update: if isMember(coupleId)
           && docId == 'estado'
           && request.resource.data.keys()
-               .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto'])
+               .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto',
+                         'regalos', 'meta'])
+          // Regalos sorpresa envueltos y la meta de la alcancía.
+          && request.resource.data.get('regalos', {}) is map
+          && request.resource.data.get('meta', '') is string
           // La foto pixelada del cuadro: 14 × 12 colores.
           && (!('foto' in request.resource.data)
               || (request.resource.data.foto is list

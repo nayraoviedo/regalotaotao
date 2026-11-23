@@ -137,6 +137,38 @@ void main() {
       );
     });
 
+    test('regalos sorpresa y alcancía desde Firestore', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['sofa_rosa', 'esmoquin'],
+        'regalos': {
+          'sofa_rosa': {'de': 'a', 'mensaje': 'hola'},
+          'esmoquin': {'de': 'b', 'mensaje': '', 'gatito': 'naranja'},
+        },
+        'meta': 'cuarto_jardin',
+      });
+      expect(e.regalosPara('b').single.$1.id, 'sofa_rosa');
+      expect(e.regalosPara('a').single.$2.gatito, 'naranja');
+      expect(e.envuelto(Catalogo.porId('sofa_rosa')!), isTrue);
+      expect(e.metaCosa?.id, 'cuarto_jardin');
+      // La cajita aparece en la sala.
+      expect(e.capas(), contains(Casita.regaloEnvuelto));
+      expect(
+        EstadoCasita.vacio.capas(),
+        isNot(contains(Casita.regaloEnvuelto)),
+      );
+      // Ya comprada, la meta deja de contar.
+      expect(
+        const EstadoCasita(tenemos: {'sofa_rosa'}, meta: 'sofa_rosa').metaCosa,
+        isNull,
+      );
+      expect(const Regalo(de: 'a', gatito: 'blanco').toMap(), {
+        'de': 'a',
+        'mensaje': '',
+        'gatito': 'blanco',
+      });
+      expect(File(Casita.regaloEnvuelto).existsSync(), isTrue);
+    });
+
     test('la foto pixelada se lee de Firestore y se baja de tonos', () {
       final px = List.filled(Casita.fotoAncho * Casita.fotoAlto, 0xFF112233);
       expect(EstadoCasita.fromMap({'foto': px}).foto, px);
@@ -293,6 +325,10 @@ void main() {
       List<(Lugar, Cosa?)>? puestos,
       Cuarto? cuarto,
       DateTime? hoy,
+      List<Cosa?>? metas,
+      List<(Cosa, String?, String)>? regalos,
+      List<Cosa>? abiertos,
+      AppUser? yo,
     }) => MaterialApp(
       home: CasitaView(
         estado: estado,
@@ -304,9 +340,16 @@ void main() {
             cantidad: 10,
           ),
         ],
-        me: me,
-        partner: partner,
+        me: yo ?? me,
+        partner: yo == null ? partner : me,
         onComprar: (c, g) async => compras?.add((c, g)),
+        onMeta: metas == null ? null : (c) async => metas.add(c),
+        onRegalar: regalos == null
+            ? null
+            : (c, g, m) async => regalos.add((c, g, m)),
+        onAbrirRegalo: abiertos == null
+            ? null
+            : (c, _) async => abiertos.add(c),
         onPoner: (l, c) async => puestos?.add((l, c)),
         onVestir: (_, _, _) async {},
         cuartoInicial: cuarto,
@@ -339,6 +382,91 @@ void main() {
       await t.pump();
       expect(find.textContaining('Les faltan 100 pescaditos'), findsOneWidget);
       expect(compras, isEmpty);
+    });
+
+    testWidgets('si no alcanza, pueden ahorrar para eso en la alcancía', (
+      t,
+    ) async {
+      final metas = <Cosa?>[];
+      await t.pumpWidget(
+        pantalla(const EstadoCasita(pescaditos: 20), metas: metas),
+      );
+      await t.tap(find.text('Sofá rosa'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('🐷 Ahorrar para esto'));
+      await t.pumpAndSettle();
+      expect(metas.single?.id, 'sofa_rosa');
+
+      // Con la meta puesta, la alcancía muestra cuánto falta.
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 20, meta: 'sofa_rosa'),
+          metas: metas,
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('Ahorrando juntos para Sofá rosa'), findsOneWidget);
+      expect(find.textContaining('Les faltan 100'), findsOneWidget);
+      await t.tap(find.byTooltip('Quitar la meta'));
+      expect(metas.last, isNull);
+    });
+
+    testWidgets('regalar una prenda con un mensajito', (t) async {
+      final regalos = <(Cosa, String?, String)>[];
+      await t.pumpWidget(
+        pantalla(const EstadoCasita(pescaditos: 500), regalos: regalos),
+      );
+      await t.ensureVisible(find.text('Ropa'));
+      await t.tap(find.text('Ropa'));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.text('Camiseta a rayas'));
+      await t.tap(find.text('Camiseta a rayas'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('🎁 Es un regalo sorpresa para Xixi'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), 'Para nuestra cita');
+      await t.tap(find.text('Regalar'));
+      await t.pumpAndSettle();
+      final (cosa, gatito, mensaje) = regalos.single;
+      expect(cosa.id, 'camiseta');
+      // Se lo pone al gatito de la pareja.
+      expect(gatito, 'blanco');
+      expect(mensaje, 'Para nuestra cita');
+    });
+
+    testWidgets('quien recibe el regalo lo abre; quien lo dio lo ve envuelto', (
+      t,
+    ) async {
+      const estado = EstadoCasita(
+        tenemos: {'sofa_rosa'},
+        regalos: {'sofa_rosa': Regalo(de: 'a', mensaje: 'Te quiero')},
+      );
+      final abiertos = <Cosa>[];
+      // nayra (a) lo regaló: lo ve envuelto y no hay aviso para abrir.
+      await t.pumpWidget(pantalla(estado, abiertos: abiertos));
+      await t.pumpAndSettle();
+      expect(find.text('Envuelto 🎁'), findsOneWidget);
+      expect(find.textContaining('te dejó un regalo sorpresa'), findsNothing);
+
+      // Xixi (b) lo recibe.
+      await t.pumpWidget(
+        pantalla(
+          estado,
+          abiertos: abiertos,
+          yo: AppUser(uid: 'b', name: 'Xixi', pairCode: ''),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('nayra te dejó un regalo sorpresa'), findsOneWidget);
+      await t.tap(find.text('Abrir'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Abrir 🎁'));
+      await t.pumpAndSettle();
+      expect(find.text('¡Sofá rosa!'), findsOneWidget);
+      expect(find.textContaining('Te quiero'), findsOneWidget);
+      await t.tap(find.text('¡Gracias! Ponerlo en la casita'));
+      await t.pumpAndSettle();
+      expect(abiertos.single.id, 'sofa_rosa');
     });
 
     testWidgets('lo que ya tienen se pone o se quita', (t) async {

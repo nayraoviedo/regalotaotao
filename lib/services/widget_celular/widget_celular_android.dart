@@ -65,6 +65,28 @@ class WidgetCelular {
     }
   }
 
+  /// Widget de la casita (CasitaWidget.kt): los dibujos de la sala (día,
+  /// tarde y noche), los pescaditos y la alcancía.
+  static Future<void> guardarCasita({
+    required Map<String, Uint8List> dibujos,
+    required int pescaditos,
+    String? metaNombre,
+    int? metaPrecio,
+  }) async {
+    if (!disponible) return;
+    try {
+      for (final e in dibujos.entries) {
+        await HomeWidget.saveFile(e.key, e.value, extension: 'png');
+      }
+      await HomeWidget.saveWidgetData<int>('casita_pescaditos', pescaditos);
+      await HomeWidget.saveWidgetData<String>('casita_meta_nombre', metaNombre);
+      await HomeWidget.saveWidgetData<int>('casita_meta_precio', metaPrecio);
+      await HomeWidget.updateWidget(androidName: 'CasitaWidget');
+    } catch (e) {
+      debugPrint('Widget: no se pudo guardar la casita ($e)');
+    }
+  }
+
   static Future<void> _escribir(DatosWidget datos) async {
     try {
       for (final e in datos.toMap().entries) {

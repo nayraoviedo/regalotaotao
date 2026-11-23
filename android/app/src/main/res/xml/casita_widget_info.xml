@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget de la casita (2×2, se puede agrandar). Android lo refresca cada
+     30 min para pasar de día a noche según la hora. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/casita_widget_descripcion"
+    android:initialLayout="@layout/casita_widget"
+    android:previewLayout="@layout/casita_widget"
+    android:minWidth="110dp"
+    android:minHeight="140dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:minResizeWidth="100dp"
+    android:minResizeHeight="120dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />
