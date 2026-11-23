@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:taotao/models/bucket_item.dart';
 import 'package:taotao/models/recomendacion.dart';
 import 'package:taotao/screens/recomendacion/detalle_recomendacion.dart';
 import 'package:taotao/screens/recomendacion/recomendacion_card.dart';
 import 'package:taotao/screens/recomendacion/recomendaciones_screen.dart';
 import 'package:taotao/screens/recomendacion/recomendar_sheet.dart';
+import 'package:taotao/screens/recomendacion/resenas.dart';
 
 Recomendacion rec({
   String from = 'b',
@@ -305,5 +307,50 @@ void main() {
     await tester.pumpWidget(lista());
     expect(find.text('Sutra'), findsNothing);
     expect(find.text('Chihiro'), findsOneWidget);
+  });
+
+  testWidgets('lo que hicimos juntos: solo lo cumplido, con estrellas', (
+    tester,
+  ) async {
+    BucketItem? visto;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListaHechasJuntos(
+            items: [
+              BucketItem(
+                id: '1',
+                title: 'Picnic',
+                category: 'Cita',
+                done: true,
+                resenas: {
+                  'a': const Resena(estrellas: 5),
+                  'b': const Resena(estrellas: 4),
+                },
+              ),
+              BucketItem(
+                id: '2',
+                title: 'Playa',
+                category: 'Viaje',
+                done: false,
+              ),
+              BucketItem(
+                id: '3',
+                title: 'Karaoke',
+                category: 'Cita',
+                done: true,
+              ),
+            ],
+            onVer: (i) => visto = i,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Picnic'), findsOneWidget);
+    expect(find.text('Karaoke'), findsOneWidget);
+    expect(find.text('Playa'), findsNothing);
+    expect(find.text('de los dos'), findsOneWidget);
+    await tester.tap(find.text('Karaoke'));
+    expect(visto?.id, '3');
   });
 }

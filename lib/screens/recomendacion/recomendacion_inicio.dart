@@ -84,11 +84,9 @@ Future<void> verRecomendacion(
         rec: r,
         miUid: uid,
         partnerName: partnerName,
-        onGusto: (g) => _servicio
-            .marcarGusto(coupleId, r, g)
-            .catchError((_) {
-              if (sheet.mounted) _avisar(sheet, 'No se pudo guardar');
-            }),
+        onGusto: (g) => _servicio.marcarGusto(coupleId, r, g).catchError((_) {
+          if (sheet.mounted) _avisar(sheet, 'No se pudo guardar');
+        }),
         onResena: (resena) async {
           try {
             await _servicio.resenar(coupleId, r, uid, resena);

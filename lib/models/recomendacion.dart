@@ -242,13 +242,7 @@ class Recomendacion {
         ? null
         : m['link'] as String,
     gusto: m['gusto'] == true,
-    resenas: {
-      for (final e in (m['resenas'] as Map? ?? const {}).entries)
-        if (e.value is Map)
-          e.key as String: Resena.fromMap(
-            Map<String, dynamic>.from(e.value as Map),
-          ),
-    },
+    resenas: Resena.mapa(m['resenas']),
   );
 
   /// Solo lo que escribe quien recomienda (sin corazón ni reseñas).
@@ -281,4 +275,14 @@ class Resena {
   );
 
   Map<String, dynamic> toMap() => {'estrellas': estrellas, 'texto': texto};
+
+  /// Lee el mapa `resenas` de un documento (uid -> reseña).
+  static Map<String, Resena> mapa(Object? m) => {
+    if (m is Map)
+      for (final e in m.entries)
+        if (e.value is Map)
+          e.key as String: Resena.fromMap(
+            Map<String, dynamic>.from(e.value as Map),
+          ),
+  };
 }

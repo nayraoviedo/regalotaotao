@@ -74,6 +74,16 @@ await ok('B marca que le gustó', updateDoc(doc(db('B'),'couples/c1/recomendacio
 await no('B no cambia el título', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{titulo:'otra'}));
 await no('B no la borra', deleteDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A')));
 await ok('A la borra', deleteDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A')));
+// Reseñas de lo que hicieron juntos.
+await ok('A agrega algo por hacer', setDoc(doc(db('A'),'couples/c1/bucketList/b1'),{title:'Picnic',category:'Cita',done:false,createdBy:'A'}));
+await ok('B lo marca hecho', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{done:true}));
+await ok('A reseña el picnic', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:5,texto:'Lo mejor'}}));
+await ok('B reseña el picnic', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:4,texto:''}}));
+await no('B no cambia la reseña de A', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:1,texto:''}}));
+await no('B no pone 0 estrellas', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:0,texto:''}}));
+await no('C no reseña', updateDoc(doc(db('C'),'couples/c1/bucketList/b1'),{'resenas.C':{estrellas:3,texto:''}}));
+await ok('A lo desmarca y las reseñas se quedan', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{done:false}));
+await no('no se crea con reseñas ajenas', setDoc(doc(db('A'),'couples/c1/bucketList/b2'),{title:'X',category:'Otro',done:true,resenas:{B:{estrellas:5,texto:''}}}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
 await ok('A agrega un premio', setDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo',createdBy:'A'}));
 await ok('A cambia su premio', updateDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo largo'}));

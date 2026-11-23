@@ -1,13 +1,18 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../../models/bucket_item.dart';
 import '../../models/recomendacion.dart';
 import '../../services/recomendacion_service.dart';
+import '../../services/together_service.dart';
+import '../bucket_list/resena_juntos.dart';
 import '../../theme.dart';
 import 'detalle_recomendacion.dart';
 import 'recomendacion_card.dart';
 import 'recomendacion_inicio.dart';
+import 'resenas.dart';
 
-/// Historial: todo lo que se han recomendado, con sus reseñas.
+/// Historial con reseñas: lo que se han recomendado y lo que ya hicieron
+/// juntos (de "Por hacer juntos").
 class RecomendacionesScreen extends StatefulWidget {
   const RecomendacionesScreen({
     super.key,
@@ -29,39 +34,184 @@ class _RecomendacionesScreenState extends State<RecomendacionesScreen> {
   late final _stream = RecomendacionService.instance.watchTodas(
     widget.coupleId,
   );
+  late final _juntos = TogetherService.instance.watchBucket(widget.coupleId);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Recomendaciones y reseñas')),
-      body: StreamBuilder<List<Recomendacion>>(
-        stream: _stream,
-        builder: (context, snap) {
-          if (snap.hasError) {
-            return const Center(child: Text('No se pudieron cargar'));
-          }
-          final todas = snap.data;
-          if (todas == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ListaRecomendaciones(
-            todas: todas,
-            uid: widget.uid,
-            partnerName: widget.partnerName,
-            filtro: _filtro,
-            onFiltro: (c) => setState(() => _filtro = c),
-            onVer: (r) => verRecomendacion(
-              context,
-              coupleId: widget.coupleId,
-              uid: widget.uid,
-              partnerName: widget.partnerName,
-              rec: r,
-            ),
-          );
-        },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Reseñas'),
+          bottom: const TabBar(
+            labelColor: AppTheme.azul,
+            unselectedLabelColor: AppTheme.gris,
+            indicatorColor: AppTheme.amarillo,
+            dividerColor: Colors.transparent,
+            labelStyle: TextStyle(fontWeight: FontWeight.w700),
+            tabs: [
+              Tab(text: 'Recomendaciones'),
+              Tab(text: 'Lo que hicimos'),
+            ],
+          ),
+        ),
+        body: TabBarView(children: [_recomendaciones(), _hechas()]),
       ),
     );
   }
+
+  Widget _hechas() => StreamBuilder<List<BucketItem>>(
+    stream: _juntos,
+    builder: (context, snap) {
+      if (snap.hasError) {
+        return const Center(child: Text('No se pudieron cargar'));
+      }
+      final items = snap.data;
+      if (items == null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return ListaHechasJuntos(
+        items: items,
+        onVer: (i) => showResenaJuntos(
+          context,
+          coupleId: widget.coupleId,
+          uid: widget.uid,
+          partnerName: widget.partnerName,
+          item: i,
+        ),
+      );
+    },
+  );
+
+  Widget _recomendaciones() {
+    return StreamBuilder<List<Recomendacion>>(
+      stream: _stream,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return const Center(child: Text('No se pudieron cargar'));
+        }
+        final todas = snap.data;
+        if (todas == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return ListaRecomendaciones(
+          todas: todas,
+          uid: widget.uid,
+          partnerName: widget.partnerName,
+          filtro: _filtro,
+          onFiltro: (c) => setState(() => _filtro = c),
+          onVer: (r) => verRecomendacion(
+            context,
+            coupleId: widget.coupleId,
+            uid: widget.uid,
+            partnerName: widget.partnerName,
+            rec: r,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Lo que ya hicieron juntos, con sus estrellitas. Sin Firebase.
+class ListaHechasJuntos extends StatelessWidget {
+  const ListaHechasJuntos({
+    super.key,
+    required this.items,
+    required this.onVer,
+  });
+
+  final List<BucketItem> items;
+  final ValueChanged<BucketItem> onVer;
+
+  @override
+  Widget build(BuildContext context) {
+    // Lo más nuevo primero.
+    final hechas = items.where((i) => i.done).toList().reversed.toList();
+    if (hechas.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(32, 64, 32, 0),
+        child: Text(
+          'Cuando cumplan algo de "Por hacer juntos", aquí le ponen '
+          'estrellitas y un comentario.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppTheme.gris),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      children: [
+        for (final i in hechas)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => onVer(i),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              i.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.azul,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              i.category,
+                              style: const TextStyle(
+                                color: AppTheme.gris,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ResumenEstrellas(i.resenas),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ResumenEstrellas extends StatelessWidget {
+  const _ResumenEstrellas(this.resenas);
+  final Map<String, Resena> resenas;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      if (resenas.isEmpty)
+        const Text(
+          'Sin reseña',
+          style: TextStyle(color: AppTheme.gris, fontSize: 12),
+        )
+      else ...[
+        Estrellas(valor: promedioEstrellas(resenas), size: 14),
+        Text(
+          resenas.length == 2 ? 'de los dos' : '1 reseña',
+          style: const TextStyle(color: AppTheme.gris, fontSize: 11),
+        ),
+      ],
+    ],
+  );
 }
 
 /// La lista del historial, sin Firebase.
@@ -187,10 +337,6 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final estrellas = rec.resenas.values.map((r) => r.estrellas).toList();
-    final promedio = estrellas.isEmpty
-        ? 0
-        : (estrellas.reduce((a, b) => a + b) / estrellas.length).round();
     return Card(
       margin: EdgeInsets.zero,
       child: InkWell(
@@ -236,26 +382,7 @@ class _Item extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (estrellas.isEmpty)
-                    const Text(
-                      'Sin reseña',
-                      style: TextStyle(color: AppTheme.gris, fontSize: 12),
-                    )
-                  else
-                    Estrellas(valor: promedio, size: 14),
-                  if (estrellas.isNotEmpty)
-                    Text(
-                      estrellas.length == 2 ? 'de los dos' : '1 reseña',
-                      style: const TextStyle(
-                        color: AppTheme.gris,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
-              ),
+              _ResumenEstrellas(rec.resenas),
             ],
           ),
         ),

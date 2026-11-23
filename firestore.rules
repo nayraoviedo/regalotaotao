@@ -320,9 +320,28 @@ service cloud.firestore {
           && request.resource.data.hechos[me()] == true;
       }
 
-      // Cosas por hacer juntos.
+      // Cosas por hacer juntos. Los dos agregan, marcan y borran; cuando ya
+      // lo hicieron, cada uno deja solo su propia reseña.
       match /bucketList/{itemId} {
-        allow read, write: if isMember(coupleId);
+        function resenasBucketOk() {
+          let antes = resource.data.get('resenas', {});
+          let rs = request.resource.data.get('resenas', {});
+          return !request.resource.data.diff(resource.data).affectedKeys()
+                   .hasAny(['resenas'])
+            || (rs is map
+              && rs.diff(antes).affectedKeys().hasOnly([me()])
+              && (!(me() in rs)
+                || (rs[me()].keys().hasOnly(['estrellas', 'texto'])
+                  && rs[me()].estrellas is int
+                  && rs[me()].estrellas >= 1
+                  && rs[me()].estrellas <= 5
+                  && rs[me()].texto is string
+                  && rs[me()].texto.size() <= 500)));
+        }
+        allow read, delete: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.get('resenas', {}).size() == 0;
+        allow update: if isMember(coupleId) && resenasBucketOk();
       }
 
       // "Te extraño": la app le pide al Worker (worker/) que avise a la pareja.
