@@ -800,6 +800,35 @@ class Catalogo {
     Cosa('traje', 'Traje con corbata', 120, parte: Parte.cuerpo),
     Cosa('esmoquin', 'Esmoquin', 150, parte: Parte.cuerpo),
 
+    // ---- Más ropa: pijamas de personajes, suéteres, cárdigans, camisas ----
+    Cosa(
+      'pijama_murcielago',
+      'Pijama de murcielaguito',
+      90,
+      parte: Parte.cuerpo,
+    ),
+    Cosa(
+      'pijama_monstruo',
+      'Pijama de monstruo gigante',
+      90,
+      parte: Parte.cuerpo,
+    ),
+    Cosa('pijama_principito', 'Pijama de principito', 90, parte: Parte.cuerpo),
+    Cosa('pijama_ovejita', 'Pijama de ovejita', 70, parte: Parte.cuerpo),
+    Cosa('pijama_franela', 'Pijama de franela', 60, parte: Parte.cuerpo),
+    Cosa('sueter_tejido', 'Suéter tejido', 70, parte: Parte.cuerpo),
+    Cosa('sueter_rombos', 'Suéter de rombos', 70, parte: Parte.cuerpo),
+    Cosa('cardigan_cafe', 'Cárdigan café', 80, parte: Parte.cuerpo),
+    Cosa('cardigan_celeste', 'Cárdigan celeste', 80, parte: Parte.cuerpo),
+    Cosa('cardigan_lila', 'Cárdigan lila', 80, parte: Parte.cuerpo),
+    Cosa('gabardina', 'Gabardina', 130, parte: Parte.cuerpo),
+    Cosa('camisa_cuadros', 'Camisa a cuadros', 60, parte: Parte.cuerpo),
+    Cosa('camisa_hawaiana', 'Camisa hawaiana', 60, parte: Parte.cuerpo),
+    Cosa('camisa_tirantes', 'Camisa con tirantes', 80, parte: Parte.cuerpo),
+    Cosa('buzo_deportivo', 'Buzo deportivo', 70, parte: Parte.cuerpo),
+    Cosa('marinero', 'Traje de marinero', 100, parte: Parte.cuerpo),
+    Cosa('conjunto_otono', 'Conjunto de otoño', 90, parte: Parte.cuerpo),
+
     // ---- Ropa de época y de otras culturas ----
     Cosa('hanfu', 'Hanfu', 160, parte: Parte.cuerpo, deEpoca: true),
     Cosa('guan', 'Moño con guan', 60, parte: Parte.cabeza, deEpoca: true),
