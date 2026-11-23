@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import '../models/mimo.dart';
 import 'db.dart';
 import 'notify_service.dart';
 import 'preguntas_propias_service.dart';
+import 'pescaditos_service.dart';
 import 'racha_service.dart';
 
 export '../models/daily_card.dart';
@@ -254,10 +256,16 @@ class TogetherService {
   }
 
   Future<void> answerToday(String coupleId, String uid, String answer) async {
-    await Db.coupleSub(coupleId, 'dailyAnswers').doc(todayKey()).set({
+    final hoy = todayKey();
+    await Db.coupleSub(coupleId, 'dailyAnswers').doc(hoy).set({
       'answers': {uid: answer},
     }, SetOptions(merge: true));
     await RachaService.instance.marcarHoy(coupleId, uid);
+    unawaited(
+      PescaditosService.instance.intentar(
+        () => PescaditosService.instance.ganarPregunta(coupleId, uid, hoy),
+      ),
+    );
   }
 
   // ---- Cosas por hacer juntos ----

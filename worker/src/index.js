@@ -72,6 +72,37 @@ export default {
   },
 };
 
+// Nombres de lo que se compra en la casita (lib/models/casita.dart).
+const NOMBRES_CASITA = {
+  pared_rosa: "la pared rosa con lunares",
+  pared_menta: "la pared menta",
+  pared_estrellas: "la pared de noche estrellada",
+  piso_cuadros: "el piso de cuadritos",
+  piso_azul: "el piso azul marino",
+  ventana_cortinas: "la ventana con cortinas",
+  ventana_luna: "la ventana con luna",
+  cuadro_pescadito: "el cuadro de pescadito",
+  cuadro_corazon: "el cuadro de corazón",
+  cuadro_foto: "una foto de los dos",
+  lampara_pie: "una lámpara de pie",
+  lampara_guirnalda: "una guirnalda de luces",
+  lampara_luna: "la lámpara de luna",
+  sofa_azul: "el sofá azul",
+  sofa_rosa: "el sofá rosa",
+  planta_cactus: "un cactus",
+  planta_monstera: "una monstera",
+  alfombra_redonda: "la alfombra redonda",
+  alfombra_rayas: "la alfombra a rayas",
+  alfombra_corazon: "la alfombra corazón",
+  camita_carton: "una caja de cartón",
+  camita_cojin: "una camita cojín",
+  mono: "un corbatín",
+  bufanda: "una bufanda",
+  lentes: "unos lentes",
+  gorrito: "un gorrito de lana",
+  corona: "una coronita",
+};
+
 // ---------- Tipos de aviso ----------
 // Cada tipo dice en qué colección está el documento, quién debe haberlo
 // creado, a quién va y qué texto se envía.
@@ -118,6 +149,15 @@ const KINDS = {
     check: (d, uid, partner) => d.from === uid && d.to === partner,
     dedupeKey: () => "enviado",
     message: (name) => ({ title: "😘 Un beso para ti", body: `${name} te mandó un beso` }),
+  },
+  compra: {
+    collection: "casitaMovs",
+    check: (d, uid) => d.uid === uid && d.tipo === "compra",
+    dedupeKey: () => "enviado",
+    message: (name, d) => ({
+      title: "🏠 Algo nuevo en la casita",
+      body: `${name} compró ${NOMBRES_CASITA[d.ref] || "algo"} para los gatitos`,
+    }),
   },
   letter: {
     collection: "letters",

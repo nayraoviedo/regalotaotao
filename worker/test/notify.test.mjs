@@ -55,6 +55,8 @@ beforeEach(() => {
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
+    "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
+    "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
 });
@@ -136,6 +138,14 @@ test("besos y abrazos llegan con su texto", async () => {
     "Ana vio cómo te sientes y te manda un abrazo apretado",
   ]);
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
+});
+
+test("compras de la casita avisan a la pareja", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, t)).status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.body), ["Ana compró el sofá azul para los gatitos"]);
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "pomodoro_a1" }, t)).status, 403);
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, await idToken("beto"))).status, 403);
 });
 
 test("no se envía dos veces el mismo aviso", async () => {

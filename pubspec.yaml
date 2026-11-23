@@ -84,6 +84,7 @@ flutter:
     - assets/animaciones/
     # Dibujos de las categorías de la recomendación del día.
     - assets/recomendaciones/
+    - assets/casita/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:
