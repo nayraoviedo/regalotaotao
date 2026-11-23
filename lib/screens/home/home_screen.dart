@@ -7,8 +7,8 @@ import '../../models/couple.dart';
 import '../../models/mood.dart';
 import '../../services/couple_service.dart';
 import '../../services/mood_service.dart';
-import '../../services/racha_service.dart';
 import '../../services/reward_service.dart';
+import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
@@ -19,9 +19,9 @@ import '../mood/mood_screen.dart';
 import '../notes/cartas/avioncito.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_screen.dart';
-import '../pomodoro/reward_sheets.dart' show pickReward;
-import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
+import '../racha/racha_widgets.dart';
+import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
 
@@ -85,6 +85,14 @@ class _HomeBody extends StatefulWidget {
 class _HomeBodyState extends State<_HomeBody> {
   int _tab = HomeTabs.tabInicio;
 
+  /// Cuántos "te extraño" mandó cada uno. Se cuentan al abrir la app, al
+  /// volver a ella y después de mandar uno (así se gastan pocas lecturas).
+  int? _misTeExtrano;
+  int? _susTeExtrano;
+  late final AppLifecycleListener _ciclo;
+
+  String get _partnerUid => widget.couple.partnerOf(widget.me.uid);
+
   // ---- Racha de pareja ----
   final _racha = ValueNotifier<Racha?>(null);
   StreamSubscription<Racha>? _rachaSub;
@@ -97,6 +105,8 @@ class _HomeBodyState extends State<_HomeBody> {
   @override
   void initState() {
     super.initState();
+    _contarTeExtrano();
+    _ciclo = AppLifecycleListener(onResume: _contarTeExtrano);
     _escucharRacha();
   }
 
@@ -108,9 +118,28 @@ class _HomeBodyState extends State<_HomeBody> {
 
   @override
   void dispose() {
+    _ciclo.dispose();
     _rachaSub?.cancel();
     _racha.dispose();
     super.dispose();
+  }
+
+  Future<void> _contarTeExtrano() async {
+    final coupleId = widget.couple.id;
+    try {
+      final res = await Future.wait([
+        TogetherService.instance.countMissYou(coupleId, widget.me.uid),
+        TogetherService.instance.countMissYou(coupleId, _partnerUid),
+      ]);
+      if (mounted) {
+        setState(() {
+          _misTeExtrano = res[0];
+          _susTeExtrano = res[1];
+        });
+      }
+    } catch (_) {
+      // Sin conexión o sin permiso: la línea simplemente no se muestra.
+    }
   }
 
   void _escucharRacha() {
@@ -224,6 +253,7 @@ class _HomeBodyState extends State<_HomeBody> {
       to: partnerUid,
     );
     if (mounted) {
+      setState(() => _misTeExtrano = (_misTeExtrano ?? 0) + 1);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Le avisamos a $partnerName 💌')));
@@ -253,6 +283,8 @@ class _HomeBodyState extends State<_HomeBody> {
             miAnimo: mio.data?.mood,
             suAnimo: suyo.data?.mood,
             onTeExtrano: () => _teExtrano(partnerUid, partnerName),
+            misTeExtrano: _misTeExtrano,
+            susTeExtrano: _susTeExtrano,
             onDiasJuntos: () => setState(() => _tab = HomeTabs.tabNosotros),
             onAbrir: (seccion) => _open(switch (seccion) {
               SeccionInicio.animo => MoodScreen(me: me, coupleId: couple.id),

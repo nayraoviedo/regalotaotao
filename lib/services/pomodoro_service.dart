@@ -29,12 +29,13 @@ class PomodoroService {
     NotifyService.instance.send(NotifyKind.pomodoroInvite, coupleId, ref.id);
   }
 
-  /// Solo la persona invitada puede aceptar (lo aseguran las reglas).
-  Future<void> accept(String coupleId, String sessionId) => _col(coupleId)
-      .doc(sessionId)
-      .update({
+  /// Solo la persona invitada puede aceptar (lo aseguran las reglas). Al
+  /// aceptar puede confirmar la duración propuesta o cambiarla ([minutes]).
+  Future<void> accept(String coupleId, String sessionId, {int? minutes}) =>
+      _col(coupleId).doc(sessionId).update({
         'status': PomodoroStatus.accepted.name,
         'startedAt': FieldValue.serverTimestamp(),
+        'minutes': ?minutes,
       });
 
   Future<void> decline(String coupleId, String sessionId) =>
