@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/mood.dart';
 import 'db.dart';
+import 'pescaditos_service.dart';
 import 'racha_service.dart';
 
 class MoodService {
@@ -21,6 +24,11 @@ class MoodService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await RachaService.instance.marcarHoy(coupleId, uid);
+    unawaited(
+      PescaditosService.instance.intentar(
+        () => PescaditosService.instance.ganarAnimo(coupleId, uid),
+      ),
+    );
   }
 
   Stream<MoodEntry?> watch(String coupleId, String uid) =>

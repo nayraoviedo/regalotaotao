@@ -73,7 +73,11 @@ class InicioView extends StatelessWidget {
     this.racha,
     this.onRacha,
     this.recomendacion,
+    this.casita,
   });
+
+  /// Tarjeta de "Nuestra casita", debajo de los accesos.
+  final Widget? casita;
 
   /// Rectángulo de la recomendación del día, debajo del ánimo.
   final Widget? recomendacion;
@@ -204,6 +208,7 @@ class InicioView extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (casita case final c?) ...[const SizedBox(height: 12), c],
                 ],
               ),
             ),

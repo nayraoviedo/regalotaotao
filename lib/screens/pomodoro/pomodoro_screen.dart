@@ -9,6 +9,7 @@ import '../../models/pomodoro_session.dart';
 import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
+import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
@@ -204,6 +205,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       kind: Achievement.pomodoro,
       taskTitle: task?.title,
       sessionId: sessionId,
+    );
+    unawaited(
+      PescaditosService.instance.intentar(
+        () => PescaditosService.instance.ganarPomodoro(
+          _coupleId,
+          widget.me.uid,
+          id,
+          juntos: sessionId != null,
+        ),
+      ),
     );
     if (task != null) await _rewards.addPomodoroToTask(widget.me.uid, task.id);
     if (!mounted) return;

@@ -33,11 +33,13 @@ class PescaditosService {
   CollectionReference<Map<String, dynamic>> _movs(String coupleId) =>
       Db.coupleSub(coupleId, 'casitaMovs');
 
-  Stream<EstadoCasita> watch(String coupleId) => _estado(
-    coupleId,
-  ).snapshots().map((d) => EstadoCasita.fromMap(d.data()));
+  Stream<EstadoCasita> watch(String coupleId) =>
+      _estado(coupleId).snapshots().map((d) => EstadoCasita.fromMap(d.data()));
 
-  Stream<List<Movimiento>> watchMovimientos(String coupleId, {int limit = 40}) =>
+  Stream<List<Movimiento>> watchMovimientos(
+    String coupleId, {
+    int limit = 40,
+  }) =>
       _movs(coupleId)
           .orderBy('creadoEn', descending: true)
           .limit(limit)

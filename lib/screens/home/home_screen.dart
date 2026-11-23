@@ -10,6 +10,7 @@ import '../../models/mood.dart';
 import '../../services/couple_service.dart';
 import '../../services/mood_service.dart';
 import '../../services/reward_service.dart';
+import '../../services/pescaditos_service.dart';
 import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
@@ -30,6 +31,8 @@ import 'inicio_view.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
+import '../casita/casita_inicio.dart';
+import '../casita/casita_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -185,6 +188,17 @@ class _HomeBodyState extends State<_HomeBody> {
           uid,
           meta: meta,
           inicio: inicio,
+        );
+        // Bonus de pescaditos para la casita (uno por racha y meta).
+        unawaited(
+          PescaditosService.instance.intentar(
+            () => PescaditosService.instance.ganarRacha(
+              coupleId,
+              uid,
+              meta: meta,
+              inicio: inicio,
+            ),
+          ),
         );
         if (!mounted) return;
         await _celebrar(meta, id);
@@ -352,6 +366,12 @@ class _HomeBodyState extends State<_HomeBody> {
             me: me,
             racha: racha,
             onRacha: _verRacha,
+            casita: CasitaInicio(
+              coupleId: couple.id,
+              onTap: () => _open(
+                CasitaScreen(coupleId: couple.id, me: me, partner: partner),
+              ),
+            ),
             recomendacion: RecomendacionInicio(
               coupleId: couple.id,
               uid: me.uid,
@@ -396,13 +416,19 @@ class _HomeBodyState extends State<_HomeBody> {
       partnerName: partnerName,
       suGatito: suGatito,
       onDevolver: _mandarMimo,
-      child: HomeTabs(
-        index: _tab,
-        onChanged: (i) => setState(() => _tab = i),
-        inicio: inicio,
-        nosotros: TogetherScreen(couple: couple),
-        notas: NotesScreen(me: me, coupleId: couple.id, partnerUid: partnerUid),
-        perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+      child: AvisoPescaditos(
+        child: HomeTabs(
+          index: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+          inicio: inicio,
+          nosotros: TogetherScreen(couple: couple),
+          notas: NotesScreen(
+            me: me,
+            coupleId: couple.id,
+            partnerUid: partnerUid,
+          ),
+          perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+        ),
       ),
     );
   }

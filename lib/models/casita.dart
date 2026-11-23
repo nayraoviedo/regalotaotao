@@ -90,9 +90,8 @@ class Cosa {
     this.precio, {
     this.lugar,
     this.parte,
-    ZonaCasita? zona,
-  }) : _zona = zona,
-       assert((lugar == null) != (parte == null));
+    this.zonaPropia,
+  }) : assert((lugar == null) != (parte == null));
 
   final String id;
   final String nombre;
@@ -102,10 +101,11 @@ class Cosa {
   final Lugar? lugar;
   final Parte? parte;
 
-  final ZonaCasita? _zona;
+  /// Dónde queda en el dibujo, si no es la zona de siempre de su lugar.
+  final ZonaCasita? zonaPropia;
 
-  /// Dónde queda en el dibujo (si no es la zona de siempre de su lugar).
-  ZonaCasita get zona => _zona ?? lugar?.zona ?? const ZonaCasita(0, 0, 80, 104);
+  ZonaCasita get zona =>
+      zonaPropia ?? lugar?.zona ?? const ZonaCasita(0, 0, 80, 104);
 
   bool get esRopa => parte != null;
   bool get gratis => precio == 0;
@@ -124,7 +124,12 @@ class Catalogo {
     Cosa('pared_crema', 'Pared crema', 0, lugar: Lugar.pared),
     Cosa('pared_rosa', 'Pared rosa con lunares', 60, lugar: Lugar.pared),
     Cosa('pared_menta', 'Pared menta', 60, lugar: Lugar.pared),
-    Cosa('pared_estrellas', 'Pared de noche estrellada', 80, lugar: Lugar.pared),
+    Cosa(
+      'pared_estrellas',
+      'Pared de noche estrellada',
+      80,
+      lugar: Lugar.pared,
+    ),
     // Pisos
     Cosa('piso_madera', 'Piso de madera', 0, lugar: Lugar.piso),
     Cosa('piso_cuadros', 'Piso de cuadritos', 60, lugar: Lugar.piso),
@@ -144,14 +149,14 @@ class Catalogo {
       'Guirnalda de luces',
       70,
       lugar: Lugar.lampara,
-      zona: ZonaCasita(2, 14, 76, 12),
+      zonaPropia: ZonaCasita(2, 14, 76, 12),
     ),
     Cosa(
       'lampara_luna',
       'Lámpara de luna',
       80,
       lugar: Lugar.lampara,
-      zona: ZonaCasita(33, 14, 16, 26),
+      zonaPropia: ZonaCasita(33, 14, 16, 26),
     ),
     // Sofás
     Cosa('sofa_azul', 'Sofá azul', 120, lugar: Lugar.sofa),
@@ -320,7 +325,7 @@ class Movimiento {
     pregunta => 'respondió la pregunta del día',
     animo => 'contó cómo se siente',
     pomodoro => 'completó un pomodoro',
-    racha => 'bonus de racha',
+    racha => 'llegó a una racha nueva (bonus)',
     compra => 'compró ${Catalogo.porId(ref)?.nombre ?? 'algo'}',
     _ => '',
   };
