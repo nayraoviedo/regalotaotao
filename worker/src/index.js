@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug",
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -396,6 +396,41 @@ const KINDS = {
       title: "🐟 ¿Lo compramos?",
       body: `${name} quiere comprar ${NOMBRES_CASITA[d.propuesta.cosa] || "algo"} para la casita. ¿Le das el sí?`,
     }),
+  },
+  // Juegos de pareja: al empezar una partida le toca a la pareja; cuando
+  // la pareja responde, quien empezó ya puede ver los resultados.
+  juego: {
+    collection: "juegos",
+    check: (d, uid) => {
+      const r = d.respuestas || {};
+      const n = Object.keys(r).length;
+      if (!Array.isArray(r[uid])) return false;
+      return n === 1 ? d.por === uid && d.terminada === false : n === 2 && d.por !== uid;
+    },
+    dedupeKey: (d) => String(Object.keys(d.respuestas || {}).length),
+    message: (name, d) => {
+      const adivina = d.juego === "adivina";
+      const respuestas = Object.values(d.respuestas || {});
+      if (respuestas.length < 2) {
+        return adivina
+          ? {
+              title: "🎲 ¿Adivinas qué respondió?",
+              body: `${name} respondió 5 preguntas sobre sí. ¡Te toca adivinar!`,
+            }
+          : {
+              title: "🎲 ¡Te toca jugar!",
+              body: `${name} empezó "¿Quién es más probable?". ¡Te toca!`,
+            };
+      }
+      const [a, b] = respuestas;
+      const n = a.filter((x, i) => x === b[i]).length;
+      return {
+        title: "🎲 ¡Ya están los resultados!",
+        body: adivina
+          ? `${name} adivinó ${n} de 5 de tus respuestas. Mira y gana pescaditos 🐟`
+          : `${name} ya jugó: pensaron igual en ${n} de 5. Mira y gana pescaditos 🐟`,
+      };
+    },
   },
   letter: {
     collection: "letters",

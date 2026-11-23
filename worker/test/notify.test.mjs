@@ -61,6 +61,8 @@ beforeEach(() => {
     "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
     "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
     "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
+    "couples/c1/juegos/j1": { juego: "probable", por: "ana", terminada: false, preguntas: [1, 2, 3, 4, 5], respuestas: { ana: ["ana", "beto", "ana", "ana", "beto"] } },
+    "couples/c1/juegos/j2": { juego: "adivina", por: "beto", terminada: true, preguntas: [1, 2, 3, 4, 5], respuestas: { beto: [0, 1, 2, 3, 0], ana: [0, 1, 3, 3, 1] } },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
 });
@@ -161,6 +163,18 @@ test("las compras grandes le piden el sí a la pareja", async () => {
   assert.equal(sent.length, 1);
   assert.match(sent[0].notification.body, /^Ana quiere comprar .* para la casita/);
   assert.equal((await call({ kind: "propuesta", coupleId: "c1", docId: "estado" }, await idToken("beto"))).status, 403);
+});
+
+test("juegos: avisa que le toca y luego los resultados", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j1" }, ana)).status, 200);
+  assert.match(sent[0].notification.body, /^Ana empezó "¿Quién es más probable\?"/);
+  // Beto no puede avisar de una partida que no empezó ni respondió.
+  assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j1" }, await idToken("beto"))).status, 403);
+  // Ana respondió la de Beto: a Beto le llegan los resultados.
+  assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, ana)).status, 200);
+  assert.equal(sent[1].notification.body, "Ana adivinó 3 de 5 de tus respuestas. Mira y gana pescaditos 🐟");
+  assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, await idToken("beto"))).status, 403);
 });
 
 test("no se envía dos veces el mismo aviso", async () => {

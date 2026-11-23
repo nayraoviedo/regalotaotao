@@ -246,6 +246,40 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('A gana 8 por respirar', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:8,ref:hoy},hay+8));
   await no('A no cobra la respiración dos veces', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:8,ref:hoy},hay+16));
   await ok('B también gana 8 por respirar', ganar('B',`respira_${hoy}_B`,{tipo:'respira',cantidad:8,ref:hoy},hay+16));
+  // Juegos de pareja: por turnos, y pescaditos al ver los resultados.
+  const partida = (u, id, extra={}) => setDoc(doc(db(u),'couples/c1/juegos',id),{juego:'probable',preguntas:[1,2,3,4,5],por:u,respuestas:{[u]:['A','B','A','A','B']},terminada:false,creadaEn:serverTimestamp(),...extra});
+  await no('C no empieza una partida', partida('C','j0'));
+  await no('A no empieza un juego que no existe', partida('A','j0',{juego:'ajedrez'}));
+  await no('A no empieza con 3 respuestas', partida('A','j0',{respuestas:{A:['A','B','A']}}));
+  await no('A no responde por B al empezar', partida('A','j0',{respuestas:{A:['A','B','A','A','B'],B:['A','B','A','A','B']}}));
+  await ok('A empieza ¿Quién es más probable?', partida('A','j1'));
+  await no('A no responde dos veces', updateDoc(doc(db('A'),'couples/c1/juegos/j1'),{'respuestas.A':['B','B','B','B','B'],terminada:true,terminadaEn:serverTimestamp()}));
+  await no('B no cambia las respuestas de A', updateDoc(doc(db('B'),'couples/c1/juegos/j1'),{'respuestas.A':['B','B','B','B','B'],'respuestas.B':['A','B','A','B','A'],terminada:true,terminadaEn:serverTimestamp()}));
+  const hayJ = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data().pescaditos;
+  const cobrar = (u, slot, cantidad, total, partidaId='j1', dia=hoy) => {
+    const d = db(u); const b = writeBatch(d); const id = `juego_${dia}_${u}_${slot}`;
+    b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo:'juego', cantidad, ref:dia, partida:partidaId, slot});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    b.update(doc(d,'couples/c1/juegos',partidaId), {[`cobros.${u}`]:id});
+    return b.commit();
+  };
+  await no('A no cobra antes de que B juegue', cobrar('A',1,14,hayJ+14));
+  await ok('B responde y la partida termina', updateDoc(doc(db('B'),'couples/c1/juegos/j1'),{'respuestas.B':['A','B','A','B','A'],terminada:true,terminadaEn:serverTimestamp()}));
+  await no('B no responde otra vez', updateDoc(doc(db('B'),'couples/c1/juegos/j1'),{'respuestas.B':['A','B','A','A','B']}));
+  await no('coincidieron 3: no da 14', cobrar('B',1,14,hayJ+14));
+  await no('B no cobra en un lugar 4', cobrar('B',4,10,hayJ+10));
+  await no('B no cobra un día viejo', cobrar('B',1,10,hayJ+10,'j1','2025-01-01'));
+  await ok('B gana 10 (4 + 2×3 coincidencias)', cobrar('B',1,10,hayJ+10));
+  await no('B no cobra la misma partida dos veces', cobrar('B',2,10,hayJ+20));
+  await ok('A también gana 10', cobrar('A',1,10,hayJ+20));
+  await ok('B empieza Adivina', partida('B','j2',{juego:'adivina',respuestas:{B:[0,1,2,3,0]}}));
+  await ok('A adivina', updateDoc(doc(db('A'),'couples/c1/juegos/j2'),{'respuestas.A':[0,1,2,3,0],terminada:true,terminadaEn:serverTimestamp()}));
+  await no('A no se marca vista la partida de otro', updateDoc(doc(db('A'),'couples/c1/juegos/j2'),{'cobros.B':'tope'}));
+  await no('A no usa su lugar 1 dos veces', cobrar('A',1,14,hayJ+34,'j2'));
+  await ok('A gana 14 por adivinar todo', cobrar('A',2,14,hayJ+34,'j2'));
+  await ok('B la ve sin premio (ya no le quedaban)', updateDoc(doc(db('B'),'couples/c1/juegos/j2'),{'cobros.B':'tope'}));
+  await no('nadie borra una partida', deleteDoc(doc(db('A'),'couples/c1/juegos/j2')));
+  await no('C no ve las partidas', getDocs(collection(db('C'),'couples/c1/juegos')));
   await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
 }
