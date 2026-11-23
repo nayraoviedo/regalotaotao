@@ -12,6 +12,7 @@ import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
+import '../../widgets/widget_celular_sync.dart';
 import '../profile/profile_screen.dart';
 import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
@@ -58,7 +59,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              child: _HomeBody(me: me, partner: partner, couple: couple),
+              child: WidgetCelularSync(
+                me: me,
+                couple: couple,
+                partner: partner,
+                child: _HomeBody(me: me, partner: partner, couple: couple),
+              ),
             );
           },
         );

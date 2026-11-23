@@ -240,6 +240,29 @@ dibuja uno simple):
 Para que también llegue la notificación push de carta nueva, vuelve a
 publicar el Worker (`cd worker && npx wrangler deploy`).
 
+## Widget del celular (solo Android)
+
+Un widget de 4×2 para la pantalla de inicio con los **días juntos** y el
+**ánimo de tu pareja**, con los gatitos y en crema y azul marino. Al tocarlo
+se abre la app. En web (Brave) no existe, así que no se ve ahí.
+
+- Usa los mismos dibujos de la app (gatitos y ánimos, también tus PNG de
+  `assets/`): la app los exporta al widget cada vez que la abres.
+- Los días los cuenta el propio widget, así el número cambia solo cada día.
+- El ánimo se actualiza al instante con la app abierta y, con la app cerrada,
+  más o menos cada 30 minutos (tarea en segundo plano, gratis, sin Blaze).
+
+Para probarlo, con el celular Android conectado por USB (depuración USB activa):
+
+```bash
+flutter run -d android
+```
+
+Abre la app una vez con tu cuenta, luego mantén apretado un espacio vacío de
+la pantalla de inicio → **Widgets** → **Taotao** y arrástralo.
+El diseño está en `android/app/src/main/res/layout/taotao_widget.xml` y la
+lógica en `TaotaoWidget.kt` y `lib/services/widget_celular/`.
+
 ## Cómo está organizado
 
 ```
