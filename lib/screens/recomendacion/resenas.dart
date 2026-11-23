@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../models/recomendacion.dart';
 import '../../theme.dart';
+import '../../widgets/doodle.dart';
 
 /// Estrellitas de una reseña (`assets/recomendaciones/estrella.png` y
 /// `estrella_vacia.png`; si faltan, íconos).
@@ -38,7 +39,7 @@ class Estrellas extends StatelessWidget {
                 width: size,
                 height: size,
                 semanticLabel: i == 1 ? '$valor de 5' : null,
-                errorBuilder: (_, _, _) => Icon(
+                errorBuilder: (_, _, _) => Doodle(
                   i <= valor ? Icons.star_rounded : Icons.star_outline_rounded,
                   size: size,
                   color: i <= valor ? AppTheme.amarillo : AppTheme.gris,

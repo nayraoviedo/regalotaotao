@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/racha.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
+import '../../widgets/doodle.dart';
 
 /// Pastillita de la racha que va en el cielo del inicio, debajo de los
 /// días juntos. Es lo único que se ve siempre; lo demás está al tocarla.
@@ -36,7 +37,7 @@ class RachaPastilla extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              Doodle(
                 Icons.local_fire_department_rounded,
                 size: 15,
                 color: viva
@@ -210,7 +211,7 @@ class RachaDetalle extends StatelessWidget {
                     color: AppTheme.amarillo,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: const Doodle(
                     Icons.card_giftcard,
                     color: AppTheme.azul,
                     size: 22,
@@ -641,7 +642,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                               minimumSize: const Size.fromHeight(50),
                               shape: const StadiumBorder(),
                             ),
-                            icon: const Icon(
+                            icon: const Doodle(
                               Icons.card_giftcard,
                               color: AppTheme.amarillo,
                             ),
@@ -740,7 +741,7 @@ class _LlamitaState extends State<_Llamita>
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
           ),
-          child: const Icon(
+          child: const Doodle(
             Icons.local_fire_department_rounded,
             color: AppTheme.amarillo,
             size: 26,

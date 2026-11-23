@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
+import '../../widgets/doodle.dart';
 
 /// Muestra tu código y permite ingresar el de tu pareja.
 class PairingScreen extends StatefulWidget {
@@ -57,7 +58,7 @@ class _PairingScreenState extends State<PairingScreen> {
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
+            icon: const Doodle(Icons.logout),
             onPressed: AuthService.instance.signOut,
           ),
         ],
@@ -79,7 +80,7 @@ class _PairingScreenState extends State<PairingScreen> {
                 ),
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.copy),
+                icon: const Doodle(Icons.copy),
                 tooltip: 'Copiar',
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: widget.me.pairCode));
@@ -106,7 +107,7 @@ class _PairingScreenState extends State<PairingScreen> {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _loading ? null : _link,
-            icon: const Icon(Icons.favorite),
+            icon: const Doodle(Icons.favorite),
             label: const Text('Vincularnos'),
           ),
         ],

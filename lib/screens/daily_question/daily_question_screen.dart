@@ -5,6 +5,7 @@ import '../../models/couple.dart';
 import '../../services/together_service.dart';
 import 'carta_style.dart';
 import 'naipes.dart';
+import '../../widgets/doodle.dart';
 
 /// Una pregunta al día para los dos, en forma de naipe.
 ///
@@ -145,7 +146,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
               const SizedBox(height: 48),
               FilledButton.icon(
                 onPressed: () => _sacar(hoy),
-                icon: const Icon(Icons.style),
+                icon: const Doodle(Icons.style),
                 label: Text(yaSalio ? 'Ver la carta' : 'Barajar y sacar'),
               ),
             ],

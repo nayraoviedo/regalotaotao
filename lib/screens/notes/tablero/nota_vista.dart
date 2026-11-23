@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../models/note.dart';
 import 'formas.dart';
 import 'notas_style.dart';
+import '../../../widgets/doodle.dart';
 
 /// Una nota dibujada con su forma, color, texto o lista, sticker y foto.
 ///
@@ -200,7 +201,7 @@ class _Pendiente extends StatelessWidget {
               border: Border.all(color: NotasStyle.celeste, width: 1.5),
             ),
             child: item.hecho
-                ? Icon(Icons.check, size: lado * 0.95, color: NotasStyle.azul)
+                ? Doodle(Icons.check, size: lado * 0.95, color: NotasStyle.azul)
                 : null,
           ),
           SizedBox(width: lado * 0.45),

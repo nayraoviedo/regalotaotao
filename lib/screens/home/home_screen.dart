@@ -27,6 +27,7 @@ import '../racha/racha_widgets.dart';
 import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
+import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 
@@ -465,23 +466,23 @@ class HomeTabs extends StatelessWidget {
           onDestinationSelected: onChanged,
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
+              icon: Doodle(Icons.home_outlined),
+              selectedIcon: Doodle(Icons.home_rounded),
               label: 'Inicio',
             ),
             NavigationDestination(
-              icon: Icon(Icons.favorite_border),
-              selectedIcon: Icon(Icons.favorite),
+              icon: Doodle(Icons.favorite_border),
+              selectedIcon: Doodle(Icons.favorite),
               label: 'Nosotros',
             ),
             NavigationDestination(
-              icon: Icon(Icons.mail_outline),
-              selectedIcon: Icon(Icons.mail),
+              icon: Doodle(Icons.mail_outline),
+              selectedIcon: Doodle(Icons.mail),
               label: 'Notas',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
+              icon: Doodle(Icons.person_outline),
+              selectedIcon: Doodle(Icons.person),
               label: 'Perfil',
             ),
           ],

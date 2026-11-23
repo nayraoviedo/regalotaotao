@@ -6,6 +6,7 @@ import '../../../models/note.dart';
 import 'formas.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
+import '../../../widgets/doodle.dart';
 
 /// Tablero de notas: filtros por categoría arriba y las notas pegadas en
 /// dos columnas (tres en pantallas anchas), un poquito chuecas.
@@ -259,7 +260,7 @@ class PildoraDeCategoria extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                Doodle(
                   icono,
                   size: 17,
                   color: elegida ? NotasStyle.amarillo : color,

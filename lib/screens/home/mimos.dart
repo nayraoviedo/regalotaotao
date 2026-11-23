@@ -9,6 +9,7 @@ import '../../models/mimo.dart';
 import '../../services/together_service.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
+import '../../widgets/doodle.dart';
 
 export '../../models/mimo.dart';
 
@@ -83,13 +84,18 @@ class _Segmento extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (principal)
-              const Icon(Icons.favorite, color: AppTheme.amarillo, size: 20)
+              const Doodle(
+                Icons.favorite,
+                nombre: 'te_extrano',
+                color: AppTheme.amarillo,
+                size: 20,
+              )
             else
               Image.asset(
                 mimo.icono,
                 width: 26,
                 height: 26,
-                errorBuilder: (_, _, _) => Icon(
+                errorBuilder: (_, _, _) => Doodle(
                   mimo.iconoRespaldo,
                   color: AppTheme.amarillo,
                   size: 20,

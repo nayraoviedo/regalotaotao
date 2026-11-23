@@ -8,6 +8,7 @@ import 'formas.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
 import 'tablero.dart';
+import '../../../widgets/doodle.dart';
 
 /// Pantalla "Nueva nota" (o "Editar nota"): título opcional, texto o lista
 /// de pendientes, color, forma, foto, sticker y categoría, con la nota en
@@ -152,7 +153,7 @@ class _EditorDeNotaState extends State<EditorDeNota> {
       appBar: AppBar(
         leading: IconButton(
           tooltip: 'Cerrar',
-          icon: const Icon(Icons.close),
+          icon: const Doodle(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -216,12 +217,12 @@ class _EditorDeNotaState extends State<EditorDeNota> {
                 segments: const [
                   ButtonSegment(
                     value: false,
-                    icon: Icon(Icons.notes, size: 18),
+                    icon: Doodle(Icons.notes, size: 18),
                     label: Text('Texto'),
                   ),
                   ButtonSegment(
                     value: true,
-                    icon: Icon(Icons.checklist, size: 18),
+                    icon: Doodle(Icons.checklist, size: 18),
                     label: Text('Lista'),
                   ),
                 ],
@@ -294,14 +295,14 @@ class _EditorDeNotaState extends State<EditorDeNota> {
                           dimension: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.image_outlined),
+                      : const Doodle(Icons.image_outlined),
                   label: const Text('Subir foto'),
                   style: _estiloBoton,
                 )
               else
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _foto = null),
-                  icon: const Icon(Icons.hide_image_outlined),
+                  icon: const Doodle(Icons.hide_image_outlined),
                   label: const Text('Quitar foto'),
                   style: _estiloBoton,
                 ),
@@ -347,7 +348,7 @@ class _EditorDeNotaState extends State<EditorDeNota> {
                   onPressed: _sePuedeGuardar
                       ? () => Navigator.pop(context, _nota)
                       : null,
-                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  icon: const Doodle(Icons.auto_awesome, size: 18),
                   label: const Text('Guardar'),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(0, 52),
@@ -428,7 +429,7 @@ class _EditorDeListaState extends State<_EditorDeLista> {
                 ),
                 IconButton(
                   tooltip: 'Quitar',
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: const Doodle(Icons.close, size: 18),
                   color: NotasStyle.gris,
                   onPressed: filas.length == 1
                       ? null
@@ -442,7 +443,7 @@ class _EditorDeListaState extends State<_EditorDeLista> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: () => _cambio(() => filas.add(_Fila('', false))),
-              icon: const Icon(Icons.add),
+              icon: const Doodle(Icons.add),
               label: const Text('Agregar pendiente'),
             ),
           ),
@@ -502,7 +503,7 @@ class _BolitaDeColor extends StatelessWidget {
             ),
           ),
           child: elegido
-              ? const Icon(Icons.check, size: 20, color: NotasStyle.azul)
+              ? const Doodle(Icons.check, size: 20, color: NotasStyle.azul)
               : null,
         ),
       ),

@@ -78,6 +78,8 @@ flutter:
     - assets/criaturas/
     # Formas y stickers de las notas (ver assets/notas/LEEME.md).
     - assets/notas/
+    # Doodles que reemplazan a los íconos (ver lib/widgets/doodle.dart).
+    - assets/doodles/
     # Cuadros de las animaciones de besos y abrazos (ver mimos.dart).
     - assets/animaciones/
     # Dibujos de las categorías de la recomendación del día.

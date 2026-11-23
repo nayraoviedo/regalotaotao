@@ -10,6 +10,7 @@ import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
 import '../together/elegir_gatito.dart';
 import '../together/together_screen.dart';
+import '../../widgets/doodle.dart';
 
 /// Perfil: foto (la de Google), nombre, código y fecha de aniversario.
 class ProfileScreen extends StatelessWidget {
@@ -144,7 +145,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         IconButton(
                           tooltip: 'Cambiar nombre',
-                          icon: const Icon(Icons.edit, size: 18),
+                          icon: const Doodle(Icons.edit, size: 18),
                           onPressed: () => _editName(context, user),
                         ),
                       ],
@@ -173,7 +174,10 @@ class ProfileScreen extends StatelessWidget {
                   // si uno lo elige, al otro le aparece directamente.
                   Card(
                     child: ListTile(
-                      leading: const Icon(Icons.favorite, color: AppTheme.azul),
+                      leading: const Doodle(
+                        Icons.favorite,
+                        color: AppTheme.azul,
+                      ),
                       title: Text(
                         c.startDate == null
                             ? 'Elige la fecha de nuestro aniversario'
@@ -185,7 +189,7 @@ class ProfileScreen extends StatelessWidget {
                             : '${fechaLarga(c.startDate!)} · '
                                   '${c.daysTogether} días juntos',
                       ),
-                      trailing: const Icon(Icons.edit_calendar),
+                      trailing: const Doodle(Icons.edit_calendar),
                       onTap: () => _pickAnniversary(context, c),
                     ),
                   ),
@@ -198,7 +202,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   Card(
                     child: ListTile(
-                      leading: const Icon(Icons.key, color: AppTheme.azul),
+                      leading: const Doodle(Icons.key, color: AppTheme.azul),
                       title: const Text('Mi código de pareja'),
                       subtitle: Text(
                         user.pairCode,
@@ -206,7 +210,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       trailing: IconButton(
                         tooltip: 'Copiar',
-                        icon: const Icon(Icons.copy),
+                        icon: const Doodle(Icons.copy),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: user.pairCode));
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -225,7 +229,7 @@ class ProfileScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    icon: const Icon(Icons.logout),
+                    icon: const Doodle(Icons.logout),
                     label: const Text('Cerrar sesión'),
                     onPressed: () async {
                       Navigator.of(context).popUntil((r) => r.isFirst);
@@ -238,7 +242,7 @@ class ProfileScreen extends StatelessWidget {
                       minimumSize: const Size.fromHeight(44),
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),
-                    icon: const Icon(Icons.link_off),
+                    icon: const Doodle(Icons.link_off),
                     label: const Text('Desvincular cuentas'),
                     onPressed: () => _unlink(context, c),
                   ),

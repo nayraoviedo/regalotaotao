@@ -6,6 +6,7 @@ import '../../theme.dart';
 import 'recomendacion_card.dart';
 import 'resenas.dart';
 import 'reproductor.dart';
+import '../../widgets/doodle.dart';
 
 const _coral = Color(0xFFE8735A);
 
@@ -150,7 +151,7 @@ class DetalleRecomendacion extends StatelessWidget {
                   shape: const StadiumBorder(),
                   side: BorderSide(color: AppTheme.azul.withValues(alpha: 0.3)),
                 ),
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                icon: const Doodle(Icons.open_in_new_rounded, size: 18),
                 label: Text(switch (media.plataforma) {
                   Plataforma.spotify => 'Abrir en Spotify',
                   Plataforma.youtube => 'Abrir en YouTube',
@@ -164,7 +165,7 @@ class DetalleRecomendacion extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: () => onGusto(!rec.gusto),
-                  icon: Icon(
+                  icon: Doodle(
                     rec.gusto ? Icons.favorite : Icons.favorite_border,
                     color: _coral,
                   ),

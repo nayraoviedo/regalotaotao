@@ -7,6 +7,7 @@ import '../../models/racha.dart';
 import '../../theme.dart';
 import '../../widgets/mood_image.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/doodle.dart';
 import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
 import 'mimos.dart';
@@ -265,8 +266,9 @@ class _Pareja extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  const Doodle(
                     Icons.favorite,
+                    nombre: 'te_extrano',
                     size: 14,
                     color: AppTheme.amarillo,
                   ),
@@ -391,7 +393,7 @@ class _AnimoDeHoy extends StatelessWidget {
                   ),
                   Spacer(),
                   Text('Registrar', style: TextStyle(color: AppTheme.gris)),
-                  Icon(Icons.chevron_right, color: AppTheme.gris),
+                  Doodle(Icons.chevron_right, color: AppTheme.gris),
                 ],
               ),
               const SizedBox(height: 8),
@@ -450,7 +452,11 @@ class _Animo extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppTheme.crema, width: 2),
                   ),
-                  child: const Icon(Icons.add, color: AppTheme.gris, size: 20),
+                  child: const Doodle(
+                    Icons.add,
+                    color: AppTheme.gris,
+                    size: 20,
+                  ),
                 )
               : MoodImage(m, size: 48, naranja: gatito == Gatito.naranja),
         ),
@@ -578,8 +584,9 @@ class _SuGatitoTristeState extends State<SuGatitoTriste> {
                       shape: const StadiumBorder(),
                       visualDensity: VisualDensity.compact,
                     ),
-                    icon: Icon(
+                    icon: Doodle(
                       _enviado ? Icons.check_rounded : Icons.favorite,
+                      nombre: _enviado ? null : 'te_extrano',
                       size: 18,
                       color: _enviado ? null : AppTheme.amarillo,
                     ),
@@ -626,7 +633,7 @@ class _Acceso extends StatelessWidget {
                   color: AppTheme.azul.withValues(alpha: 0.07),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icono, color: AppTheme.azul),
+                child: Doodle(icono, size: 30, color: AppTheme.azul),
               ),
               const SizedBox(height: 10),
               Text(

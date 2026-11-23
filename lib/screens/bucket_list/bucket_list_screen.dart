@@ -11,6 +11,7 @@ import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
 import 'escalera.dart';
+import '../../widgets/doodle.dart';
 import 'resena_juntos.dart';
 
 /// Lista de cosas por hacer juntos: citas, viajes, comidas...
@@ -197,7 +198,10 @@ class _BucketListScreenState extends State<BucketListScreen>
               Text(item.category, style: const TextStyle(color: AppTheme.gris)),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppTheme.azul),
+                leading: const Doodle(
+                  Icons.delete_outline,
+                  color: AppTheme.azul,
+                ),
                 title: const Text('Eliminar de la lista'),
                 subtitle: const Text('Se quita para los dos'),
                 shape: RoundedRectangleBorder(
@@ -234,7 +238,7 @@ class _BucketListScreenState extends State<BucketListScreen>
           IconButton(
             tooltip: 'Agregar',
             onPressed: _agregar,
-            icon: const Icon(Icons.add_circle_outline),
+            icon: const Doodle(Icons.add_circle_outline),
           ),
           const SizedBox(width: 4),
         ],
@@ -551,7 +555,7 @@ class _Escalon extends StatelessWidget {
           else
             Tooltip(
               message: item.category,
-              child: Icon(
+              child: Doodle(
                 _iconoCategoria(item.category),
                 size: 18,
                 color: EscaleraColores.azulMedio,
@@ -563,7 +567,7 @@ class _Escalon extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: const Icon(
+            icon: const Doodle(
               Icons.delete_outline_rounded,
               size: 19,
               color: Color(0xFFB9B5AE),
@@ -684,7 +688,7 @@ class _CasillaState extends State<_Casilla>
               scale: widget.marcada ? 1 : 0,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutBack,
-              child: const Icon(
+              child: const Doodle(
                 Icons.check_rounded,
                 size: 20,
                 color: AppTheme.azul,
@@ -903,7 +907,7 @@ class _NuevoPendienteState extends State<_NuevoPendiente> {
               for (final c in BucketItem.categories)
                 ChoiceChip(
                   label: Text(c),
-                  avatar: Icon(_iconoCategoria(c), size: 18),
+                  avatar: Doodle(_iconoCategoria(c), size: 18),
                   selected: _categoria == c,
                   showCheckmark: false,
                   selectedColor: AppTheme.amarillo,

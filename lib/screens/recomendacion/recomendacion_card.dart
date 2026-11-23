@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../models/recomendacion.dart';
 import '../../theme.dart';
+import '../../widgets/doodle.dart';
 
 /// Dibujo de una categoría (`assets/recomendaciones/<id>.png`).
 /// Si el PNG no está, se usa el ícono de la categoría.
@@ -17,7 +18,7 @@ class DibujoCategoria extends StatelessWidget {
     width: size,
     height: size,
     errorBuilder: (_, _, _) =>
-        Icon(categoria.icono, size: size * 0.86, color: AppTheme.azul),
+        Doodle(categoria.icono, size: size * 0.86, color: AppTheme.azul),
   );
 }
 
@@ -45,7 +46,7 @@ class BotonReproducir extends StatelessWidget {
               color: AppTheme.amarillo,
               shape: BoxShape.circle,
             ),
-            child: Icon(
+            child: Doodle(
               Icons.play_arrow_rounded,
               color: AppTheme.azul,
               size: size * 0.6,
@@ -114,7 +115,7 @@ class RecomendacionCard extends StatelessWidget {
                     ),
                   ),
                   Text('Ver todas', style: TextStyle(color: AppTheme.gris)),
-                  Icon(Icons.chevron_right, color: AppTheme.gris),
+                  Doodle(Icons.chevron_right, color: AppTheme.gris),
                 ],
               ),
             ),
@@ -162,7 +163,7 @@ class RecomendacionCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     visualDensity: VisualDensity.compact,
                   ),
-                  icon: const Icon(Icons.add_rounded, size: 18),
+                  icon: const Doodle(Icons.add_rounded, size: 18),
                   label: const Text('Recomiéndale algo tú también'),
                 ),
               ),
@@ -241,13 +242,13 @@ class _Fila extends StatelessWidget {
           if (rec.gusto)
             const Padding(
               padding: EdgeInsets.only(left: 4),
-              child: Icon(Icons.favorite, size: 16, color: Color(0xFFE8735A)),
+              child: Doodle(Icons.favorite, size: 16, color: Color(0xFFE8735A)),
             ),
           const SizedBox(width: 4),
           if (media?.reproducible ?? false)
             BotonReproducir(onTap: onTap, size: chica ? 32 : 40)
           else
-            const Icon(Icons.chevron_right, color: AppTheme.gris),
+            const Doodle(Icons.chevron_right, color: AppTheme.gris),
           const SizedBox(width: 4),
         ],
       ),
