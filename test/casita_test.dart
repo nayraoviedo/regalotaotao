@@ -25,6 +25,10 @@ void main() {
               ]
             : c.especial == Especial.tema
             ? <String>[]
+            : c.esBebe
+            ? [
+                for (final f in ['a', 'b', 'zz']) Casita.asset('${c.id}_$f'),
+              ]
             : [c.asset];
         if (c.especial == Especial.tema) {
           expect(TemaApp.de(c.claveTema).clave, c.claveTema, reason: c.id);
@@ -269,6 +273,37 @@ void main() {
       expect(CuartoCasita.queHay(60, 55, Cuarto.bano), Lugar.tina);
       expect(CuartoCasita.queHay(10, 90, Cuarto.bano), Lugar.arenero);
       expect(CuartoCasita.queHay(70, 90, Cuarto.bano), Lugar.patito);
+    });
+
+    test('los bebés adoptados pasean por el piso y de noche duermen', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['bebe_calico', 'bebe_siames'],
+        'bebes': {'calico': 'Mochi'},
+      });
+      expect(e.bebes.map((b) => b.id), ['bebe_siames', 'bebe_calico']);
+      expect(e.nombreDe(Catalogo.porId('bebe_calico')!), 'Mochi');
+      expect(e.nombreDe(Catalogo.porId('bebe_siames')!), isNull);
+      expect(e.capas(), contains(Casita.bebesPaseando));
+      expect(
+        e.capas(Cuarto.sala, true, Momento.noche),
+        contains(Casita.bebesDurmiendo),
+      );
+      expect(EstadoCasita.vacio.capas(), isNot(contains(Casita.bebesPaseando)));
+      // Siempre dentro del piso, y se mueven.
+      final vistos = <(double, double)>{};
+      for (var tick = 0; tick < 400; tick++) {
+        for (var i = 0; i < 6; i++) {
+          final p = PaseoBebe.en(i, tick);
+          expect(p.x, inInclusiveRange(2, 78 - PaseoBebe.ancho));
+          expect(p.y, inInclusiveRange(60, 100 - PaseoBebe.alto));
+          vistos.add((p.x, p.y));
+        }
+      }
+      expect(vistos.length, greaterThan(100));
+      expect(
+        PaseoBebe.en(0, 3).caminando || PaseoBebe.en(0, 12).caminando,
+        isTrue,
+      );
     });
 
     test('en el baño, con tina, se bañan los gatitos', () {
@@ -649,6 +684,39 @@ void main() {
       await t.tap(find.text('Comprar'));
       await t.pumpAndSettle();
       expect(compras.single.$1.id, 'cuarto_cocina');
+    });
+
+    testWidgets('adoptar un bebé y ponerle nombre', (t) async {
+      final compras = <(Cosa, String?)>[];
+      final nombres = <String>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: CasitaView(
+            estado: const EstadoCasita(pescaditos: 150),
+            movimientos: const [],
+            me: me,
+            partner: null,
+            onComprar: (c, g) async => compras.add((c, g)),
+            onPoner: (l, c) async {},
+            onVestir: (g, p, c) async {},
+            onNombrar: (b, n) async => nombres.add('${b.colorBebe}:$n'),
+            categoriaInicial: '_bebes',
+          ),
+        ),
+      );
+      expect(find.text('Bebé calicó'), findsOneWidget);
+      await t.ensureVisible(find.text('Bebé calicó'));
+      await t.tap(find.text('Bebé calicó'));
+      await t.pumpAndSettle();
+      expect(find.text('¿Adoptar al bebé calicó?'), findsOneWidget);
+      await t.tap(find.text('Adoptar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'bebe_calico');
+      expect(find.text('¡Bienvenido a casa! 🐾'), findsOneWidget);
+      await t.enterText(find.byType(TextFormField), 'Mochi');
+      await t.tap(find.text('Listo'));
+      await t.pumpAndSettle();
+      expect(nombres, ['calico:Mochi']);
     });
 
     testWidgets('bañar a los gatitos en la tina', (t) async {

@@ -66,6 +66,8 @@ class CasitaScreen extends StatelessWidget {
               servicio.proponer(coupleId, me.uid, cosa, gatito: gatito),
           onAprobar: (p) => servicio.aprobar(coupleId, me.uid, p),
           onDescartar: () => servicio.descartarPropuesta(coupleId),
+          onNombrar: (bebe, nombre) =>
+              servicio.nombrarBebe(coupleId, bebe, nombre),
           onCartaSorpresa: partner == null
               ? null
               : () => Navigator.of(context).push(
@@ -103,6 +105,7 @@ class CasitaView extends StatefulWidget {
     this.onAprobar,
     this.onDescartar,
     this.onCartaSorpresa,
+    this.onNombrar,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -135,6 +138,9 @@ class CasitaView extends StatefulWidget {
 
   /// Escribir una carta sorpresa animada (se paga al mandarla).
   final VoidCallback? onCartaSorpresa;
+
+  /// Ponerle nombre a un gatito bebé.
+  final Future<void> Function(Cosa bebe, String nombre)? onNombrar;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -170,6 +176,7 @@ class _CasitaViewState extends State<CasitaView> {
   static const _catRopita = '_ropita';
   static const _catEpoca = '_epoca';
   static const _catEspecial = '_especial';
+  static const _catBebes = '_bebes';
 
   List<String> _categoriasDe(Cuarto cuarto) => [
     if (_fiestas.isNotEmpty) _catFiesta,
@@ -178,6 +185,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catRopa,
     _catEpoca,
     _catRopita,
+    _catBebes,
     _catEspecial,
   ];
 
@@ -187,6 +195,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catRopita => 'Accesorios',
     _catEpoca => 'De época',
     _catEspecial => '✨ Especiales',
+    _catBebes => '🐾 Adoptar',
     _ => Lugar.deId(cat)?.nombre ?? cat,
   };
 
@@ -209,6 +218,7 @@ class _CasitaViewState extends State<CasitaView> {
       ),
       _catEpoca => Catalogo.ropa.where((c) => c.deEpoca),
       _catEspecial => Catalogo.especiales,
+      _catBebes => Catalogo.bebes,
       _ => Catalogo.de(Lugar.deId(cat)!),
     };
     return todas.where(visible).toList();
@@ -390,6 +400,7 @@ class _CasitaViewState extends State<CasitaView> {
       return;
     }
     if (cosa.especial == Especial.tema) return _usarTema(cosa);
+    if (cosa.esBebe) return _nombrar(cosa);
     final lugar = cosa.lugar!;
     final enUso = _estado.enUso(cosa);
     if (enUso && lugar.siempreLleno) return;
@@ -419,7 +430,11 @@ class _CasitaViewState extends State<CasitaView> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) => AlertDialog(
-          title: Text('¿Comprar ${cosa.nombre}?'),
+          title: Text(
+            cosa.esBebe
+                ? '¿Adoptar al ${cosa.nombre.toLowerCase()}?'
+                : '¿Comprar ${cosa.nombre}?',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -504,6 +519,8 @@ class _CasitaViewState extends State<CasitaView> {
                     ? 'Regalar'
                     : pideAprobacion
                     ? 'Pedirle el sí'
+                    : cosa.esBebe
+                    ? 'Adoptar'
                     : 'Comprar',
               ),
             ),
@@ -528,6 +545,10 @@ class _CasitaViewState extends State<CasitaView> {
         await _usarTema(cosa);
         return;
       }
+      if (cosa.esBebe) {
+        await _nombrar(cosa, recien: true);
+        return;
+      }
       if (cosa.cuarto case final c?) {
         _verCuarto(c);
         _aviso('¡Abrieron ${cosa.nombre.toLowerCase()}! Ahora a decorarla');
@@ -539,6 +560,62 @@ class _CasitaViewState extends State<CasitaView> {
     } catch (_) {
       _aviso('No se pudo comprar, intenta otra vez');
     }
+  }
+
+  /// Ponerle (o cambiarle) el nombre a un gatito bebé.
+  Future<void> _nombrar(Cosa bebe, {bool recien = false}) async {
+    var nombre = _estado.nombreDe(bebe) ?? '';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(recien ? '¡Bienvenido a casa! 🐾' : '¿Cómo se llama?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 90, child: VistaEspecial(bebe)),
+            const SizedBox(height: 12),
+            TextFormField(
+              initialValue: nombre,
+              autofocus: true,
+              maxLength: 16,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(hintText: 'Su nombre'),
+              onChanged: (v) => nombre = v,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(recien ? 'Después' : 'Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Listo'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted || widget.onNombrar == null) return;
+    final limpio = nombre.trim();
+    if (limpio.isEmpty) return;
+    try {
+      await widget.onNombrar!(bebe, limpio);
+      _aviso('$limpio ya pasea por la casita 🐾');
+    } catch (_) {
+      _aviso('No se pudo guardar el nombre, intenta otra vez');
+    }
+  }
+
+  /// Tocaron a un bebé en el cuarto: dice quién es.
+  void _tocarBebe(Cosa bebe) {
+    final n = _estado.nombreDe(bebe);
+    _aviso(
+      n == null
+          ? 'Es el ${bebe.nombre.toLowerCase()}. Tócalo en la tienda para '
+                'ponerle nombre'
+          : '¡Es $n! 🐾',
+    );
   }
 
   /// Cambia los colores de la app (en este celular). Tocar el tema que ya
@@ -767,6 +844,7 @@ class _CasitaViewState extends State<CasitaView> {
                       onToque: _elegir,
                       ahora: widget.hoy,
                       banando: _banando,
+                      onBebe: _tocarBebe,
                     )
                   : _CuartoCerrado(
                       key: ValueKey(_cuarto),
@@ -1232,6 +1310,7 @@ class _Articulo extends StatelessWidget {
         switch (cosa.especial) {
           Especial.stickers => 'En tus notas ✓',
           Especial.tema => enUso ? 'En uso ✓' : 'Usar',
+          Especial.bebe => 'Adoptado ✓',
           null => enUso ? 'Puesto ✓' : (cosa.esRopa ? 'Ponérselo' : 'Poner'),
         },
         style: TextStyle(
@@ -1715,6 +1794,25 @@ class VistaEspecial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (cosa.esBebe) {
+      return FittedBox(
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3E6D6),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+          child: Image.asset(
+            Casita.asset('${cosa.id}_a'),
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.none,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          ),
+        ),
+      );
+    }
     if (cosa.especial == Especial.stickers) {
       final stickers = Catalogo.stickersDe[cosa.id] ?? const [];
       return FittedBox(

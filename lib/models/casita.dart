@@ -35,6 +35,15 @@ class Casita {
   /// antes de gastar (los regalos sorpresa no, para no arruinar la sorpresa).
   static const compraGrande = 100;
 
+  /// Marcas en [EstadoCasita.capas]: ahí van los gatitos bebés (no son un
+  /// PNG del tamaño del cuarto, se mueven).
+  static const bebesPaseando = '#bebes';
+  static const bebesDurmiendo = '#bebes_zz';
+
+  /// Los que pasean más al fondo que los gatitos grandes (se dibujan
+  /// detrás de ellos).
+  static const bebesAtras = '#bebes_atras';
+
   /// Lo que cuesta mandar una carta sorpresa animada.
   static const precioCartaSorpresa = 30;
   static bool necesitaAprobacion(Cosa c) => c.precio > compraGrande;
@@ -268,6 +277,9 @@ enum Especial {
 
   /// Un paquete de stickers para las notas (ver [Catalogo.stickersDe]).
   stickers,
+
+  /// Un gatito bebé adoptado (`bebe_<color>`): pasea por los cuartos.
+  bebe,
 }
 
 /// Algo de la tienda: un mueble (con [lugar]), ropita (con [parte]), un
@@ -326,6 +338,11 @@ class Cosa {
   bool get esRopa => parte != null;
   bool get esCuarto => cuarto != null;
   bool get esEspecial => especial != null;
+
+  bool get esBebe => especial == Especial.bebe;
+
+  /// Color del gatito bebé (`bebe_calico` → `calico`).
+  String get colorBebe => id.substring('bebe_'.length);
 
   /// Clave del tema (`tema_sakura` → `sakura`).
   String get claveTema => id.substring('tema_'.length);
@@ -578,6 +595,14 @@ class Catalogo {
       60,
       especial: Especial.stickers,
     ),
+
+    // ---- Gatitos bebés para adoptar (cada uno elige su color) ----
+    Cosa('bebe_naranja', 'Bebé naranja', 120, especial: Especial.bebe),
+    Cosa('bebe_ragdoll', 'Bebé ragdoll', 120, especial: Especial.bebe),
+    Cosa('bebe_atigrado', 'Bebé gris atigrado', 120, especial: Especial.bebe),
+    Cosa('bebe_siames', 'Bebé siamés', 120, especial: Especial.bebe),
+    Cosa('bebe_calico', 'Bebé calicó', 120, especial: Especial.bebe),
+    Cosa('bebe_negrito', 'Bebé negrito', 120, especial: Especial.bebe),
 
     // ---- Ropa casual y formal (conjuntos) ----
     Cosa('camiseta', 'Camiseta a rayas', 50, parte: Parte.cuerpo),
@@ -944,7 +969,10 @@ class Catalogo {
     'stickers_cielo': ['luna', 'nube', 'arcoiris', 'sol'],
   };
 
-  static List<Cosa> get especiales => cosas.where((c) => c.esEspecial).toList();
+  static List<Cosa> get especiales =>
+      cosas.where((c) => c.esEspecial && !c.esBebe).toList();
+
+  static List<Cosa> get bebes => cosas.where((c) => c.esBebe).toList();
 }
 
 /// Estado de la casita: `couples/{id}/casita/estado`.
@@ -958,6 +986,7 @@ class EstadoCasita {
     this.regalos = const {},
     this.meta,
     this.propuesta,
+    this.nombres = const {},
   });
 
   static const vacio = EstadoCasita();
@@ -987,6 +1016,20 @@ class EstadoCasita {
 
   /// Compra grande esperando que la pareja la apruebe.
   final Propuesta? propuesta;
+
+  /// Nombres de los gatitos bebés: `{calico: 'Mochi'}`.
+  final Map<String, String> nombres;
+
+  /// Los bebés que adoptaron, en el orden del catálogo.
+  List<Cosa> get bebes => [
+    for (final c in Catalogo.bebes)
+      if (tenemos.contains(c.id)) c,
+  ];
+
+  String? nombreDe(Cosa bebe) {
+    final n = nombres[bebe.colorBebe]?.trim();
+    return n == null || n.isEmpty ? null : n;
+  }
 
   /// La meta de la alcancía, si todavía no la compraron.
   Cosa? get metaCosa => switch (Catalogo.porId(meta)) {
@@ -1026,6 +1069,7 @@ class EstadoCasita {
             ),
       },
       meta: d['meta'] as String?,
+      nombres: strings(d['bebes']),
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -1131,6 +1175,8 @@ class EstadoCasita {
             if (puesto(l) case final c?) dibujo(c),
       if (cuarto == Cuarto.sala && conMuebles && regalos.isNotEmpty)
         Casita.regaloEnvuelto,
+      if (conMuebles && bebes.isNotEmpty && momento != Momento.noche)
+        Casita.bebesAtras,
       if (enLaTina)
         Casita.asset('banando_${tick % 4 < 2 ? 1 : 2}')
       else if (duermen) ...[
@@ -1149,6 +1195,9 @@ class EstadoCasita {
           for (final p in Parte.values)
             if (prenda(g, p) case final c?) c.assetRopa(g),
         ],
+      // Los bebés pasean (o duermen) encima del piso: ver [PaseoBebe].
+      if (conMuebles && bebes.isNotEmpty)
+        momento == Momento.noche ? Casita.bebesDurmiendo : Casita.bebesPaseando,
       if (momento != Momento.dia) Casita.asset(momento.name),
       if (momento == Momento.noche && conMuebles)
         for (final l in cuarto.lugares)
@@ -1275,6 +1324,7 @@ class Movimiento {
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {
       final c? when c.esCuarto => 'abrió ${_el(c.cuarto!)}',
+      final c? when c.esBebe => 'adoptó al ${c.nombre.toLowerCase()}',
       final c? => 'compró ${c.nombre}',
       null => 'compró algo',
     },
@@ -1291,4 +1341,66 @@ class Ganancia {
   const Ganancia(this.cantidad, this.motivo);
   final int cantidad;
   final String motivo;
+}
+
+/// Por dónde anda un gatito bebé en cada paso de la animación.
+///
+/// Cada bebé camina de un punto del piso a otro elegido "al azar" (siempre
+/// el mismo para el mismo paso, así no hace falta guardar nada), descansa
+/// un ratito y sigue. De noche duerme en su rincón.
+class PaseoBebe {
+  const PaseoBebe(this.x, this.y, {this.paso = 0, this.izquierda = false});
+
+  /// Esquina de arriba a la izquierda del sprite, en píxeles del cuarto.
+  final double x, y;
+
+  /// 0 parado, 1 o 2 caminando (cuadro a o b).
+  final int paso;
+
+  /// Mira a la izquierda (se dibuja al revés).
+  final bool izquierda;
+
+  bool get caminando => paso != 0;
+
+  /// Más al fondo que las patitas de los gatitos grandes.
+  bool get atras => y + alto < 87;
+
+  static const ancho = 10.0;
+  static const alto = 9.0;
+
+  /// Pasos de cada tramo: camina [_camina] y descansa el resto.
+  static const _tramo = 14;
+  static const _camina = 9;
+
+  static int _mezcla(int i, int k, int sal) {
+    var h = (i + 1) * 73856093 ^ (k + 7) * 19349663 ^ sal * 83492791;
+    h = (h ^ (h >> 13)) * 1274126177;
+    return (h ^ (h >> 16)) & 0x7fffffff;
+  }
+
+  /// Un punto del piso para el bebé [i] en el tramo [k].
+  static (double, double) _punto(int i, int k) => (
+    4 + (_mezcla(i, k, 1) % 62).toDouble(),
+    62 + (_mezcla(i, k, 2) % 27).toDouble(),
+  );
+
+  static PaseoBebe en(int i, int tick) {
+    final t = tick + i * 5;
+    final k = t ~/ _tramo;
+    final f = t % _tramo;
+    final (x0, y0) = _punto(i, k);
+    final (x1, y1) = _punto(i, k + 1);
+    if (f >= _camina) return PaseoBebe(x1, y1, izquierda: x1 < x0);
+    final a = f / _camina;
+    return PaseoBebe(
+      x0 + (x1 - x0) * a,
+      y0 + (y1 - y0) * a,
+      paso: f.isEven ? 1 : 2,
+      izquierda: x1 < x0,
+    );
+  }
+
+  /// Donde duerme el bebé [i] (en fila, abajo).
+  static PaseoBebe durmiendo(int i) =>
+      PaseoBebe(4 + (i % 6) * 12.0, 89 - (i ~/ 6) * 8.0);
 }

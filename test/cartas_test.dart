@@ -58,19 +58,17 @@ void main() {
   group('Carta sorpresa animada', () {
     setUp(() => CuartoVivo.animar = false);
 
-    Widget escribir({
-      required int pescaditos,
-      List<String>? mandadas,
-    }) => MaterialApp(
-      home: EscribirCartaScreen(
-        uid: 'a',
-        partnerUid: 'b',
-        coupleId: 'c',
-        sorpresa: true,
-        casita: Stream.value(EstadoCasita(pescaditos: pescaditos)),
-        onEnviarSorpresa: (texto, _) async => mandadas?.add(texto),
-      ),
-    );
+    Widget escribir({required int pescaditos, List<String>? mandadas}) =>
+        MaterialApp(
+          home: EscribirCartaScreen(
+            uid: 'a',
+            partnerUid: 'b',
+            coupleId: 'c',
+            sorpresa: true,
+            casita: Stream.value(EstadoCasita(pescaditos: pescaditos)),
+            onEnviarSorpresa: (texto, _) async => mandadas?.add(texto),
+          ),
+        );
 
     testWidgets('se manda pagando 30 pescaditos', (t) async {
       final mandadas = <String>[];
