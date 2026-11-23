@@ -55,6 +55,8 @@ class CartasStyle {
     'estres' => Icons.spa,
     'reir' => Icons.sentiment_very_satisfied,
     'sorpresa' => Icons.auto_awesome,
+    'cumple' => Icons.cake,
+    'aniversario' => Icons.favorite,
     _ => Icons.mail,
   };
 }

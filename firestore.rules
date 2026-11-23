@@ -152,6 +152,10 @@ service cloud.firestore {
           && request.resource.data.cuando is string
           && request.resource.data.cuando.size() > 0
           && request.resource.data.cuando.size() <= 60
+          // Carta de cumpleaños o aniversario, con su pastel.
+          && request.resource.data.get('especial', null) in [null, 'cumple', 'aniversario']
+          && request.resource.data.get('pastel', null)
+               in [null, 'fresa', 'chocolate', 'gatito', 'corazon']
           // Una carta sorpresa se paga con pescaditos en el mismo momento.
           && (request.resource.data.get('sorpresa', false) == false
               || (request.resource.data.sorpresa == true

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/carta.dart';
 import '../../../services/cartas_service.dart';
 import '../../../theme.dart';
+import 'carta_pastel.dart';
 import 'carta_screen.dart';
 import 'carta_sorpresa.dart';
 import 'cartas_style.dart';
@@ -389,10 +390,14 @@ class LlegadaDeCartas extends StatefulWidget {
     required this.coupleId,
     required this.onVer,
     required this.child,
+    this.partnerName,
   });
 
   final String uid;
   final String coupleId;
+
+  /// Para "{nombre} te mandó un pastel".
+  final String? partnerName;
 
   /// Qué hacer si toca "Ver mis cartas".
   final VoidCallback onVer;
@@ -448,9 +453,12 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
       ...nuevas.map((c) => c.id),
     ]);
     if (!mounted) return;
-    // Las sorpresas llegan con los gatitos y se abren ahí mismo.
-    for (final carta in nuevas.where((c) => c.sorpresa)) {
-      final abrir = await mostrarLlegadaSorpresa(context, carta);
+    // Las sorpresas llegan con los gatitos, y las de cumpleaños o
+    // aniversario con un pastel; se abren ahí mismo.
+    for (final carta in nuevas.where((c) => c.sorpresa || c.especial != null)) {
+      final abrir = carta.especial != null
+          ? await mostrarLlegadaPastel(context, carta, de: widget.partnerName)
+          : await mostrarLlegadaSorpresa(context, carta);
       if (!mounted) return;
       if (abrir) {
         await Navigator.of(context).push(
@@ -466,7 +474,9 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
         if (!mounted) return;
       }
     }
-    final normales = [...nuevas.where((c) => !c.sorpresa)];
+    final normales = [
+      ...nuevas.where((c) => !c.sorpresa && c.especial == null),
+    ];
     if (normales.isEmpty) {
       _mostrando = false;
       return;

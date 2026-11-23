@@ -38,6 +38,10 @@ class UserService {
       Db.user(uid).update({'name': name});
 
   /// Qué gatito quiere ser (ver `Gatito.id`).
+  /// Guarda el cumpleaños ('MM-DD', ver `Cumple`).
+  Future<void> updateCumple(String uid, String cumple) =>
+      Db.user(uid).update({'cumple': cumple});
+
   Future<void> updateGatito(String uid, String gatito) =>
       Db.user(uid)
           .update({'gatito': gatito, 'gatitoEn': FieldValue.serverTimestamp()});

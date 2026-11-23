@@ -75,7 +75,11 @@ class InicioView extends StatelessWidget {
     this.recomendacion,
     this.casita,
     this.invitacionPomodoro,
+    this.celebracion,
   });
+
+  /// Cumpleaños de la pareja o aniversario de hoy (si hay).
+  final Widget? celebracion;
 
   /// Tarjeta de "Nuestra casita", debajo de los accesos.
   final Widget? casita;
@@ -155,6 +159,7 @@ class InicioView extends StatelessWidget {
                     partnerName: partnerName,
                   ),
                   const SizedBox(height: 16),
+                  ?celebracion,
                   ?invitacionPomodoro,
                   if (suAnimo case final animo? when animo.suggestMindfulness)
                     Padding(

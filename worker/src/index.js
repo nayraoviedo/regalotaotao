@@ -372,7 +372,11 @@ const KINDS = {
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
     dedupeKey: () => "enviado",
     message: (name, d) =>
-      d.sorpresa === true
+      d.especial === "cumple"
+        ? { title: "🎂 ¡Feliz cumpleaños!", body: `${name} te mandó un pastel y una carta de cumpleaños` }
+        : d.especial === "aniversario"
+        ? { title: "💞 ¡Feliz aniversario!", body: `${name} te mandó un pastel y una carta de aniversario` }
+        : d.sorpresa === true
         ? {
             title: "✨ ¡Carta sorpresa!",
             body: `${name} te mandó una carta sorpresa: los gatitos te la están llevando`,
