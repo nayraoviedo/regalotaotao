@@ -130,7 +130,7 @@ const KINDS = {
     dedupeKey: (d) => `${d.rewardId || ""}|${d.rewardTitle}`,
     message: (name, d) => ({
       title: "🎁 Premio elegido",
-      body: `${name} ${d.kind === "tarea" ? "terminó una tarea" : d.kind === "racha" ? `llegó a ${d.meta} días de racha` : "completó un pomodoro"} y eligió: ${d.rewardTitle}`,
+      body: `${name} ${d.kind === "tarea" ? "terminó una tarea" : d.kind === "racha" ? `llegó a ${d.meta} días de racha` : d.kind === "preguntas" ? `respondió ${d.meta} días seguidos la pregunta del día` : "completó un pomodoro"} y eligió: ${d.rewardTitle}`,
     }),
   },
   hug: {

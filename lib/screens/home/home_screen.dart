@@ -247,7 +247,9 @@ class _HomeBodyState extends State<_HomeBody> {
       gatitos: Gatito.dePareja(me, widget.partner),
       partnerName: widget.partner?.name ?? 'Tu pareja',
       onAnimo: () => _open(MoodScreen(me: me, coupleId: couple.id)),
-      onPregunta: () => _open(DailyQuestionScreen(me: me, couple: couple)),
+      onPregunta: () => _open(
+        DailyQuestionScreen(me: me, couple: couple, partner: widget.partner),
+      ),
     ).whenComplete(() {
       _racha.removeListener(sync);
       notifier.dispose();
@@ -376,6 +378,7 @@ class _HomeBodyState extends State<_HomeBody> {
               SeccionInicio.pregunta => DailyQuestionScreen(
                 me: me,
                 couple: couple,
+                partner: partner,
               ),
               SeccionInicio.porHacer => BucketListScreen(
                 me: me,

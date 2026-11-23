@@ -134,6 +134,8 @@ await ok('A guarda su premio de 7 días de racha', setDoc(doc(db('A'),'couples/c
 await no('A no inventa una meta de 5 días', setDoc(doc(db('A'),'couples/c1/achievements/racha5_2026-11-16_A'),{uid:'A',kind:'racha',meta:5,inicio:'2026-11-16',delivered:false}));
 await no('A no repite el premio de racha con otro id', setDoc(doc(db('A'),'couples/c1/achievements/otro'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',delivered:false}));
 await ok('A elige su premio de la racha', updateDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{rewardId:'r1',rewardTitle:'Un abrazo largo',rewardChosenAt:serverTimestamp()}));
+await ok('A guarda su premio de 7 días respondiendo la pregunta', setDoc(doc(db('A'),'couples/c1/achievements/preguntas7_2026-11-16_A'),{uid:'A',kind:'preguntas',meta:7,inicio:'2026-11-16',taskTitle:'7 días respondiendo la pregunta',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+await no('A no usa el id de la racha de pareja para el de preguntas', setDoc(doc(db('A'),'couples/c1/achievements/racha30_2026-11-16_A'),{uid:'A',kind:'preguntas',meta:30,inicio:'2026-11-16',delivered:false}));
 await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
 await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
 await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Te quiero',papel:'cuadricula',openedAt:null}));
