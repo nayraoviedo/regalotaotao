@@ -313,6 +313,12 @@ class PescaditosService {
         'puestos': {lugar.name: cosa?.id ?? ''},
       }, SetOptions(merge: true));
 
+  /// Le pone nombre a un gatito bebé adoptado.
+  Future<void> nombrarBebe(String coupleId, Cosa bebe, String nombre) =>
+      _estado(coupleId).set({
+        'bebes': {bebe.colorBebe: nombre},
+      }, SetOptions(merge: true));
+
   /// Propone una compra grande: la pareja la tiene que aprobar.
   Future<void> proponer(
     String coupleId,

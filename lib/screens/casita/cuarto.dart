@@ -18,10 +18,14 @@ class CuartoCasita extends StatelessWidget {
     this.momento = Momento.dia,
     this.tick = 0,
     this.banando = false,
+    this.onBebe,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
+
+  /// Tocaron a un gatito bebé.
+  final ValueChanged<Cosa>? onBebe;
 
   /// Los gatitos están en la tina (ver [EstadoCasita.capas]).
   final bool banando;
@@ -68,7 +72,20 @@ class CuartoCasita extends StatelessWidget {
           tick,
           banando,
         )) ...[
-          CapaCasita(a, key: ValueKey(a)),
+          if (a == Casita.bebesPaseando ||
+              a == Casita.bebesDurmiendo ||
+              a == Casita.bebesAtras)
+            BebesPaseando(
+              key: ValueKey(a),
+              atras: a == Casita.bebesAtras,
+              bebes: estado.bebes,
+              nombres: estado.nombres,
+              tick: tick,
+              durmiendo: a == Casita.bebesDurmiendo,
+              onBebe: onBebe,
+            )
+          else
+            CapaCasita(a, key: ValueKey(a)),
           // Su foto, pixelada, dentro del marco del cuadro.
           if (foto != null && a == cuadroFoto && cuarto == Cuarto.sala)
             CustomPaint(
@@ -109,12 +126,14 @@ class CuartoVivo extends StatefulWidget {
     this.onToque,
     this.ahora,
     this.banando = false,
+    this.onBebe,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
   final ToqueCasita? onToque;
   final bool banando;
+  final ValueChanged<Cosa>? onBebe;
 
   /// Para fijar la hora (en las pruebas). Si falta, la hora real.
   final DateTime? ahora;
@@ -159,6 +178,82 @@ class _CuartoVivoState extends State<CuartoVivo> {
       momento: Momento.de(widget.ahora ?? DateTime.now()),
       tick: quieto ? 0 : _tick,
       banando: widget.banando,
+      onBebe: widget.onBebe,
+    );
+  }
+}
+
+/// Los gatitos bebés paseando por el piso (o durmiendo en fila). Se
+/// mueven suave de un paso al siguiente de la animación.
+class BebesPaseando extends StatelessWidget {
+  const BebesPaseando({
+    super.key,
+    required this.bebes,
+    required this.tick,
+    this.nombres = const {},
+    this.durmiendo = false,
+    this.atras = false,
+    this.onBebe,
+  });
+
+  /// Solo los que van detrás de los gatitos grandes (si no, los de
+  /// adelante).
+  final bool atras;
+
+  final List<Cosa> bebes;
+  final Map<String, String> nombres;
+  final int tick;
+  final bool durmiendo;
+  final ValueChanged<Cosa>? onBebe;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final px = c.maxWidth / Casita.ancho;
+        final py = c.maxHeight / Casita.alto;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            for (final (i, b) in bebes.indexed)
+              if (durmiendo ? PaseoBebe.durmiendo(i) : PaseoBebe.en(i, tick)
+                  case final p when durmiendo || p.atras == atras)
+                _bebe(b, p, px, py),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bebe(Cosa b, PaseoBebe p, double px, double py) {
+    final cuadro = durmiendo
+        ? 'zz'
+        : p.paso == 2
+        ? 'b'
+        : 'a';
+    return AnimatedPositioned(
+      key: ValueKey(b.id),
+      duration: CuartoVivo.paso,
+      left: p.x * px,
+      top: p.y * py,
+      width: PaseoBebe.ancho * px,
+      height: PaseoBebe.alto * py,
+      child: Semantics(
+        label: nombres[b.colorBebe] ?? b.nombre,
+        child: GestureDetector(
+          onTap: onBebe == null ? null : () => onBebe!(b),
+          child: Transform.flip(
+            flipX: p.izquierda,
+            child: Image.asset(
+              Casita.asset('${b.id}_$cuadro'),
+              fit: BoxFit.fill,
+              filterQuality: FilterQuality.none,
+              gaplessPlayback: true,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -204,6 +204,8 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('A guarda otra racha de 30', setDoc(doc(db('A'),'couples/c1/achievements/racha30_2026-08-01_A'),{uid:'A',kind:'racha',meta:30,inicio:'2026-08-01',taskTitle:'Racha de 30 días',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
   await ok('A gana otros 150', ganar('A','racha30_2026-08-01',{tipo:'racha',meta:30,inicio:'2026-08-01',cantidad:150},235));
   await ok('un regalo sorpresa grande no necesita aprobación', ganar('A','compra_sofa_rosa',{tipo:'compra',cantidad:-120,ref:'sofa_rosa',regalo:true},115,{tenemos:['cuadro_corazon','sofa_azul','sofa_rosa'],regalos:{sofa_rosa:{de:'A',mensaje:''}}}));
+  await ok('A le pone nombre al gatito bebé', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:{calico:'Mochi'}},{merge:true}));
+  await no('los nombres de los bebés van en un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:'Mochi'},{merge:true}));
   await ok('B quita el cuadro', setDoc(doc(db('B'),'couples/c1/casita/estado'),{puestos:{cuadro:''}},{merge:true}));
   await no('B no se regala pescaditos', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{pescaditos:999}));
   await no('B no borra lo que compraron', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{tenemos:[]}));

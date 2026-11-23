@@ -532,7 +532,9 @@ service cloud.firestore {
           && docId == 'estado'
           && request.resource.data.keys()
                .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto',
-                         'regalos', 'meta', 'propuesta', 'pushSentFor'])
+                         'regalos', 'meta', 'propuesta', 'pushSentFor', 'bebes'])
+          // Nombres de los gatitos bebés: {color: nombre}.
+          && request.resource.data.get('bebes', {}) is map
           // Regalos sorpresa envueltos y la meta de la alcancía.
           && request.resource.data.get('regalos', {}) is map
           && request.resource.data.get('meta', '') is string
