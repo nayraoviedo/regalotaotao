@@ -16,6 +16,7 @@ import '../../widgets/text_prompt.dart';
 import '../../widgets/user_avatar.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
+import '../../widgets/doodle.dart';
 
 /// Pomodoro solo o en pareja. Al completar un pomodoro o una tarea se elige
 /// un premio de la lista de la pareja, y la otra persona lo ve.
@@ -107,7 +108,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: PomodoroStyle.crema,
-        icon: const Icon(
+        icon: const Doodle(
           Icons.favorite_border,
           color: PomodoroStyle.azul,
           size: 32,
@@ -363,7 +364,7 @@ class _TopBar extends StatelessWidget {
         IconButton(
           tooltip: 'Volver',
           color: PomodoroStyle.azul,
-          icon: const Icon(Icons.arrow_back),
+          icon: const Doodle(Icons.arrow_back),
           onPressed: locked ? null : onBack,
         ),
         Expanded(
@@ -383,13 +384,13 @@ class _TopBar extends StatelessWidget {
           style: locked
               ? IconButton.styleFrom(backgroundColor: PomodoroStyle.amarillo)
               : null,
-          icon: Icon(locked ? Icons.lock : Icons.lock_open_outlined),
+          icon: Doodle(locked ? Icons.lock : Icons.lock_open_outlined),
           onPressed: onLock,
         ),
         IconButton(
           tooltip: 'Mis premios',
           color: PomodoroStyle.azul,
-          icon: const Icon(Icons.card_giftcard),
+          icon: const Doodle(Icons.card_giftcard),
           onPressed: locked ? null : onEditRewards,
         ),
       ],
@@ -413,7 +414,7 @@ class _LockedBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
+          const Doodle(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -762,7 +763,7 @@ class _TimerButtons extends StatelessWidget {
               shape: shape,
               padding: EdgeInsets.zero,
             ),
-            child: Icon(
+            child: Doodle(
               running ? Icons.pause_rounded : Icons.play_arrow_rounded,
               size: 30,
               semanticLabel: running ? 'Pausar' : 'Empezar',
@@ -788,7 +789,7 @@ class _TimerButtons extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              icon: const Icon(Icons.celebration_outlined),
+              icon: const Doodle(Icons.celebration_outlined),
               label: Text(finishLabel),
             ),
           ),
@@ -942,7 +943,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              icon: const Icon(Icons.send_rounded),
+              icon: const Doodle(Icons.send_rounded),
               label: Text('Invitar a $name'),
               onPressed: () => _service.invite(
                 _coupleId,
@@ -1031,7 +1032,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
               side: const BorderSide(color: PomodoroStyle.azul, width: 1.5),
               shape: const StadiumBorder(),
             ),
-            icon: const Icon(Icons.stop_rounded),
+            icon: const Doodle(Icons.stop_rounded),
             label: const Text('Salir de la sesión'),
             onPressed: widget.onStop,
           ),
@@ -1244,7 +1245,7 @@ class _TaskList extends StatelessWidget {
                       IconButton(
                         tooltip: t.done ? 'Terminada' : 'Marcar terminada',
                         color: t.done ? PomodoroStyle.hoja : PomodoroStyle.azul,
-                        icon: Icon(
+                        icon: Doodle(
                           t.done
                               ? Icons.check_circle_rounded
                               : Icons.radio_button_unchecked_rounded,
@@ -1273,7 +1274,7 @@ class _TaskList extends StatelessWidget {
                       IconButton(
                         tooltip: 'Borrar',
                         color: PomodoroStyle.gris,
-                        icon: const Icon(Icons.close_rounded, size: 20),
+                        icon: const Doodle(Icons.close_rounded, size: 20),
                         onPressed: () => onDelete(t),
                       ),
                     ],
@@ -1317,7 +1318,7 @@ class _AddTaskButton extends StatelessWidget {
                 color: PomodoroStyle.pastilla,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add, size: 22),
+              child: const Doodle(Icons.add, size: 22),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -1394,7 +1395,7 @@ class _RewardFeed extends StatelessWidget {
                 ),
                 TextButton.icon(
                   onPressed: onEditRewards,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  icon: const Doodle(Icons.edit_outlined, size: 18),
                   label: const Text('Mi lista'),
                 ),
               ],
@@ -1502,7 +1503,7 @@ class _WhoChose extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
-                  Icon(
+                  Doodle(
                     a.delivered ? Icons.check_circle : Icons.card_giftcard,
                     size: 15,
                     color: a.delivered

@@ -1,6 +1,7 @@
 """Genera los doodles de la app (SVG editables -> PNG 192x192).
 
-Uso:  python3 generar.py [carpeta_salida_png]
+Uso:  python3 generar.py      (escribe los SVG aquí)
+      node exportar.js           (los pasa a PNG en assets/doodles/)
 Cada doodle es un SVG de 96x96: contorno azul marino a mano (con un poco de
 temblor) y un relleno de color corrido, como dibujado con plumón.
 """
@@ -28,11 +29,11 @@ D = {}
 casa = 'M18 44 L48 18 L78 44 M26 38 L26 78 L70 78 L70 38'
 D['inicio'] = linea(casa) + linea('M42 78 L42 60 Q48 55 54 60 L54 78')
 D['inicio_activo'] = relleno('M26 40 L48 21 L70 40 L70 78 L26 78 Z', AM) + D['inicio'] + f'<circle cx="62" cy="50" r="2.6" fill="{AZ}"/>'
-D['nosotros'] = linea(CORAZON)
-D['nosotros_activo'] = ambos(CORAZON, TO) + linea('M28 34 Q30 27 36 26', 3.4, CR)
+D['corazon'] = linea(CORAZON)
+D['corazon_lleno'] = ambos(CORAZON, TO) + linea('M28 34 Q30 27 36 26', 3.4, CR)
 sobre = 'M14 28 L82 28 L82 72 L14 72 Z'
-D['notas'] = linea(sobre) + linea('M15 30 L48 54 L81 30')
-D['notas_activo'] = relleno(sobre, CE) + D['notas'] + relleno('M44 60 C40 57 37 55 37 52 C37 50 39 49 40.5 49 C42 49 43 50 44 51.5 C45 50 46 49 47.5 49 C49 49 51 50 51 52 C51 55 48 57 44 60Z', TO, 4, 2)
+D['sobre'] = linea(sobre) + linea('M15 30 L48 54 L81 30')
+D['sobre_lleno'] = relleno(sobre, CE) + D['sobre'] + relleno('M44 60 C40 57 37 55 37 52 C37 50 39 49 40.5 49 C42 49 43 50 44 51.5 C45 50 46 49 47.5 49 C49 49 51 50 51 52 C51 55 48 57 44 60Z', TO, 4, 2)
 gato = 'M24 76 C22 60 26 46 34 40 L28 18 L42 32 C46 31 50 31 54 32 L68 18 L62 40 C70 46 74 60 72 76 Z'
 cara = f'<circle cx="39" cy="54" r="3" fill="{AZ}"/><circle cx="57" cy="54" r="3" fill="{AZ}"/>' + linea('M44 62 Q48 66 52 62', 3.6)
 D['perfil'] = linea(gato) + cara
@@ -61,8 +62,41 @@ D['borrar'] = linea('M18 28 L78 28 M38 28 L40 18 L56 18 L58 28') + ambos('M24 28
 D['listo'] = ambos('M48 12 C70 12 84 28 84 48 C84 70 68 84 48 84 C26 84 12 68 12 48 C12 28 28 12 48 12 Z', VE) + linea('M30 48 L42 60 L66 34', 6)
 D['pendiente'] = linea('M48 14 C68 14 82 28 82 48 C82 68 68 82 48 82 C28 82 14 68 14 48 C14 28 28 14 48 14 Z')
 
+# --- generales ---
+D['agregar_circulo'] = ambos('M48 12 C70 12 84 28 84 48 C84 70 68 84 48 84 C26 84 12 68 12 48 C12 28 28 12 48 12 Z', AM) + linea('M48 32 L48 64 M32 48 L64 48', 5.4)
+D['palomita'] = linea('M18 50 L38 70 L78 24', 7)
+D['calendario'] = ambos('M16 24 L80 24 L80 80 L16 80 Z', CR) + relleno('M16 24 L80 24 L80 40 L16 40 Z', TO, 0, 0) + linea('M16 24 L80 24 L80 80 L16 80 Z M16 40 L80 40 M32 14 L32 30 M64 14 L64 30') + linea('M56 76 L74 52 L80 58 L62 80 L54 82 Z', 4)
+D['llave'] = ambos('M34 20 C46 20 52 30 52 38 C52 48 44 56 34 56 C22 56 16 46 16 38 C16 28 24 20 34 20 Z', AM) + f'<circle cx="34" cy="38" r="5" fill="{AZ}"/>' + linea('M50 48 L80 78 M64 62 L72 54 M72 70 L80 62')
+D['copiar'] = ambos('M16 30 L56 30 L56 80 L16 80 Z', CR) + ambos('M36 14 L78 14 L78 64 L36 64 Z', CE) + linea('M46 30 L68 30 M46 42 L66 42', 3.8)
+D['salir'] = linea('M50 18 L18 18 L18 78 L50 78') + linea('M38 48 L82 48 M66 32 L82 48 L66 64', 5.6)
+D['desvincular'] = linea('M44 30 L34 20 C26 12 14 24 22 32 L36 46') + linea('M52 66 L62 76 C70 84 82 72 74 64 L60 50') + linea('M60 18 L62 28 M74 30 L84 30 M22 66 L12 66 M34 78 L36 88', 4, TO)
+D['texto'] = ambos('M20 14 L76 14 L76 82 L20 82 Z', CR) + linea('M32 32 L64 32 M32 46 L64 46 M32 60 L54 60', 4.4)
+D['foto'] = ambos('M14 22 L82 22 L82 76 L14 76 Z', CE) + relleno('M18 72 L40 46 L56 62 L66 52 L80 72 Z', VE, 0, 0) + linea('M18 72 L40 46 L56 62 L66 52 L80 72', 4.4) + f'<circle cx="64" cy="36" r="6" fill="{AM}" stroke="{AZ}" stroke-width="3.6"/>'
+D['quitar_foto'] = linea('M14 22 L82 22 L82 76 L14 76 Z') + linea('M18 72 L40 46 L56 62 L66 52 L80 72', 4.4) + linea('M10 86 L86 10', 5.6, TO)
+D['brillos'] = ambos('M40 12 Q44 40 70 44 Q44 48 40 80 Q36 48 10 44 Q36 40 40 12 Z', AM) + ambos('M72 10 Q74 22 84 24 Q74 26 72 38 Q70 26 60 24 Q70 22 72 10 Z', CE, 4.2)
+D['estudio'] = ambos('M48 20 L88 38 L48 56 L8 38 Z', CE) + linea('M24 46 L24 66 Q48 82 72 66 L72 46') + linea('M84 40 L84 62', 4.2) + f'<circle cx="84" cy="66" r="4" fill="{AM}"/>'
+D['trabajo'] = ambos('M12 32 L84 32 L84 78 L12 78 Z', TO) + linea('M36 32 L36 22 L60 22 L60 32 M12 50 L84 50') + relleno('M42 46 L54 46 L54 56 L42 56 Z', AM, 0, 0) + linea('M42 46 L54 46 L54 56 L42 56 Z', 3.6)
+D['idea'] = ambos('M48 10 C66 10 76 24 76 38 C76 52 64 58 62 70 L34 70 C32 58 20 52 20 38 C20 24 30 10 48 10 Z', AM) + linea('M36 78 L60 78 M40 86 L56 86 M42 50 Q48 42 54 50', 4.4)
+D['mas'] = f'<circle cx="20" cy="48" r="7" fill="{AZ}"/><circle cx="48" cy="48" r="7" fill="{AZ}"/><circle cx="76" cy="48" r="7" fill="{AZ}"/>'
+D['gota'] = ambos('M48 10 C56 28 76 46 76 60 C76 76 64 86 48 86 C32 86 20 76 20 60 C20 46 40 28 48 10 Z', CE) + linea('M34 60 Q34 70 42 74', 3.6, CR)
+D['sol'] = ambos('M48 28 C60 28 68 36 68 48 C68 60 60 68 48 68 C36 68 28 60 28 48 C28 36 36 28 48 28 Z', AM) + linea('M48 8 L48 18 M48 78 L48 88 M8 48 L18 48 M78 48 L88 48 M20 20 L27 27 M69 69 L76 76 M76 20 L69 27 M27 69 L20 76', 4.6)
+D['nube'] = ambos('M24 70 C12 70 8 56 18 50 C16 38 30 30 40 38 C44 24 66 24 70 40 C84 40 90 56 80 66 C78 70 74 70 72 70 Z', CE)
+D['luna'] = ambos('M60 12 C40 16 28 32 28 50 C28 70 44 84 64 84 C72 84 80 80 84 74 C60 76 44 58 46 38 C48 26 54 18 60 12 Z', AM) + f'<circle cx="74" cy="24" r="3.5" fill="{AZ}"/><circle cx="82" cy="44" r="2.5" fill="{AZ}"/>'
+D['abrazo'] = linea('M10 60 Q22 84 48 84 Q74 84 86 60') + ambos('M48 66 C38 58 30 52 30 42 C30 36 34 32 39 32 C43 32 46 34 48 38 C50 34 53 32 57 32 C62 32 66 36 66 42 C66 52 58 58 48 66 Z', TO, 4.6) + linea('M10 60 L18 52 M86 60 L78 52', 4.6)
+D['calma'] = ambos('M48 18 C58 30 58 50 48 66 C38 50 38 30 48 18 Z', VE) + ambos('M48 66 C40 54 24 46 12 48 C14 62 30 70 48 66 Z', VE) + ambos('M48 66 C56 54 72 46 84 48 C82 62 66 70 48 66 Z', VE) + linea('M24 78 L72 78', 4.4)
+D['risa'] = ambos('M48 12 C70 12 84 28 84 48 C84 70 68 84 48 84 C26 84 12 68 12 48 C12 28 28 12 48 12 Z', AM) + linea('M30 40 Q35 34 40 40 M56 40 Q61 34 66 40', 4.4) + relleno('M30 54 L66 54 Q62 72 48 72 Q34 72 30 54 Z', TO, 0, 0) + linea('M30 54 L66 54 Q62 72 48 72 Q34 72 30 54 Z', 4.4)
+D['avion'] = '<g transform="rotate(45 48 48)">' + ambos('M48 8 C53 8 55 14 55 22 L55 38 L86 56 L86 64 L55 55 L55 72 L64 79 L64 86 L48 82 L32 86 L32 79 L41 72 L41 55 L10 64 L10 56 L41 38 L41 22 C41 14 43 8 48 8 Z', CE) + '</g>'
+D['comida'] = linea('M28 12 L28 36 Q28 46 36 46 Q44 46 44 36 L44 12 M36 12 L36 86') + ambos('M64 12 C76 14 78 34 72 46 L66 46 C58 34 56 14 64 12 Z', AM) + linea('M68 46 L68 86')
+D['montana'] = ambos('M6 82 L36 30 L52 56 L62 42 L90 82 Z', VE) + relleno('M30 40 L36 30 L42 40 L38 38 L34 42 Z', CR, 0, 0) + f'<circle cx="72" cy="20" r="8" fill="{AM}"/>'
+
+
+def claro(c):
+    # Versión para fondos oscuros: contorno crema.
+    return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')
+
 if __name__ == '__main__':
     aqui = pathlib.Path(__file__).parent
     for i, (n, c) in enumerate(D.items()):
         (aqui / f'{n}.svg').write_text(svg(c, semilla=3 + i))
+        (aqui / f'{n}_claro.svg').write_text(svg(claro(c), semilla=3 + i))
     print(len(D), 'doodles')

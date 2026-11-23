@@ -11,6 +11,7 @@ import 'tablero/editor.dart';
 import 'tablero/formas.dart';
 import 'tablero/notas_style.dart';
 import 'tablero/tablero.dart';
+import '../../widgets/doodle.dart';
 
 /// Tres pestañas: el tablero de notas de los dos, el tablero de mis notas
 /// privadas y el escritorio de cartas "Ábrelo cuando…".
@@ -254,7 +255,7 @@ class _Pestana extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icono, size: 18),
+        Doodle(icono, size: 18),
         const SizedBox(width: 6),
         Flexible(child: Text(texto, overflow: TextOverflow.ellipsis)),
       ],
@@ -278,7 +279,7 @@ class _Fab extends StatelessWidget {
           onPressed: onPressed,
           backgroundColor: NotasStyle.azul,
           foregroundColor: Colors.white,
-          icon: Icon(
+          icon: Doodle(
             cartas ? Icons.edit : Icons.auto_awesome,
             color: cartas ? Colors.white : NotasStyle.amarillo,
           ),

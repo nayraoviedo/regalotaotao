@@ -4,6 +4,7 @@ import '../../../models/note.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
 import 'tablero.dart';
+import '../../../widgets/doodle.dart';
 
 /// Una acción de la nota abierta (editar, compartir, borrar…).
 class AccionDeNota {
@@ -83,7 +84,7 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
             padding: const EdgeInsets.only(right: 16),
             child: Row(
               children: [
-                Icon(categoria.icono, size: 18, color: NotasStyle.gris),
+                Doodle(categoria.icono, size: 18, color: NotasStyle.gris),
                 const SizedBox(width: 4),
                 Text(
                   categoria.nombre,
@@ -150,7 +151,7 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
                                 if (widget.onToggle != null)
                                   IconButton(
                                     tooltip: 'Quitar tarea',
-                                    icon: const Icon(
+                                    icon: const Doodle(
                                       Icons.delete_outline,
                                       size: 20,
                                     ),
@@ -172,7 +173,7 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
                 for (final a in widget.acciones)
                   OutlinedButton.icon(
                     onPressed: a.onTap,
-                    icon: Icon(a.icono, size: 18),
+                    icon: Doodle(a.icono, size: 18),
                     label: Text(a.texto),
                     style: OutlinedButton.styleFrom(
                       backgroundColor: Colors.white,

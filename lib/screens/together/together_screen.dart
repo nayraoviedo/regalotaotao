@@ -10,6 +10,7 @@ import '../../widgets/user_avatar.dart';
 import 'fondo_flotante.dart';
 import 'gatitos.dart';
 import 'hitos.dart';
+import '../../widgets/doodle.dart';
 
 const _meses = [
   'enero',
@@ -115,7 +116,7 @@ class DiasJuntosView extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: start == null ? 'Elegir fecha' : 'Cambiar fecha',
-            icon: const Icon(Icons.edit_calendar),
+            icon: const Doodle(Icons.edit_calendar),
             onPressed: onCambiarFecha,
           ),
         ],
@@ -317,7 +318,7 @@ class _CorazonLatiendoState extends State<_CorazonLatiendo>
         final escala = 1 + 0.18 * golpe(0.1) + 0.12 * golpe(0.3);
         return Transform.scale(scale: escala, child: child);
       },
-      child: const Icon(Icons.favorite, color: _corazon, size: 34),
+      child: const Doodle(Icons.favorite, color: _corazon, size: 34),
     );
   }
 }
@@ -486,11 +487,10 @@ class _Barra extends StatelessWidget {
               // El corazoncito que va avanzando.
               Positioned(
                 left: (x - corazon / 2).clamp(-corazon / 4, ancho - corazon),
-                child: const Icon(
+                child: const Doodle(
                   Icons.favorite,
                   color: _corazon,
                   size: corazon,
-                  shadows: [Shadow(color: Colors.white, blurRadius: 6)],
                 ),
               ),
             ],
@@ -520,7 +520,7 @@ class _SinFecha extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          icon: const Icon(Icons.edit_calendar),
+          icon: const Doodle(Icons.edit_calendar),
           label: const Text('Elegir nuestra fecha'),
           onPressed: onTap,
         ),

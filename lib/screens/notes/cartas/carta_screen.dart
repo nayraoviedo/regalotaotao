@@ -9,6 +9,7 @@ import 'avioncito.dart';
 import 'cartas_style.dart';
 import 'papel.dart';
 import 'sobre.dart';
+import '../../../widgets/doodle.dart';
 
 /// Texto largo escrito sobre una hoja de papel, con título y pie.
 /// Se usa para leer cartas y notas.
@@ -178,7 +179,7 @@ class _CartaScreenState extends State<CartaScreen>
           if (_mia)
             IconButton(
               tooltip: 'Borrar',
-              icon: const Icon(Icons.delete_outline),
+              icon: const Doodle(Icons.delete_outline),
               onPressed: _borrar,
             ),
         ],
@@ -453,13 +454,13 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
             children: [
               for (final m in Motivo.todos)
                 ChoiceChip(
-                  avatar: Icon(CartasStyle.iconoDe(m.id), size: 18),
+                  avatar: Doodle(CartasStyle.iconoDe(m.id), size: 18),
                   label: Text(m.cuando),
                   selected: _motivo == m,
                   onSelected: (_) => setState(() => _motivo = m),
                 ),
               ChoiceChip(
-                avatar: const Icon(Icons.edit, size: 18),
+                avatar: const Doodle(Icons.edit, size: 18),
                 label: const Text('otro…'),
                 selected: _motivo == null,
                 onSelected: (_) => setState(() => _motivo = null),
@@ -555,7 +556,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.send),
+              : const Doodle(Icons.send),
           label: const Text('Enviar en avioncito'),
         ),
       ),

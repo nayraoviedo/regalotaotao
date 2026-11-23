@@ -1,0 +1,137 @@
+import 'package:material_ui/material_ui.dart';
+
+/// Un dibujito hecho a mano en lugar de un ícono de Material.
+///
+/// Se usa igual que [Icon]: `Doodle(Icons.favorite, size: 18)`. Busca el
+/// PNG que corresponde a ese ícono en `assets/doodles/` (ver [doodleDe]).
+/// Si el color del ícono es claro (o sea, va sobre un fondo oscuro), usa la
+/// versión `<nombre>_claro.png`, que tiene el contorno crema.
+///
+/// Si falta el PNG, o el ícono no tiene doodle, se muestra el ícono de
+/// siempre. Así nayra puede cambiar cualquier dibujo por uno suyo con solo
+/// reemplazar el archivo.
+class Doodle extends StatelessWidget {
+  const Doodle(
+    this.icon, {
+    super.key,
+    this.size,
+    this.color,
+    this.semanticLabel,
+    this.nombre,
+  });
+
+  /// El ícono de Material que reemplaza (y que se muestra si falta el PNG).
+  final IconData? icon;
+  final double? size;
+  final Color? color;
+  final String? semanticLabel;
+
+  /// Para forzar un dibujo distinto al que toca según [icon].
+  final String? nombre;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = IconTheme.of(context);
+    final lado = size ?? tema.size ?? 24;
+    final c = color ?? tema.color;
+    final n = nombre ?? doodleDe(icon);
+    Widget icono() =>
+        Icon(icon, size: lado, color: color, semanticLabel: semanticLabel);
+    if (n == null) return icono();
+
+    final claro = c != null && c.computeLuminance() > 0.5;
+    Widget imagen(String archivo, Widget Function() siFalta) => Image.asset(
+      'assets/doodles/$archivo.png',
+      width: lado,
+      height: lado,
+      semanticLabel: semanticLabel,
+      excludeFromSemantics: semanticLabel == null,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, _, _) => siFalta(),
+    );
+    Widget dibujo = claro
+        ? imagen('${n}_claro', () => imagen(n, icono))
+        : imagen(n, icono);
+    // Botones deshabilitados: el tema baja la opacidad del color.
+    final alfa = c?.a ?? 1;
+    if (alfa < 0.99) dibujo = Opacity(opacity: alfa, child: dibujo);
+    return dibujo;
+  }
+}
+
+/// Nombre del doodle (sin extensión) que reemplaza a cada ícono.
+String? doodleDe(IconData? icon) =>
+    icon == null ? null : _doodles[icon.codePoint];
+
+final Map<int, String> _doodles = {
+  for (final e in <IconData, String>{
+    // Barra de abajo
+    Icons.home_outlined: 'inicio',
+    Icons.home_rounded: 'inicio_activo',
+    Icons.favorite_border: 'corazon',
+    Icons.favorite: 'corazon_lleno',
+    Icons.mail_outline: 'sobre',
+    Icons.mail: 'sobre_lleno',
+    Icons.person_outline: 'perfil',
+    Icons.person: 'perfil_activo',
+    // Inicio
+    Icons.timer_outlined: 'pomodoro',
+    Icons.style_outlined: 'pregunta',
+    Icons.style: 'pregunta',
+    Icons.checklist_rounded: 'por_hacer',
+    Icons.checklist: 'por_hacer',
+    Icons.chevron_right: 'siguiente',
+    Icons.add: 'agregar',
+    Icons.add_circle_outline: 'agregar_circulo',
+    // Pomodoro
+    Icons.play_arrow_rounded: 'reproducir',
+    Icons.pause_rounded: 'pausa',
+    Icons.stop_rounded: 'detener',
+    Icons.lock: 'candado',
+    Icons.lock_outline: 'candado',
+    Icons.lock_open_outlined: 'candado_abierto',
+    Icons.card_giftcard: 'regalo',
+    Icons.send_rounded: 'enviar',
+    Icons.send: 'enviar',
+    Icons.arrow_back: 'atras',
+    Icons.celebration_outlined: 'celebrar',
+    Icons.check_circle_rounded: 'listo',
+    Icons.check_circle: 'listo',
+    Icons.radio_button_unchecked_rounded: 'pendiente',
+    // Generales
+    Icons.close: 'cerrar',
+    Icons.close_rounded: 'cerrar',
+    Icons.edit: 'editar',
+    Icons.edit_outlined: 'editar',
+    Icons.delete_outline: 'borrar',
+    Icons.check: 'palomita',
+    Icons.check_rounded: 'palomita',
+    Icons.edit_calendar: 'calendario',
+    Icons.key: 'llave',
+    Icons.copy: 'copiar',
+    Icons.logout: 'salir',
+    Icons.link_off: 'desvincular',
+    Icons.notes: 'texto',
+    Icons.image_outlined: 'foto',
+    Icons.hide_image_outlined: 'quitar_foto',
+    Icons.auto_awesome: 'brillos',
+    // Categorías de notas
+    Icons.school_outlined: 'estudio',
+    Icons.work_outline: 'trabajo',
+    Icons.lightbulb_outline: 'idea',
+    Icons.more_horiz: 'mas',
+    // Cartas "Ábrelo cuando"
+    Icons.water_drop: 'gota',
+    Icons.wb_sunny: 'sol',
+    Icons.cloud: 'nube',
+    Icons.nightlight_round: 'luna',
+    Icons.volunteer_activism: 'abrazo',
+    Icons.spa: 'calma',
+    Icons.sentiment_very_satisfied: 'risa',
+    // Por hacer juntos
+    Icons.flight_takeoff: 'avion',
+    Icons.restaurant: 'comida',
+    Icons.hiking: 'montana',
+  }.entries)
+    e.key.codePoint: e.value,
+};

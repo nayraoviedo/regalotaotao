@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../branding.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
+import '../../widgets/doodle.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -247,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _isRegister ? 'Inicia sesión' : 'Regístrate',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          const Icon(Icons.chevron_right, size: 20),
+                          const Doodle(Icons.chevron_right, size: 20),
                         ],
                       ),
                     ),

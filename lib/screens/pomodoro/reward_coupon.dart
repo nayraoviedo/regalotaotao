@@ -7,6 +7,7 @@ import '../../models/reward.dart';
 import '../../services/reward_service.dart';
 import '../../widgets/user_avatar.dart';
 import 'pomodoro_style.dart';
+import '../../widgets/doodle.dart';
 
 /// Al terminar una sesión: un popup de celebración con el premio como
 /// cupón. En pareja muestra también el cupón que escogió la otra persona
@@ -188,7 +189,7 @@ class _CouponPopup extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 4),
                           ),
-                          child: const Icon(
+                          child: const Doodle(
                             Icons.card_giftcard,
                             color: PomodoroStyle.azul,
                             size: 30,

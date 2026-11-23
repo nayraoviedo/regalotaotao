@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'carta_style.dart';
 import 'criatura.dart';
+import '../../widgets/doodle.dart';
 
 /// Tamaño de un naipe del mazo.
 const _ancho = 110.0;
@@ -17,7 +18,7 @@ class NaipeFrente extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const corazon = Icon(Icons.favorite, size: 14, color: CartaStyle.azul);
+    const corazon = Doodle(Icons.favorite, size: 14, color: CartaStyle.azul);
     return Container(
       width: _ancho,
       height: _alto,
