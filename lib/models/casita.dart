@@ -492,6 +492,22 @@ class Catalogo {
     Cosa('gorra', 'Gorra', 60, parte: Parte.cabeza),
     Cosa('lentes_sol', 'Lentes de sol', 80, parte: Parte.cara),
     Cosa('copa', 'Sombrero de copa', 120, parte: Parte.cabeza),
+    // Gorritos que van con las pijamas, boinas y sombreros
+    Cosa('gorro_murcielago', 'Gorro de murcielaguito', 50, parte: Parte.cabeza),
+    Cosa('gorro_dino', 'Gorro de dinosaurio', 50, parte: Parte.cabeza),
+    Cosa(
+      'gorro_monstruo',
+      'Gorro de monstruo gigante',
+      50,
+      parte: Parte.cabeza,
+    ),
+    Cosa('gorro_ovejita', 'Gorro de ovejita', 50, parte: Parte.cabeza),
+    Cosa('boina_roja', 'Boina roja', 50, parte: Parte.cabeza),
+    Cosa('boina_negra', 'Boina negra', 50, parte: Parte.cabeza),
+    Cosa('boina_camel', 'Boina camel', 50, parte: Parte.cabeza),
+    Cosa('gorro_pescador', 'Gorro de pescador', 45, parte: Parte.cabeza),
+    Cosa('sombrero_paja', 'Sombrero de paja', 50, parte: Parte.cabeza),
+    Cosa('gorro_marinero', 'Gorro de marinero', 45, parte: Parte.cabeza),
 
     // Cuartos nuevos
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),

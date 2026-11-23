@@ -291,12 +291,139 @@ EXTRAS = {
 CUERPO["gabardina"] = gabardina
 
 
+# ================================================================ gorritos y sombreros
+def _capucha(tela, borde, arriba, extra=None):
+    """Capucha que tapa la cabeza hasta la frente; `arriba` son las filas
+    de lo que lleva encima (orejitas, puntitas…)."""
+    def dibujar(c, x, y):
+        filas = arriba + [
+            ".dttttttttttttttttd.",
+            ".dttttttttttttttttd.",
+            ".dttttttttttttttttd.",
+            ".dtttddddddddddtttd.",
+            ".dtd............dtd.",
+            ".dtd............dtd.",
+            ".dd..............dd.",
+        ]
+        if extra:
+            filas = extra(filas)
+        c.sprite(x, y - len(arriba), filas,
+                 {"t": tela, "d": borde, "y": PUNTAS.get(tela, tela),
+                  "p": (164, 150, 196), "w": BLANCO, "k": TRAZO,
+                  "o": (90, 80, 70)})
+    return dibujar
+
+
+VERDE_DINO = (120, 186, 110)
+OVEJA = (250, 246, 236)
+PUNTAS = {VERDE_DINO: (232, 186, 70), PIZARRA: ATOMICO}
+
+OREJAS_MURCIELAGO = [
+    "..d..............d..",
+    "..dd............dd..",
+    "..dpd..........dpd..",
+    "..dppddddddddddppd..",
+]
+PUNTITAS = [
+    ".....y...yy...y.....",
+    "....yyy..yy..yyy....",
+    "..dddddddddddddddd..",
+]
+LANITA = [
+    "....d.d.d.d.d.d.....",
+    "..dddddddddddddddd..",
+]
+
+
+def _ojitos(filas):
+    filas = list(filas)
+    filas[3] = ".dttwwttttttttwwttd."
+    filas[4] = ".dttwkttttttttkwttd."
+    return filas
+
+
+def _orejas_oveja(filas):
+    filas = list(filas)
+    for k in (3, 4):
+        filas[k] = "o" + filas[k][1:-1] + "o"
+    return filas
+
+
+def _rizos(filas):
+    filas = list(filas)
+    for k in (2, 3, 4):
+        filas[k] = "".join(
+            "d" if ch == "t" and (i + k) % 3 == 0 else ch
+            for i, ch in enumerate(filas[k]))
+    return filas
+
+
+def _boina(tela, osc):
+    def dibujar(c, x, y):
+        c.sprite(x + 3, y - 1, [
+            "........k.....",
+            "..tttttttttt..",
+            ".tttttttttttttt",
+            "tttttttttttttt.",
+            ".oooooooooooo..",
+        ], {"t": tela, "o": osc, "k": osc})
+    return dibujar
+
+
+def r_pescador(c, x, y):
+    c.sprite(x + 3, y, [
+        "...bbbbbbbb...",
+        "..bbbbbbbbbb..",
+        "..BBBBBBBBBB..",
+        "bbbbbbbbbbbbbb",
+    ], {"b": (150, 200, 236), "B": (100, 150, 206)})
+
+
+def r_paja(c, x, y):
+    c.sprite(x + 1, y - 1, [
+        ".....pppppppp.....",
+        "....pPpPpPpPpp....",
+        "....rrrrrrrrrr....",
+        "pppppppppppppppppp",
+        ".PPPPPPPPPPPPPPPP.",
+    ], {"p": (240, 210, 130), "P": (206, 170, 90), "r": ROJO})
+
+
+def r_gorro_marinero(c, x, y):
+    c.sprite(x + 5, y, [
+        "..wwwwww..",
+        ".wwwwwwww.",
+        "wwwwwwwwww",
+        "bbbbbbbbbb",
+    ], {"w": (250, 250, 246), "b": (40, 60, 120)})
+
+
+CABEZA = {
+    "gorro_murcielago": _capucha(CARBON, CARBON_OSC, OREJAS_MURCIELAGO),
+    "gorro_dino": _capucha(VERDE_DINO, (80, 140, 80), PUNTITAS, _ojitos),
+    "gorro_monstruo": _capucha(PIZARRA, PIZARRA_OSC, PUNTITAS),
+    "gorro_ovejita": _capucha(OVEJA, (214, 204, 184), LANITA,
+                              lambda f: _orejas_oveja(_rizos(f))),
+    "boina_roja": _boina(ROJO, ROJO_OSC),
+    "boina_negra": _boina(CARBON, CARBON_OSC),
+    "boina_camel": _boina(CAMEL, CAMEL_OSC),
+    "gorro_pescador": r_pescador,
+    "sombrero_paja": r_paja,
+    "gorro_marinero": r_gorro_marinero,
+}
+
+
 def main():
     for g in GATITO_POS:
         for prenda, pintar in CUERPO.items():
             c = vestir(g, pintar, hasta=LARGO.get(prenda, 16))
             if prenda in EXTRAS:
                 pintar_afuera(c, g, EXTRAS[prenda])
+            c.guardar(f"ropa_{prenda}_{g}")
+        x, y = GATITO_POS[g]
+        for prenda, dibujar in CABEZA.items():
+            c = Capa()
+            dibujar(c, x, y)
             c.guardar(f"ropa_{prenda}_{g}")
 
 
