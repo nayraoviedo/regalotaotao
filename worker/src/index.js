@@ -301,6 +301,16 @@ const KINDS = {
             body: `${name} compró ${NOMBRES_CASITA[d.ref] || "algo"} para los gatitos`,
           },
   },
+  // Compra grande que espera la aprobación de la pareja (casita/estado).
+  propuesta: {
+    collection: "casita",
+    check: (d, uid) => d.propuesta?.de === uid,
+    dedupeKey: (d) => d.propuesta.id,
+    message: (name, d) => ({
+      title: "🐟 ¿Lo compramos?",
+      body: `${name} quiere comprar ${NOMBRES_CASITA[d.propuesta.cosa] || "algo"} para la casita. ¿Le das el sí?`,
+    }),
+  },
   letter: {
     collection: "letters",
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,

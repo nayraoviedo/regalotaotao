@@ -31,6 +31,11 @@ class Casita {
   /// Pomodoros por persona y por día que dan pescaditos.
   static const pomodorosPorDia = 4;
 
+  /// Desde cuánto una compra es "grande": la tiene que aprobar la pareja
+  /// antes de gastar (los regalos sorpresa no, para no arruinar la sorpresa).
+  static const compraGrande = 100;
+  static bool necesitaAprobacion(Cosa c) => c.precio > compraGrande;
+
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
 
@@ -833,6 +838,7 @@ class EstadoCasita {
     this.foto,
     this.regalos = const {},
     this.meta,
+    this.propuesta,
   });
 
   static const vacio = EstadoCasita();
@@ -859,6 +865,9 @@ class EstadoCasita {
 
   /// Alcancía: id de la [Cosa] para la que están ahorrando juntos.
   final String? meta;
+
+  /// Compra grande esperando que la pareja la apruebe.
+  final Propuesta? propuesta;
 
   /// La meta de la alcancía, si todavía no la compraron.
   Cosa? get metaCosa => switch (Catalogo.porId(meta)) {
@@ -898,6 +907,9 @@ class EstadoCasita {
             ),
       },
       meta: d['meta'] as String?,
+      propuesta: d['propuesta'] is Map
+          ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
+          : null,
       foto: switch (d['foto']) {
         final List l
             when l.length == Casita.fotoAncho * Casita.fotoAlto &&
@@ -1027,6 +1039,44 @@ class Regalo {
   Map<String, Object> toMap() => {
     'de': de,
     'mensaje': mensaje,
+    'gatito': ?gatito,
+  };
+}
+
+/// Una compra grande que propone uno y aprueba el otro.
+class Propuesta {
+  const Propuesta({
+    required this.id,
+    required this.cosa,
+    required this.de,
+    this.gatito,
+  });
+
+  /// Único para cada propuesta (para no repetir el aviso).
+  final String id;
+
+  /// Id de la [Cosa].
+  final String cosa;
+
+  /// uid de quien la propuso.
+  final String de;
+
+  /// Si es ropita: a qué gatito se le pone.
+  final String? gatito;
+
+  Cosa? get queCosa => Catalogo.porId(cosa);
+
+  factory Propuesta.fromMap(Map<String, dynamic> d) => Propuesta(
+    id: d['id'] as String? ?? '',
+    cosa: d['cosa'] as String? ?? '',
+    de: d['de'] as String? ?? '',
+    gatito: d['gatito'] as String?,
+  );
+
+  Map<String, Object> toMap() => {
+    'id': id,
+    'cosa': cosa,
+    'de': de,
     'gatito': ?gatito,
   };
 }

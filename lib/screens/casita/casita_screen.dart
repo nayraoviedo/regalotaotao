@@ -56,6 +56,10 @@ class CasitaScreen extends StatelessWidget {
           onAbrirRegalo: (cosa, regalo) =>
               servicio.abrirRegalo(coupleId, cosa, regalo),
           onMeta: (cosa) => servicio.ponerMeta(coupleId, cosa),
+          onProponer: (cosa, gatito) =>
+              servicio.proponer(coupleId, me.uid, cosa, gatito: gatito),
+          onAprobar: (p) => servicio.aprobar(coupleId, me.uid, p),
+          onDescartar: () => servicio.descartarPropuesta(coupleId),
         ),
       ),
     );
@@ -77,6 +81,9 @@ class CasitaView extends StatefulWidget {
     this.onRegalar,
     this.onAbrirRegalo,
     this.onMeta,
+    this.onProponer,
+    this.onAprobar,
+    this.onDescartar,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -101,6 +108,11 @@ class CasitaView extends StatefulWidget {
 
   /// Elige (o quita) la meta de la alcancía.
   final Future<void> Function(Cosa? cosa)? onMeta;
+
+  /// Compras grandes: una persona propone, la otra aprueba o no.
+  final Future<void> Function(Cosa cosa, String? gatito)? onProponer;
+  final Future<void> Function(Propuesta propuesta)? onAprobar;
+  final Future<void> Function()? onDescartar;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -334,6 +346,11 @@ class _CasitaViewState extends State<CasitaView> {
     final pareja = widget.partner?.name;
     final sePuedeRegalar =
         widget.onRegalar != null && pareja != null && !cosa.esCuarto;
+    // Las compras grandes las aprueba la pareja (salvo los regalos).
+    final pideAprobacion =
+        widget.onProponer != null &&
+        pareja != null &&
+        Casita.necesitaAprobacion(cosa);
     String? gatito = cosa.esRopa ? mio.id : null;
     var regalo = false;
     var texto = '';
@@ -361,6 +378,14 @@ class _CasitaViewState extends State<CasitaView> {
                   'Cuesta ${cosa.precio} pescaditos de los dos. '
                   'Les quedarían ${hay - cosa.precio}.',
                 ),
+                if (pideAprobacion && !regalo) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Es una compra grande: $pareja tiene que aprobarla '
+                    'antes de gastar los pescaditos.',
+                    style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+                  ),
+                ],
                 if (sePuedeRegalar) ...[
                   const SizedBox(height: 8),
                   CheckboxListTile(
@@ -411,7 +436,13 @@ class _CasitaViewState extends State<CasitaView> {
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
               onPressed: () => Navigator.pop(context, true),
-              child: Text(regalo ? 'Regalar' : 'Comprar'),
+              child: Text(
+                regalo
+                    ? 'Regalar'
+                    : pideAprobacion
+                    ? 'Pedirle el sí'
+                    : 'Comprar',
+              ),
             ),
           ],
         ),
@@ -419,6 +450,11 @@ class _CasitaViewState extends State<CasitaView> {
     );
     if (ok != true) return;
     try {
+      if (pideAprobacion && !regalo) {
+        await widget.onProponer!(cosa, gatito);
+        _aviso('Le avisamos a $pareja para que lo apruebe 🐟');
+        return;
+      }
       if (regalo) {
         await widget.onRegalar!(cosa, gatito, texto.trim());
         _aviso('🎁 Listo: $pareja lo va a encontrar envuelto en la casita');
@@ -431,6 +467,17 @@ class _CasitaViewState extends State<CasitaView> {
       } else {
         _aviso('¡${cosa.nombre} ya está en la casita!');
       }
+    } on SinPescaditos catch (e) {
+      _aviso('Les faltan ${e.faltan} pescaditos');
+    } catch (_) {
+      _aviso('No se pudo comprar, intenta otra vez');
+    }
+  }
+
+  Future<void> _aprobar(Propuesta p) async {
+    try {
+      await widget.onAprobar!(p);
+      _aviso('¡${p.queCosa!.nombre} ya está en la casita!');
     } on SinPescaditos catch (e) {
       _aviso('Les faltan ${e.faltan} pescaditos');
     } catch (_) {
@@ -613,6 +660,18 @@ class _CasitaViewState extends State<CasitaView> {
                 de: widget.partner?.name ?? 'Tu pareja',
                 onAbrir: () => _abrirRegalo(cosa, regalo),
               ),
+          if (_estado.propuesta case final p?
+              when p.queCosa != null &&
+                  !_estado.tiene(p.queCosa!) &&
+                  widget.onAprobar != null)
+            _AvisoPropuesta(
+              propuesta: p,
+              mia: p.de == widget.me.uid,
+              pareja: widget.partner?.name ?? 'Tu pareja',
+              alcanza: _estado.pescaditos >= p.queCosa!.precio,
+              onAprobar: () => _aprobar(p),
+              onDescartar: () => widget.onDescartar?.call(),
+            ),
           _Cuartos(elegido: _cuarto, estado: _estado, onElegir: _verCuarto),
           const SizedBox(height: 12),
           Center(
@@ -1457,6 +1516,83 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
             child: const Text('Abrir 🎁'),
           ),
       ],
+    );
+  }
+}
+
+/// Compra grande pendiente: a la pareja le pide el sí; a quien la propuso
+/// le dice que está esperando.
+class _AvisoPropuesta extends StatelessWidget {
+  const _AvisoPropuesta({
+    required this.propuesta,
+    required this.mia,
+    required this.pareja,
+    required this.alcanza,
+    required this.onAprobar,
+    required this.onDescartar,
+  });
+
+  final Propuesta propuesta;
+  final bool mia;
+  final String pareja;
+  final bool alcanza;
+  final VoidCallback onAprobar;
+  final VoidCallback onDescartar;
+
+  @override
+  Widget build(BuildContext context) {
+    final cosa = propuesta.queCosa!;
+    return Card(
+      color: const Color(0xFFFFF6DD),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🐟', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    mia
+                        ? 'Esperando que $pareja apruebe ${cosa.nombre}'
+                        : '$pareja quiere comprar ${cosa.nombre}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Pescaditos(cosa.precio, tamano: 13, color: AppTheme.azul),
+              ],
+            ),
+            if (!mia && !alcanza)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Todavía no les alcanza.',
+                  style: TextStyle(color: AppTheme.gris, fontSize: 13),
+                ),
+              ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: onDescartar,
+                    child: Text(mia ? 'Cancelar' : 'Ahora no'),
+                  ),
+                  if (!mia)
+                    FilledButton(
+                      onPressed: alcanza ? onAprobar : null,
+                      child: const Text('¡Sí, comprarlo!'),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
