@@ -46,6 +46,8 @@ dependencies:
   home_widget: ^0.10.0
   workmanager: ^0.10.10
   webview_flutter: ^4.14.1
+  # Para que la música juntos suene sin tocar el video (ver motor_movil.dart).
+  webview_flutter_android: ^4.14.1
   url_launcher: ^6.3.3
   audioplayers: ^6.8.1
   flutter_local_notifications: ^22.3.3
@@ -90,6 +92,8 @@ flutter:
     - assets/casita/
     # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
     - assets/cartas/
+    # Tutorial de bienvenida (ver lib/screens/tutorial/tutorial_screen.dart).
+    - assets/tutorial/
     # Maullido al terminar el pomodoro (también lo usa la notificación de
     # Android: ver android/app/build.gradle.kts).
     - assets/sonidos/raw/

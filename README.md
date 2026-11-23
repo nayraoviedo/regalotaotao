@@ -25,6 +25,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Lista de cosas por hacer juntos | ✅ |
 | Botón "Te extraño" con notificación push | ✅ (necesita el Worker gratis de Cloudflare, ver abajo) |
 | Recomendación del día (canción, playlist, peli, lugar…) con reproductor de Spotify/YouTube, reseñas con estrellitas e historial | ✅ |
+| Versión web en https://taotao-bd5ee.web.app (Firebase Hosting gratis) | ✅ |
 
 ## Requisitos
 
@@ -139,8 +140,8 @@ a correr `npx wrangler deploy`. Las pruebas del Worker se corren con
 - **iOS:** en Xcode activa *Push Notifications* y *Background Modes → Remote
   notifications*, y sube tu clave APNs en *Configuración del proyecto →
   Cloud Messaging* de Firebase.
-- **Web:** hace falta una clave VAPID y un `firebase-messaging-sw.js`; se puede
-  agregar más adelante.
+- **Web:** funciona en la web publicada (ver "Taotao en la web"), gracias a
+  `web/firebase-messaging-sw.js`. No hace falta clave VAPID propia.
 
 ## Tus ilustraciones del login y la bienvenida
 
@@ -338,6 +339,60 @@ certificado SHA*).
 3. Abre la app, entra con tu cuenta, y luego agrega los widgets: mantén
    apretado un espacio vacío de la pantalla de inicio → **Widgets** →
    **Taotao** (días juntos y ánimo) o **Casita**.
+
+## Taotao en la web (gratis, con Firebase Hosting)
+
+La app también se puede abrir desde cualquier navegador (compu o celular) en
+**https://taotao-bd5ee.web.app**. Usa Firebase Hosting, que es gratis en el
+plan Spark. Es la misma app y los mismos datos: lo que hagas en la web lo ve
+tu pareja en el celular, y al revés.
+
+### Publicarla desde tu compu (lo más rápido)
+
+Desde la carpeta del repo, con tu `lib/firebase_options.dart` real (debe
+incluir la plataforma **web**):
+
+```bash
+bash scripts/publicar-web.sh
+```
+
+Arma la web y la sube. Vuelve a correrlo cada vez que quieras subir cambios.
+
+### Que se publique sola con cada cambio en `main` (una sola vez)
+
+```bash
+bash scripts/web-automatica.sh
+```
+
+El script te dice qué responder. Crea una cuenta de servicio que **solo**
+puede publicar la web y la guarda en GitHub como el secret
+`FIREBASE_SERVICE_ACCOUNT_TAOTAO_BD5EE`. Desde ahí, el workflow
+`.github/workflows/web.yml` publica la web en cada push a `main` (o a mano:
+**Actions** → *Web* → **Run workflow**). Usa el mismo secret
+`FIREBASE_OPTIONS_DART` del APK. Si falta algún secret, la web se arma pero no
+se publica, para no reemplazar la buena.
+
+### Qué cambia en la web
+
+- **Entrar con correo o con Google:** funcionan igual. Firebase autoriza solo
+  los dominios `taotao-bd5ee.web.app` y `taotao-bd5ee.firebaseapp.com`
+  (míralo en *Authentication* → *Settings* → *Authorized domains*). Si algún
+  día usas otra dirección, agrégala ahí o Google dirá `unauthorized-domain`.
+- **Notificaciones push:** llegan al navegador aunque la pestaña esté cerrada
+  (las manda el mismo Worker). La primera vez el navegador pregunta si las
+  permites: di que sí.
+  - **Brave:** activa *Usar los servicios de Google para mensajes push* en
+    `brave://settings/privacy` y reinicia Brave.
+  - **iPhone:** solo funcionan si agregas la web a la pantalla de inicio
+    (Safari → Compartir → *Agregar a inicio*, iOS 16.4 o más nuevo) y la abres
+    desde ese ícono.
+  - Con `flutter run -d web-server` en tu compu no hay push web; solo en la
+    dirección publicada.
+- **Instalarla como app:** en Chrome, Edge o Brave aparece *Instalar* en la
+  barra de direcciones; en el celular, *Agregar a la pantalla de inicio*.
+- **Solo en Android:** los widgets del celular y el maullido con la pantalla
+  apagada. En la web, "Bloquear pantalla" del pomodoro pone pantalla completa
+  (se sale con Esc).
 
 ## Cómo está organizado
 
