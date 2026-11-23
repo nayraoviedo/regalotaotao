@@ -45,6 +45,8 @@ dependencies:
   image_picker: ^1.2.4
   home_widget: ^0.10.0
   workmanager: ^0.10.10
+  webview_flutter: ^4.14.1
+  url_launcher: ^6.3.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -76,6 +78,8 @@ flutter:
     - assets/criaturas/
     # Formas y stickers de las notas (ver assets/notas/LEEME.md).
     - assets/notas/
+    # Dibujos de las categorías de la recomendación del día.
+    - assets/recomendaciones/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:
