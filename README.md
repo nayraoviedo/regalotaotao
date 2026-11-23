@@ -219,6 +219,15 @@ del dibujo queda un poco escondida detrás de la tarjeta del temporizador,
 así que deja el personaje más bien arriba y centrado. Los colores de esa
 pantalla están en `lib/screens/pomodoro/pomodoro_style.dart`.
 
+### El maullido al terminar
+
+Cuando termina un pomodoro (solo, el descanso o la sesión juntos) suena
+`assets/sonidos/raw/maullido.mp3`. En Android, si la app está en segundo
+plano o con la pantalla apagada, llega una notificación con ese mismo
+maullido. Para usar otro sonido, reemplaza ese archivo con el **mismo
+nombre** (mp3 corto, de 1 a 2 segundos). El que viene ahora es un maullido
+provisional hecho con `assets/dibujos_editables/generar_maullido.py`.
+
 ## Cartas "Ábrelo cuando…" y el papel de las notas
 
 En **Notas → Cartas** cada uno le escribe cartas a su pareja para un momento
