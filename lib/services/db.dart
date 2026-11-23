@@ -17,6 +17,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   racha/{yyyy-MM-dd}              quién hizo su parte ese día (racha)
 ///   bucketList/{id}                 cosas por hacer juntos
 ///   missYou/{id}                    "te extraño" (el Worker envía el aviso)
+///   abrazos/{id}                    abrazos cuando su ánimo no anda bien (también)
 class Db {
   static final _fs = FirebaseFirestore.instance;
 

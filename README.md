@@ -198,6 +198,16 @@ en su lugar. Deja un poco de aire alrededor del dibujo: se muestra en un
 cuadrado de unos 84 px en la cuadrícula y de 56 px en el inicio. Para cambiar
 los textos, el orden o agregar ánimos, edita `lib/models/mood.dart`.
 
+### Su gatito triste y el abrazo
+
+Cuando tu pareja registra un ánimo que sugiere mindfulness (la columna "Sí"
+de arriba), en tu inicio aparece su gatito triste con el botón **Mandar un
+abrazo**, que le llega como notificación. El dibujo se cambia reemplazando
+`assets/images/animo_triste_naranja.png` y `animo_triste_blanco.png`
+(cuadrados, fondo transparente, 600×600). Los originales editables están en
+`assets/dibujos_editables/`. Para que llegue la notificación del abrazo,
+vuelve a publicar el Worker (`cd worker && npx wrangler deploy`).
+
 ## El dibujo del pomodoro
 
 La ilustración de arriba de la pantalla de Pomodoro es
@@ -261,6 +271,7 @@ couples/{coupleId}               members (los dos uid), startDate
   dailyAnswers/{aaaa-mm-dd}      respuestas a la pregunta del día
   bucketList/{id}                cosas por hacer juntos
   missYou/{id}                   "te extraño" (el Worker envía el aviso)
+  abrazos/{id}                   abrazos cuando su ánimo no anda bien (también con aviso)
 ```
 
 ## Pruebas

@@ -260,6 +260,24 @@ class _HomeBodyState extends State<_HomeBody> {
     }
   }
 
+  Future<void> _abrazo(String partnerUid, MoodType suAnimo) async {
+    try {
+      await TogetherService.instance.sendHug(
+        widget.couple.id,
+        from: widget.me.uid,
+        to: partnerUid,
+        mood: suAnimo.id,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo mandar, intenta otra vez')),
+        );
+      }
+      rethrow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = widget.me;
@@ -267,6 +285,7 @@ class _HomeBodyState extends State<_HomeBody> {
     final couple = widget.couple;
     final partnerUid = couple.partnerOf(me.uid);
     final partnerName = partner?.name ?? 'Tu pareja';
+    final (miGatito, suGatito) = Gatito.dePareja(me, partner);
 
     final inicio = StreamBuilder<MoodEntry?>(
       stream: MoodService.instance.watch(couple.id, me.uid),
@@ -282,6 +301,11 @@ class _HomeBodyState extends State<_HomeBody> {
             dias: couple.daysTogether,
             miAnimo: mio.data?.mood,
             suAnimo: suyo.data?.mood,
+            miGatito: miGatito,
+            suGatito: suGatito,
+            onAbrazo: suyo.data == null
+                ? null
+                : () => _abrazo(partnerUid, suyo.data!.mood),
             onTeExtrano: () => _teExtrano(partnerUid, partnerName),
             misTeExtrano: _misTeExtrano,
             susTeExtrano: _susTeExtrano,
