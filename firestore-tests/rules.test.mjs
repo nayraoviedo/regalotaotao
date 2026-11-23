@@ -51,6 +51,18 @@ await ok('A abraza a B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'
 await ok('A manda un beso a B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'A',to:'B'}));
 await no('A no manda besos en nombre de B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'B',to:'A'}));
 await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
+// Música juntos.
+const sala = (u) => doc(db(u),'couples/c1/musica/sala');
+await ok('A pone una canción', setDoc(sala('A'), {actual:{videoId:'dQw4w9WgXcQ',titulo:'x',por:'A'}, sonando:true, posicion:0, cambiadoEn:serverTimestamp(), por:'A', oyentes:{A:serverTimestamp()}}, {merge:true}));
+await ok('B pausa', setDoc(sala('B'), {sonando:false, posicion:12.5, cambiadoEn:serverTimestamp(), por:'B'}, {merge:true}));
+await ok('B dice que está escuchando', setDoc(sala('B'), {oyentes:{B:serverTimestamp()}}, {merge:true}));
+await ok('B agrega a la cola', setDoc(sala('B'), {cola:[{videoId:'abcdefghijk',titulo:'y',por:'B'}]}, {merge:true}));
+await no('B no firma como A', setDoc(sala('B'), {sonando:true, por:'A'}, {merge:true}));
+await no('B no marca a A como oyente', setDoc(sala('B'), {oyentes:{A:serverTimestamp()}}, {merge:true}));
+await ok('A empieza la cuenta 3-2-1', setDoc(sala('A'), {cuenta:{cancion:'Sutra',por:'A',inicio:serverTimestamp(),segundos:5}}, {merge:true}));
+await no('C no ve la sala', getDoc(sala('C')));
+await no('C no pone música', setDoc(sala('C'), {sonando:true, por:'C'}, {merge:true}));
+await no('Solo existe la sala', setDoc(doc(db('A'),'couples/c1/musica/otra'), {sonando:true, por:'A'}));
 // Recomendación del día.
 const rec = (u, dia, extra={}) => ({from:u, dia, categoria:'cancion', titulo:'Sutra', nota:null, link:'https://open.spotify.com/track/abc', gusto:false, ...extra});
 await ok('A recomienda una canción', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'), rec('A','2026-11-23')));

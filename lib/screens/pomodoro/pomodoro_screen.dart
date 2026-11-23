@@ -10,6 +10,7 @@ import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
 import '../../services/maullido_service.dart';
+import '../musica/musica_pomodoro.dart';
 import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
@@ -50,6 +51,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   /// El temporizador solo está en descanso.
   bool _descanso = false;
+
+  /// Música juntos abierta en el pomodoro.
+  final _musica = ValueNotifier<bool>(false);
 
   /// Un momento que se muestra un ratito (al terminar, o si mi pareja se
   /// salió de la sesión juntos) y luego vuelve al dibujo de siempre.
@@ -113,6 +117,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     _tasksSub.cancel();
     _partnerSub.cancel();
     _momentoTimer?.cancel();
+    _musica.dispose();
     if (_locked) FocusLock.unlock();
     super.dispose();
   }
@@ -209,6 +214,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   Future<void> _onPomodoroDone({String? sessionId}) async {
     if (sessionId != null && !_counted.add(sessionId)) return;
     _mostrarUnRato(MomentoPomodoro.terminado);
+    // Que se escuche el maullido (y descansen los oídos).
+    if (_musica.value) pausarMusicaAlTerminar(_coupleId, widget.me.uid);
     final task = _task;
     final id = await _rewards.logAchievement(
       _coupleId,
@@ -339,6 +346,14 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              MusicaPomodoro(
+                coupleId: _coupleId,
+                uid: widget.me.uid,
+                partnerUid: _partnerUid,
+                partnerName: _partnerName,
+                abierta: _musica,
               ),
               const SizedBox(height: 16),
               _TodayCard(
