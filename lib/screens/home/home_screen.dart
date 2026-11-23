@@ -28,6 +28,7 @@ import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
 import 'mimos.dart';
+import '../recomendacion/recomendacion_inicio.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -348,6 +349,12 @@ class _HomeBodyState extends State<_HomeBody> {
             me: me,
             racha: racha,
             onRacha: _verRacha,
+            recomendacion: RecomendacionInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerUid: partnerUid,
+              partnerName: partnerName,
+            ),
             partner: partner,
             dias: couple.daysTogether,
             miAnimo: mio.data?.mood,

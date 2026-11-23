@@ -71,7 +71,11 @@ class InicioView extends StatelessWidget {
     this.susTeExtrano,
     this.racha,
     this.onRacha,
+    this.recomendacion,
   });
+
+  /// Rectángulo de la recomendación del día, debajo del ánimo.
+  final Widget? recomendacion;
 
   /// Racha de pareja; `null` mientras carga (no se muestra).
   final Racha? racha;
@@ -164,6 +168,10 @@ class InicioView extends StatelessWidget {
                     suGatito: suGatito,
                     onTap: () => onAbrir(SeccionInicio.animo),
                   ),
+                  if (recomendacion case final r?) ...[
+                    const SizedBox(height: 12),
+                    r,
+                  ],
                   const SizedBox(height: 12),
                   IntrinsicHeight(
                     child: Row(
