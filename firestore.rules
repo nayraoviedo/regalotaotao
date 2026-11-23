@@ -542,7 +542,10 @@ service cloud.firestore {
           && docId == 'estado'
           && request.resource.data.keys()
                .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto',
-                         'regalos', 'meta', 'propuesta', 'pushSentFor', 'bebes'])
+                         'regalos', 'meta', 'propuesta', 'pushSentFor', 'bebes',
+                         'sembrado'])
+          // Cuándo se sembró cada semilla: {cosa: milisegundos}.
+          && request.resource.data.get('sembrado', {}) is map
           // Nombres de los gatitos bebés: {color: nombre}.
           && request.resource.data.get('bebes', {}) is map
           // Regalos sorpresa envueltos y la meta de la alcancía.

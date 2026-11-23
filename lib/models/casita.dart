@@ -355,6 +355,7 @@ class Cosa {
     this.fiesta,
     this.deEpoca = false,
     this.especial,
+    this.semilla = false,
   }) : assert(
          (lugar != null ? 1 : 0) +
                  (parte != null ? 1 : 0) +
@@ -382,6 +383,10 @@ class Cosa {
 
   /// Ropa de época o de otras culturas (va en su propia vitrina).
   final bool deEpoca;
+
+  /// Semillas: se siembran y crecen en unos días (ver
+  /// [EstadoCasita.etapa]).
+  final bool semilla;
 
   /// ¿Se puede comprar [hoy]? (lo de temporada, solo en su fecha).
   bool aLaVenta(DateTime hoy, {DateTime? inicioPareja}) =>
@@ -522,8 +527,41 @@ class Catalogo {
     Cosa('arbol_cerezo', 'Cerezo en flor', 140, lugar: Lugar.arbol),
     Cosa('farol', 'Farol', 50, lugar: Lugar.farol),
     Cosa('casita_pajaros', 'Casita de pájaros', 60, lugar: Lugar.farol),
-    Cosa('flores_tulipanes', 'Tulipanes', 40, lugar: Lugar.flores),
-    Cosa('flores_girasoles', 'Girasoles', 40, lugar: Lugar.flores),
+    Cosa(
+      'flores_tulipanes',
+      'Semillas de tulipán',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_girasoles',
+      'Semillas de girasol',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_margaritas',
+      'Semillas de margarita',
+      20,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_rosas',
+      'Semillas de rosa',
+      30,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
+    Cosa(
+      'flores_lavanda',
+      'Semillas de lavanda',
+      25,
+      lugar: Lugar.flores,
+      semilla: true,
+    ),
     Cosa('banca_madera', 'Banca', 70, lugar: Lugar.asiento),
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
@@ -609,13 +647,43 @@ class Catalogo {
       80,
       lugar: Lugar.fondoHuerto,
     ),
-    Cosa('girasoles', 'Girasoles', 60, lugar: Lugar.fondoHuerto),
-    Cosa('tomatera', 'Tomates', 60, lugar: Lugar.tomatera),
-    Cosa('maiz', 'Maíz', 60, lugar: Lugar.tomatera),
-    Cosa('zanahorias', 'Zanahorias', 50, lugar: Lugar.bancal),
-    Cosa('fresas', 'Fresas', 60, lugar: Lugar.bancal),
-    Cosa('lechugas', 'Lechugas', 40, lugar: Lugar.surco),
-    Cosa('calabazas', 'Calabazas', 50, lugar: Lugar.surco),
+    Cosa(
+      'girasoles',
+      'Semillas de girasoles gigantes',
+      35,
+      lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa(
+      'tomatera',
+      'Semillas de tomate',
+      30,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('maiz', 'Semillas de maíz', 30, lugar: Lugar.tomatera, semilla: true),
+    Cosa(
+      'zanahorias',
+      'Semillas de zanahoria',
+      25,
+      lugar: Lugar.bancal,
+      semilla: true,
+    ),
+    Cosa('fresas', 'Semillas de fresa', 30, lugar: Lugar.bancal, semilla: true),
+    Cosa(
+      'lechugas',
+      'Semillas de lechuga',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'calabazas',
+      'Semillas de calabaza',
+      25,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
 
     // ---- Más para la sala ----
     Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
@@ -1100,6 +1168,7 @@ class EstadoCasita {
     this.meta,
     this.propuesta,
     this.nombres = const {},
+    this.sembrado = const {},
   });
 
   static const vacio = EstadoCasita();
@@ -1132,6 +1201,20 @@ class EstadoCasita {
 
   /// Nombres de los gatitos bebés: `{calico: 'Mochi'}`.
   final Map<String, String> nombres;
+
+  /// Cuándo se sembró cada semilla (id de la [Cosa] → milisegundos).
+  final Map<String, int> sembrado;
+
+  /// Cuánto tarda en crecer una semilla: brote, plantita y lista.
+  static const diaDeCrecer = Duration(days: 1);
+
+  /// 0 = brote, 1 = plantita, 2 = ya creció (o no es semilla).
+  int etapa(Cosa c, [DateTime? ahora]) {
+    final desde = sembrado[c.id];
+    if (!c.semilla || desde == null) return 2;
+    final pasado = (ahora ?? DateTime.now()).millisecondsSinceEpoch - desde;
+    return (pasado ~/ diaDeCrecer.inMilliseconds).clamp(0, 2);
+  }
 
   /// Los bebés que adoptaron, en el orden del catálogo.
   List<Cosa> get bebes => [
@@ -1211,6 +1294,10 @@ class EstadoCasita {
       },
       meta: d['meta'] as String?,
       nombres: strings(d['bebes']),
+      sembrado: {
+        for (final e in ((d['sembrado'] as Map?) ?? const {}).entries)
+          if (e.value is num) e.key as String: (e.value as num).toInt(),
+      },
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -1367,9 +1454,15 @@ class EstadoCasita {
     bool conGatitos = true,
   ]) {
     final bebes = bebesEn(cuarto, ahora);
-    String dibujo(Cosa c) => Casita.animadas.contains(c.id) && tick % 4 >= 2
-        ? Casita.asset('${c.id}_2')
-        : c.asset;
+    String dibujo(Cosa c) => switch (etapa(c, ahora)) {
+      // Lo sembrado se ve chiquito hasta que crece.
+      0 => Casita.asset('brote_${c.lugar!.name}'),
+      1 => Casita.asset('planta_${c.lugar!.name}'),
+      _ =>
+        Casita.animadas.contains(c.id) && tick % 4 >= 2
+            ? Casita.asset('${c.id}_2')
+            : c.asset,
+    };
     final enLaTina = banando && conMuebles && sePuedenBanar(cuarto);
     // Las escenas solo con la hora de verdad (sin [ahora] quedan quietos).
     final escena = conMuebles && ahora != null && !enLaTina

@@ -401,6 +401,48 @@ void main() {
       );
     });
 
+    test('las semillas crecen en dos días', () {
+      final sembrado = DateTime(2026, 11, 23, 9);
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_huerto', 'tomatera', 'espantapajaros'],
+        'puestos': {'tomatera': 'tomatera', 'fondoHuerto': 'espantapajaros'},
+        'sembrado': {'tomatera': sembrado.millisecondsSinceEpoch},
+      });
+      final tomate = Catalogo.porId('tomatera')!;
+      expect(tomate.semilla, isTrue);
+      String a(String n) => 'assets/casita/$n.png';
+      List<String> capas(DateTime t) =>
+          e.capas(Cuarto.huerto, true, Momento.dia, 0, false, t);
+      expect(e.etapa(tomate, sembrado.add(const Duration(hours: 5))), 0);
+      expect(
+        capas(sembrado.add(const Duration(hours: 5))),
+        contains(a('brote_tomatera')),
+      );
+      expect(
+        capas(sembrado.add(const Duration(hours: 30))),
+        contains(a('planta_tomatera')),
+      );
+      final listo = capas(sembrado.add(const Duration(days: 3)));
+      expect(listo, contains(a('tomatera')));
+      expect(listo, isNot(contains(a('planta_tomatera'))));
+      // Lo que no es semilla se ve igual desde el principio.
+      expect(capas(sembrado), contains(a('espantapajaros')));
+      // Sin fecha de siembra (de antes), ya está crecido.
+      expect(EstadoCasita.vacio.etapa(tomate), 2);
+      // Todas las etapas tienen dibujo, y cada semilla es de huerto o jardín.
+      for (final c in Catalogo.cosas.where((c) => c.semilla)) {
+        expect(c.lugar!.cuarto, anyOf(Cuarto.huerto, Cuarto.jardin));
+        for (final n in ['brote', 'planta']) {
+          expect(
+            File(a('${n}_${c.lugar!.name}')).existsSync(),
+            isTrue,
+            reason: c.id,
+          );
+        }
+        expect(File(c.asset).existsSync(), isTrue, reason: c.id);
+      }
+    });
+
     test('en el huerto no se repite la palabra', () {
       final e = EstadoCasita.fromMap({
         'tenemos': ['cuarto_huerto'],
