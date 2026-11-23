@@ -3,9 +3,9 @@
     "short_name": "taotao",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "App de pareja",
+    "background_color": "#F7F2EC",
+    "theme_color": "#2B3A75",
+    "description": "Nuestra app de pareja",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
@@ -31,5 +31,6 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "lang": "es"
 }

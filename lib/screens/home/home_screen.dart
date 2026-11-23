@@ -31,12 +31,14 @@ import '../together/gatitos.dart';
 import '../racha/racha_widgets.dart';
 import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
+import '../tutorial/tutorial_screen.dart';
 import 'inicio_view.dart';
 import 'invitacion_pomodoro.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
+import '../musica/musica_inicio.dart';
 import '../casita/casa_en_corte.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -131,6 +133,14 @@ class _HomeBodyState extends State<_HomeBody> {
     _contarTeExtrano();
     _ciclo = AppLifecycleListener(onResume: _contarTeExtrano);
     _escucharRacha();
+    _tutorialPrimeraVez();
+  }
+
+  /// La primera vez que se llega al Inicio, los gatitos enseñan la app.
+  Future<void> _tutorialPrimeraVez() async {
+    if (!await TutorialScreen.debeMostrarse(widget.me.uid)) return;
+    if (!mounted) return;
+    await TutorialScreen.abrir(context, me: widget.me, partner: widget.partner);
   }
 
   @override
@@ -386,6 +396,12 @@ class _HomeBodyState extends State<_HomeBody> {
                   inicioPareja: couple.startDate,
                 ),
               ),
+            ),
+            musica: MusicaInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerUid: partnerUid,
+              partnerName: partnerName,
             ),
             recomendacion: RecomendacionInicio(
               coupleId: couple.id,

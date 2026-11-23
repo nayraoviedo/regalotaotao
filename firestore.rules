@@ -487,6 +487,40 @@ service cloud.firestore {
         allow delete: if isMember(coupleId) && resource.data.from == me();
       }
 
+      // Música juntos: una sola sala por pareja (musica/sala) con la
+      // canción que suena, si está en play, el segundo, la cola, quién está
+      // escuchando y la cuenta 3-2-1. La manejan los dos.
+      match /musica/{salaId} {
+        function previo(campo, porDefecto) {
+          return resource == null ? porDefecto : resource.data.get(campo, porDefecto);
+        }
+        function salaValida() {
+          let s = request.resource.data;
+          return salaId == 'sala'
+            && s.keys().hasOnly(['actual', 'sonando', 'posicion', 'cambiadoEn',
+                                 'por', 'cola', 'oyentes', 'cuenta'])
+            && s.get('sonando', false) is bool
+            && s.get('posicion', 0) is number
+            && s.get('cola', []) is list
+            && s.get('cola', []).size() <= 40
+            && s.get('oyentes', {}) is map
+            // Cada uno solo dice si él está escuchando.
+            && s.get('oyentes', {}).diff(previo('oyentes', {})).affectedKeys()
+                 .hasOnly([me()])
+            // El último cambio lo firma quien lo hace.
+            && (s.get('por', null) == previo('por', null)
+                || s.get('por', null) == me())
+            && (s.get('cuenta', null) == null
+                || s.cuenta == previo('cuenta', null)
+                || (s.cuenta.por == me()
+                    && s.cuenta.cancion is string
+                    && s.cuenta.cancion.size() <= 300));
+        }
+        allow read: if isMember(coupleId);
+        allow create, update: if isMember(coupleId) && salaValida();
+        allow delete: if false;
+      }
+
       // Abrazos que se mandan desde el inicio (el botón, o la tarjeta de
       // cuando la pareja no está bien).
       match /abrazos/{id} {
