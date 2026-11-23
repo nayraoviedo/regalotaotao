@@ -289,13 +289,30 @@ void main() {
         contains(Casita.bebesDurmiendo),
       );
       expect(EstadoCasita.vacio.capas(), isNot(contains(Casita.bebesPaseando)));
-      // Siempre dentro del piso, y se mueven.
+      // Siempre en el piso, sin subirse a los gatitos grandes ni encimarse
+      // entre ellos, y se mueven.
+      bool choca(PaseoBebe a, double x, double y, double w, double h) =>
+          a.x < x + w &&
+          a.x + PaseoBebe.ancho > x &&
+          a.y < y + h &&
+          a.y + PaseoBebe.alto > y;
       final vistos = <(double, double)>{};
-      for (var tick = 0; tick < 400; tick++) {
-        for (var i = 0; i < 6; i++) {
-          final p = PaseoBebe.en(i, tick);
+      for (var tick = 0; tick < 2000; tick++) {
+        final n = 1 + tick % 6;
+        final ps = [
+          for (var i = 0; i < n; i++) PaseoBebe.en(i, tick, total: n),
+        ];
+        for (final (i, p) in ps.indexed) {
           expect(p.x, inInclusiveRange(2, 78 - PaseoBebe.ancho));
           expect(p.y, inInclusiveRange(60, 100 - PaseoBebe.alto));
+          expect(choca(p, 20, 70, 42, 21), isFalse, reason: 'tick $tick');
+          for (final q in ps.skip(i + 1)) {
+            expect(
+              choca(p, q.x, q.y, PaseoBebe.ancho, PaseoBebe.alto),
+              isFalse,
+              reason: 'tick $tick',
+            );
+          }
           vistos.add((p.x, p.y));
         }
       }
@@ -304,6 +321,28 @@ void main() {
         PaseoBebe.en(0, 3).caminando || PaseoBebe.en(0, 12).caminando,
         isTrue,
       );
+    });
+
+    test('los bebés se reparten por los cuartos abiertos', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': [
+          'cuarto_cocina',
+          'cuarto_jardin',
+          ...Catalogo.bebes.map((b) => b.id),
+        ],
+      });
+      final hora = DateTime(2026, 11, 23, 12);
+      final dondeAndan = [for (final c in Cuarto.values) ...e.bebesEn(c, hora)];
+      // Cada bebé está en un solo cuarto, y nunca en uno cerrado.
+      expect(dondeAndan.length, 6);
+      expect(dondeAndan.toSet().length, 6);
+      expect(e.bebesEn(Cuarto.bano, hora), isEmpty);
+      // Con el tiempo se cambian de cuarto.
+      final otraHora = [
+        for (var m = 0; m < 24 * 60; m += 15)
+          e.bebesEn(Cuarto.cocina, hora.add(Duration(minutes: m))).length,
+      ];
+      expect(otraHora.toSet().length, greaterThan(1));
     });
 
     test('en el baño, con tina, se bañan los gatitos', () {
