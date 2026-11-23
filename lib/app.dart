@@ -10,6 +10,7 @@ import 'services/auth_service.dart';
 import 'services/push_service.dart';
 import 'services/user_service.dart';
 import 'theme.dart';
+import 'widgets/marco_pantalla_ancha.dart';
 
 class TaotaoApp extends StatefulWidget {
   const TaotaoApp({super.key});
@@ -54,6 +55,10 @@ class _TaotaoAppState extends State<TaotaoApp> {
       locale: const Locale('es'),
       supportedLocales: const [Locale('es')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      // En la web en una compu: la app en una columna del ancho de un
+      // celular, centrada (ver MarcoPantallaAncha).
+      builder: (context, child) =>
+          MarcoPantallaAncha(child: child ?? const SizedBox.shrink()),
       home: const AuthGate(),
     );
   }
