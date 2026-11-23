@@ -1428,6 +1428,7 @@ class _ComoGanar extends StatelessWidget {
     final filas = [
       ('Responder la pregunta del día', Casita.porPregunta, 'cada uno'),
       ('Contar cómo te sientes', Casita.porAnimo, 'una vez al día'),
+      ('Completar «Respira conmigo»', Casita.porRespirar, 'una vez al día'),
       ('Completar un pomodoro', Casita.porPomodoro, 'hasta 4 pomodoros al día'),
       (
         'Pomodoro juntos',

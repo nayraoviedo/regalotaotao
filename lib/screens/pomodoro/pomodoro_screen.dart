@@ -9,6 +9,7 @@ import '../../models/pomodoro_session.dart';
 import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
+import '../../services/maullido_service.dart';
 import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
@@ -669,10 +670,19 @@ class _SoloTimerState extends State<_SoloTimer> {
   void _start() {
     _endsAt = DateTime.now().add(_left);
     _ticker = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
+    MaullidoService.instance.programar(
+      MaullidoService.solo,
+      _endsAt!,
+      titulo: _rest ? '¡Se acabó el descanso!' : '¡Pomodoro terminado! 🐾',
+      texto: _rest
+          ? 'Miau… hora de volver a concentrarse.'
+          : 'Miau… lo lograste. Entra a elegir tu premio.',
+    );
     setState(() {});
   }
 
   void _pause() {
+    MaullidoService.instance.cancelar(MaullidoService.solo);
     _ticker?.cancel();
     _ticker = null;
     if (_endsAt != null) _left = _endsAt!.difference(DateTime.now());
@@ -681,6 +691,7 @@ class _SoloTimerState extends State<_SoloTimer> {
   }
 
   void _reset({bool? rest}) {
+    MaullidoService.instance.cancelar(MaullidoService.solo);
     _ticker?.cancel();
     _ticker = null;
     _endsAt = null;
@@ -699,6 +710,7 @@ class _SoloTimerState extends State<_SoloTimer> {
       return;
     }
     final wasRest = _rest;
+    MaullidoService.instance.sonar(MaullidoService.solo);
     _reset(rest: !wasRest);
     if (wasRest) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -764,6 +776,7 @@ class _SoloTimerState extends State<_SoloTimer> {
 
   @override
   void dispose() {
+    MaullidoService.instance.cancelar(MaullidoService.solo);
     _ticker?.cancel();
     super.dispose();
   }
@@ -938,6 +951,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
       final ends = prev.endsAt;
       if (ends != null &&
           !DateTime.now().isBefore(ends.subtract(const Duration(seconds: 5)))) {
+        MaullidoService.instance.sonar(MaullidoService.juntos);
         widget.onDone(prev);
       } else {
         _avisarSiSalio(prev.id);
@@ -945,6 +959,27 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     }
     if (mounted) setState(() => _session = s);
     widget.onActive(s?.status == PomodoroStatus.accepted ? s : null);
+    _programarMaullido(s);
+  }
+
+  /// Maullido al terminar la sesión juntos (también en segundo plano).
+  void _programarMaullido(PomodoroSession? s) {
+    final ends = s?.endsAt;
+    if (s == null || s.status != PomodoroStatus.accepted || ends == null) {
+      // Si se acaba de terminar, _tick o el bloque de arriba ya maullaron.
+      if (s?.status != PomodoroStatus.accepted) {
+        MaullidoService.instance.cancelar(MaullidoService.juntos);
+      }
+      return;
+    }
+    MaullidoService.instance.programar(
+      MaullidoService.juntos,
+      ends,
+      titulo: '¡Terminaron juntos! 🐾',
+      texto:
+          'Miau… lo lograron con ${widget.partnerName}. '
+          'Entra a elegir tu premio.',
+    );
   }
 
   /// Si la pareja se salió de la sesión juntos, avisarme.
@@ -970,6 +1005,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     final ends = s.endsAt;
     if (ends == null) return;
     if (!DateTime.now().isBefore(ends)) {
+      MaullidoService.instance.sonar(MaullidoService.juntos);
       // Primero se marca terminada (así ya nadie la puede cancelar) y
       // después se guarda el logro.
       _service
@@ -983,6 +1019,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
 
   @override
   void dispose() {
+    MaullidoService.instance.cancelar(MaullidoService.juntos);
     _sub.cancel();
     _ticker?.cancel();
     super.dispose();

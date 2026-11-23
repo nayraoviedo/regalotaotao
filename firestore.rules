@@ -585,6 +585,12 @@ service cloud.firestore {
               && movId == 'animo_' + d.ref + '_' + me()
               && diaReciente(d.ref)
               && exists(/databases/$(database)/documents/couples/$(coupleId)/moods/$(me())))
+            // Completar la respiración guiada: 8, una vez al día por persona.
+            || (d.tipo == 'respira'
+              && d.cantidad == 8
+              && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && movId == 'respira_' + d.ref + '_' + me()
+              && diaReciente(d.ref))
             || (d.tipo == 'pomodoro'
               && d.ref is string
               && movId == 'pomodoro_' + d.ref

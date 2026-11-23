@@ -88,6 +88,26 @@ class PescaditosService {
     );
   }
 
+  /// Completó la respiración guiada hoy (solo la primera vez del día).
+  Future<int> ganarRespirar(String coupleId, String uid) {
+    final hoy = dia();
+    return _ganar(
+      coupleId,
+      uid,
+      id: 'respira_${hoy}_$uid',
+      tipo: Movimiento.respira,
+      cantidad: Casita.porRespirar,
+      ref: hoy,
+      motivo: 'por respirar con los gatitos',
+    );
+  }
+
+  /// Si [uid] ya cobró hoy los pescaditos de la respiración.
+  Future<bool> yaRespiroHoy(String coupleId, String uid) async {
+    final d = await _movs(coupleId).doc('respira_${dia()}_$uid').get();
+    return d.exists;
+  }
+
   /// Completó un pomodoro ([logroId] es su logro en `achievements`).
   /// Solo los primeros [Casita.pomodorosPorDia] del día dan pescaditos.
   Future<int> ganarPomodoro(

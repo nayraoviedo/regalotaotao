@@ -27,6 +27,9 @@ class Casita {
   // ---- Cuántos pescaditos da cada cosa ----
   static const porPregunta = 10;
   static const porAnimo = 5;
+
+  /// Completar la respiración guiada (una vez al día por persona).
+  static const porRespirar = 8;
   static const porPomodoro = 10;
   static const porPomodoroJuntos = 15;
 
@@ -489,6 +492,22 @@ class Catalogo {
     Cosa('gorra', 'Gorra', 60, parte: Parte.cabeza),
     Cosa('lentes_sol', 'Lentes de sol', 80, parte: Parte.cara),
     Cosa('copa', 'Sombrero de copa', 120, parte: Parte.cabeza),
+    // Gorritos que van con las pijamas, boinas y sombreros
+    Cosa('gorro_murcielago', 'Gorro de murcielaguito', 50, parte: Parte.cabeza),
+    Cosa('gorro_dino', 'Gorro de dinosaurio', 50, parte: Parte.cabeza),
+    Cosa(
+      'gorro_monstruo',
+      'Gorro de monstruo gigante',
+      50,
+      parte: Parte.cabeza,
+    ),
+    Cosa('gorro_ovejita', 'Gorro de ovejita', 50, parte: Parte.cabeza),
+    Cosa('boina_roja', 'Boina roja', 50, parte: Parte.cabeza),
+    Cosa('boina_negra', 'Boina negra', 50, parte: Parte.cabeza),
+    Cosa('boina_camel', 'Boina camel', 50, parte: Parte.cabeza),
+    Cosa('gorro_pescador', 'Gorro de pescador', 45, parte: Parte.cabeza),
+    Cosa('sombrero_paja', 'Sombrero de paja', 50, parte: Parte.cabeza),
+    Cosa('gorro_marinero', 'Gorro de marinero', 45, parte: Parte.cabeza),
 
     // Cuartos nuevos
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
@@ -796,6 +815,35 @@ class Catalogo {
     Cosa('pijama_dino', 'Pijama de dinosaurio', 80, parte: Parte.cuerpo),
     Cosa('traje', 'Traje con corbata', 120, parte: Parte.cuerpo),
     Cosa('esmoquin', 'Esmoquin', 150, parte: Parte.cuerpo),
+
+    // ---- Más ropa: pijamas de personajes, suéteres, cárdigans, camisas ----
+    Cosa(
+      'pijama_murcielago',
+      'Pijama de murcielaguito',
+      90,
+      parte: Parte.cuerpo,
+    ),
+    Cosa(
+      'pijama_monstruo',
+      'Pijama de monstruo gigante',
+      90,
+      parte: Parte.cuerpo,
+    ),
+    Cosa('pijama_principito', 'Pijama de principito', 90, parte: Parte.cuerpo),
+    Cosa('pijama_ovejita', 'Pijama de ovejita', 70, parte: Parte.cuerpo),
+    Cosa('pijama_franela', 'Pijama de franela', 60, parte: Parte.cuerpo),
+    Cosa('sueter_tejido', 'Suéter tejido', 70, parte: Parte.cuerpo),
+    Cosa('sueter_rombos', 'Suéter de rombos', 70, parte: Parte.cuerpo),
+    Cosa('cardigan_cafe', 'Cárdigan café', 80, parte: Parte.cuerpo),
+    Cosa('cardigan_celeste', 'Cárdigan celeste', 80, parte: Parte.cuerpo),
+    Cosa('cardigan_lila', 'Cárdigan lila', 80, parte: Parte.cuerpo),
+    Cosa('gabardina', 'Gabardina', 130, parte: Parte.cuerpo),
+    Cosa('camisa_cuadros', 'Camisa a cuadros', 60, parte: Parte.cuerpo),
+    Cosa('camisa_hawaiana', 'Camisa hawaiana', 60, parte: Parte.cuerpo),
+    Cosa('camisa_tirantes', 'Camisa con tirantes', 80, parte: Parte.cuerpo),
+    Cosa('buzo_deportivo', 'Buzo deportivo', 70, parte: Parte.cuerpo),
+    Cosa('marinero', 'Traje de marinero', 100, parte: Parte.cuerpo),
+    Cosa('conjunto_otono', 'Conjunto de otoño', 90, parte: Parte.cuerpo),
 
     // ---- Ropa de época y de otras culturas ----
     Cosa('hanfu', 'Hanfu', 160, parte: Parte.cuerpo, deEpoca: true),
@@ -1602,7 +1650,8 @@ class Propuesta {
 /// Un movimiento del monedero: `couples/{id}/casitaMovs/{id}`.
 ///
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
-/// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `pomodoro_{logro}`,
+/// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `respira_{día}_{uid}`,
+/// `pomodoro_{logro}`,
 /// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
 class Movimiento {
   const Movimiento({
@@ -1616,6 +1665,7 @@ class Movimiento {
 
   static const pregunta = 'pregunta';
   static const animo = 'animo';
+  static const respira = 'respira';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
@@ -1648,6 +1698,7 @@ class Movimiento {
   String get que => switch (tipo) {
     pregunta => 'respondió la pregunta del día',
     animo => 'contó cómo se siente',
+    respira => 'respiró con los gatitos',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {

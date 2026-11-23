@@ -219,6 +219,15 @@ del dibujo queda un poco escondida detrás de la tarjeta del temporizador,
 así que deja el personaje más bien arriba y centrado. Los colores de esa
 pantalla están en `lib/screens/pomodoro/pomodoro_style.dart`.
 
+### El maullido al terminar
+
+Cuando termina un pomodoro (solo, el descanso o la sesión juntos) suena
+`assets/sonidos/raw/maullido.mp3`. En Android, si la app está en segundo
+plano o con la pantalla apagada, llega una notificación con ese mismo
+maullido. Para usar otro sonido, reemplaza ese archivo con el **mismo
+nombre** (mp3 corto, de 1 a 2 segundos). El que viene ahora es un maullido
+provisional hecho con `assets/dibujos_editables/generar_maullido.py`.
+
 ## Cartas "Ábrelo cuando…" y el papel de las notas
 
 En **Notas → Cartas** cada uno le escribe cartas a su pareja para un momento
@@ -286,6 +295,27 @@ no lo tiene. Se lo das como un *secret* (queda guardado y nadie lo ve):
 
 Sin el secret el APK igual se arma, pero al abrir la app te dirá que falta
 configurar Firebase.
+
+### 1b. Para que "Entrar con Google" funcione en el APK (una sola vez)
+
+Google solo deja entrar desde un APK cuya firma (huella SHA-1/SHA-256) esté
+registrada en Firebase; si no, sale *"Ocurrió un error (invalid-cert-hash)"*.
+Para que la firma de GitHub sea siempre la misma, corre en tu compu, dentro
+de la carpeta del repo (necesitas `gh` y `firebase` con sesión iniciada):
+
+```bash
+bash scripts/llave-android.sh
+```
+
+El script crea la llave en `~/.taotao/debug.keystore` (no la subas al repo),
+la guarda en GitHub como el secret `ANDROID_DEBUG_KEYSTORE` y registra sus
+huellas en tu app Android de Firebase. Después pide un APK nuevo (paso 2),
+desinstala Taotao del celular **una vez** (la firma cambió) e instálalo.
+
+Cada corrida muestra las huellas que usó en su resumen (pestaña Actions →
+la corrida → *Summary*), por si quieres compararlas con las de Firebase
+(**Configuración del proyecto** → tu app Android → *Huellas digitales del
+certificado SHA*).
 
 ### 2. Descargar el APK
 
