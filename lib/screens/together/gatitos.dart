@@ -12,8 +12,8 @@ import '../../models/app_user.dart';
 ///   - `assets/images/gatito_blanco.png`
 /// Mientras no existan, se dibuja un gatito provisional.
 ///
-/// El gatito blanco es tipo ragdoll: pelo blanco esponjoso y la carita,
-/// las orejas y la colita gris café.
+/// El gatito blanco es tipo ragdoll: pelo blanco muy esponjoso y la carita,
+/// las orejas y la colita en plomo.
 ///
 /// Cada persona elige al crear su cuenta (y luego en su perfil) qué gatito
 /// es; se guarda como `gatito` en `users/{uid}` con el [id].
@@ -31,7 +31,7 @@ enum Gatito {
     asset: 'assets/images/gatito_blanco.png',
     pelo: Color(0xFFFBF8F4),
     claro: Color(0xFFFFFFFF),
-    manchas: Color(0xFFA39184),
+    manchas: Color(0xFF8E95A3),
   );
 
   const Gatito({
@@ -119,6 +119,9 @@ class GatitoImagen extends StatelessWidget {
 }
 
 /// Gatito sentado de frente, con las patitas colgando hacia abajo.
+///
+/// El blanco es un ragdoll peludito: melena alrededor de la cara, pecho y
+/// colita esponjosos, y el antifaz, las orejas y la cola en plomo.
 class _GatitoProvisional extends CustomPainter {
   _GatitoProvisional(this.gatito);
   final Gatito gatito;
@@ -127,6 +130,7 @@ class _GatitoProvisional extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = size.width;
     final manchas = gatito.manchas;
+    if (manchas != null) return _ragdoll(canvas, s, manchas);
     final ragdoll = manchas != null;
     final pelo = Paint()..color = gatito.pelo;
     final claro = Paint()..color = gatito.claro;
@@ -343,6 +347,238 @@ class _GatitoProvisional extends CustomPainter {
           height: s * 0.045,
         ),
         ragdoll ? (Paint()..color = const Color(0xFFF2B5B0)) : claro,
+      );
+    }
+  }
+
+  /// Óvalo con mechones de pelo en punta por el borde.
+  static Path _peludo(
+    Offset c,
+    double rx,
+    double ry, {
+    int mechones = 16,
+    double largo = 0.14,
+    double giro = 0,
+  }) {
+    Offset en(double a, double f) =>
+        c + Offset(cos(a) * rx * f, sin(a) * ry * f);
+    final paso = 2 * pi / mechones;
+    final p = Path();
+    for (var i = 0; i <= mechones; i++) {
+      final a = giro + i * paso;
+      final base = en(a, 1);
+      if (i == 0) {
+        p.moveTo(base.dx, base.dy);
+        continue;
+      }
+      // Cada mechón sube curvo hasta una puntita y baja otra vez; la punta
+      // se adelanta un poco, como pelo peinado.
+      final antes = a - paso;
+      final punta = en(antes + paso * 0.62, 1 + largo);
+      final c1 = en(antes + paso * 0.2, 1 + largo * 0.45);
+      final c2 = en(antes + paso * 0.9, 1 + largo * 0.25);
+      p
+        ..quadraticBezierTo(c1.dx, c1.dy, punta.dx, punta.dy)
+        ..quadraticBezierTo(c2.dx, c2.dy, base.dx, base.dy);
+    }
+    return p..close();
+  }
+
+  void _ragdoll(Canvas canvas, double s, Color manchas) {
+    final blanco = Paint()..color = gatito.pelo;
+    final plomo = Paint()..color = manchas;
+    final plomoClaro = Paint()..color = Color.lerp(manchas, Colors.white, 0.4)!;
+    final plomoOscuro = Paint()
+      ..color = Color.lerp(manchas, const Color(0xFF2B2F3A), 0.35)!;
+    final contorno = Paint()
+      ..color = const Color(0xFFDDE0E6)
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = s * 0.008;
+    final rosita = Paint()..color = const Color(0xFFF4B3A8);
+
+    // Colita esponjosa que se oscurece hacia la punta.
+    for (var t = 0.0; t <= 1.0001; t += 0.125) {
+      final u = 1 - t;
+      final x = u * u * s * 0.3 + 2 * u * t * s * 0.0 + t * t * s * 0.11;
+      final y = u * u * s * 0.86 + 2 * u * t * s * 0.9 + t * t * s * 0.55;
+      final r = s * (0.055 + 0.04 * sin(pi * (0.25 + t * 0.6)));
+      canvas.drawPath(
+        _peludo(Offset(x, y), r, r, mechones: 8, largo: 0.35, giro: t * 3),
+        Paint()..color = Color.lerp(plomoClaro.color, plomoOscuro.color, t)!,
+      );
+    }
+
+    // Cuerpo peludo.
+    final cuerpo = _peludo(
+      Offset(s * 0.5, s * 0.74),
+      s * 0.25,
+      s * 0.19,
+      mechones: 22,
+      largo: 0.1,
+    );
+    canvas.drawPath(cuerpo, blanco);
+    canvas.drawPath(cuerpo, contorno);
+
+    // Orejas plomo con la puntita más oscura y pelito rosado adentro.
+    for (final l in [-1.0, 1.0]) {
+      final x = s * 0.5 + l * s * 0.19;
+      final oreja = Path()
+        ..moveTo(x - l * s * 0.13, s * 0.28)
+        ..lineTo(x + l * s * 0.045, s * 0.05)
+        ..lineTo(x + l * s * 0.13, s * 0.34)
+        ..close();
+      canvas.drawPath(oreja, plomo);
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - l * s * 0.005, s * 0.11)
+          ..lineTo(x + l * s * 0.045, s * 0.05)
+          ..lineTo(x + l * s * 0.07, s * 0.13)
+          ..close(),
+        plomoOscuro,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - l * s * 0.05, s * 0.27)
+          ..lineTo(x + l * s * 0.035, s * 0.13)
+          ..lineTo(x + l * s * 0.08, s * 0.3)
+          ..close(),
+        Paint()..color = const Color(0xFFEBC3C3),
+      );
+    }
+
+    // Cara con melena: cachetes esponjosos que salen a los lados.
+    final centro = Offset(s * 0.5, s * 0.39);
+    final melena = _peludo(
+      centro,
+      s * 0.33,
+      s * 0.23,
+      mechones: 24,
+      largo: 0.13,
+      giro: 0.1,
+    );
+    canvas.drawPath(melena, blanco);
+    canvas.drawPath(melena, contorno);
+
+    // Pechera blanca de pelito largo bajo la barbilla.
+    canvas.drawPath(
+      _peludo(
+        Offset(s * 0.5, s * 0.6),
+        s * 0.14,
+        s * 0.07,
+        mechones: 12,
+        largo: 0.45,
+        giro: pi / 12,
+      ),
+      Paint()..color = Colors.white,
+    );
+
+    // Antifaz plomo, más oscuro alrededor de los ojitos, con el hocico
+    // blanco en forma de "V", como el ragdoll.
+    canvas.save();
+    canvas.clipPath(
+      Path()..addOval(
+        Rect.fromCenter(center: centro, width: s * 0.62, height: s * 0.46),
+      ),
+    );
+    canvas.drawPath(
+      _peludo(
+        Offset(s * 0.5, s * 0.24),
+        s * 0.2,
+        s * 0.12,
+        mechones: 12,
+        largo: 0.2,
+      ),
+      plomoClaro,
+    );
+    for (final l in [-1.0, 1.0]) {
+      final c = Offset(s * 0.5 + l * s * 0.135, s * 0.365);
+      canvas.drawPath(
+        _peludo(c, s * 0.115, s * 0.09, mechones: 11, largo: 0.22),
+        plomo,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: s * 0.12, height: s * 0.09),
+        plomoOscuro,
+      );
+    }
+    final hocico = Path()
+      ..moveTo(s * 0.5, s * 0.26)
+      ..quadraticBezierTo(s * 0.46, s * 0.37, s * 0.41, s * 0.47)
+      ..quadraticBezierTo(s * 0.5, s * 0.55, s * 0.59, s * 0.47)
+      ..quadraticBezierTo(s * 0.54, s * 0.37, s * 0.5, s * 0.26)
+      ..close();
+    canvas.drawPath(hocico, blanco);
+    canvas.restore();
+
+    // Ojitos azules.
+    for (final l in [-1.0, 1.0]) {
+      final c = Offset(s * 0.5 + l * s * 0.135, s * 0.37);
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: s * 0.095, height: s * 0.1),
+        Paint()..color = const Color(0xFF6FA3DA),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: c, width: s * 0.045, height: s * 0.075),
+        Paint()..color = const Color(0xFF232634),
+      );
+      canvas.drawCircle(
+        c + Offset(s * 0.014, -s * 0.02),
+        s * 0.014,
+        Paint()..color = Colors.white,
+      );
+      // Cachetitos.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(s * 0.5 + l * s * 0.2, s * 0.48),
+          width: s * 0.08,
+          height: s * 0.045,
+        ),
+        Paint()..color = rosita.color.withValues(alpha: 0.8),
+      );
+    }
+
+    // Naricita rosada y boquita.
+    canvas.drawPath(
+      Path()
+        ..moveTo(s * 0.478, s * 0.44)
+        ..lineTo(s * 0.522, s * 0.44)
+        ..lineTo(s * 0.5, s * 0.467)
+        ..close(),
+      Paint()..color = const Color(0xFFF29C9C),
+    );
+    final boca = Paint()
+      ..color = manchas
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = s * 0.012;
+    for (final dx in [0.475, 0.525]) {
+      canvas.drawArc(
+        Rect.fromCenter(
+          center: Offset(s * dx, s * 0.475),
+          width: s * 0.05,
+          height: s * 0.04,
+        ),
+        0,
+        pi,
+        false,
+        boca,
+      );
+    }
+
+    // Patitas peluditas con almohadillas rosadas.
+    for (final l in [-1.0, 1.0]) {
+      final c = Offset(s * 0.5 + l * s * 0.095, s * 0.93);
+      final pata = _peludo(c, s * 0.07, s * 0.055, mechones: 8, largo: 0.2);
+      canvas.drawPath(pata, blanco);
+      canvas.drawPath(pata, contorno);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(0, s * 0.01),
+          width: s * 0.06,
+          height: s * 0.04,
+        ),
+        Paint()..color = const Color(0xFFF2B5B0),
       );
     }
   }
