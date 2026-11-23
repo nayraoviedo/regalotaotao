@@ -7,11 +7,15 @@ import 'ojo_acuarela.dart';
 
 /// Muestra el dibujo del ánimo (`assets/moods/<id>.png`).
 /// Si el PNG aún no existe, dibuja la carita de un gatito provisional.
+///
+/// [naranja] dice qué gatito dibujar en la carita provisional (el naranja o
+/// el blanco). Si es `null`, se reparten uno y uno según el orden.
 class MoodImage extends StatelessWidget {
-  const MoodImage(this.mood, {super.key, this.size = 56});
+  const MoodImage(this.mood, {super.key, this.size = 56, this.naranja});
 
   final MoodType mood;
   final double size;
+  final bool? naranja;
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +24,10 @@ class MoodImage extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, _, _) =>
-          CustomPaint(size: Size.square(size), painter: MoodBlobPainter(mood)),
+      errorBuilder: (_, _, _) => CustomPaint(
+        size: Size.square(size),
+        painter: MoodBlobPainter(mood, naranja: naranja),
+      ),
     );
   }
 }
@@ -30,13 +36,17 @@ class MoodImage extends StatelessWidget {
 /// blanco con manchitas plomo, uno y uno según el orden de la cuadrícula)
 /// sobre un círculo del color del ánimo.
 class MoodBlobPainter extends CustomPainter {
-  MoodBlobPainter(this.mood);
+  MoodBlobPainter(this.mood, {bool? naranja}) : _elegido = naranja;
   final MoodType mood;
+
+  /// El gatito elegido; `null` para repartirlos según el orden.
+  final bool? _elegido;
 
   static const _tinta = Color(0xFF2B3A75); // azul marino de la app
 
   /// Los ánimos se reparten entre el gatito naranja y el blanco.
-  bool get _naranja => MoodType.all.indexWhere((m) => m.id == mood.id).isEven;
+  bool get _naranja =>
+      _elegido ?? MoodType.all.indexWhere((m) => m.id == mood.id).isEven;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -334,5 +344,6 @@ class MoodBlobPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(MoodBlobPainter old) => old.mood.id != mood.id;
+  bool shouldRepaint(MoodBlobPainter old) =>
+      old.mood.id != mood.id || old._elegido != _elegido;
 }
