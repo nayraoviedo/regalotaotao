@@ -76,7 +76,12 @@ class _MoodScreenState extends State<MoodScreen> {
       if (!mounted) return;
       if (go == true) {
         await Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MindfulnessScreen()),
+          MaterialPageRoute(
+            builder: (_) => MindfulnessScreen(
+              coupleId: widget.coupleId,
+              uid: widget.me.uid,
+            ),
+          ),
         );
         return;
       }
