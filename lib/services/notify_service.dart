@@ -8,7 +8,16 @@ import 'package:http/http.dart' as http;
 import '../push_config.dart';
 
 /// Tipos de aviso que entiende el Worker (worker/src/index.js).
-enum NotifyKind { missYou, pomodoroInvite, reward, letter, hug, kiss }
+enum NotifyKind {
+  missYou,
+  pomodoroInvite,
+  reward,
+  letter,
+  hug,
+  kiss,
+  compra,
+  propuesta,
+}
 
 /// Le pide al Worker de Cloudflare que avise a la pareja.
 ///

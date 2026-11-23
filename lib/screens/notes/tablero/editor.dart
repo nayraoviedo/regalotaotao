@@ -9,6 +9,7 @@ import 'nota_vista.dart';
 import 'notas_style.dart';
 import 'tablero.dart';
 import '../../../widgets/doodle.dart';
+import '../../../services/pescaditos_service.dart';
 
 /// Pantalla "Nueva nota" (o "Editar nota"): título opcional, texto o lista
 /// de pendientes, color, forma, foto, sticker y categoría, con la nota en
@@ -306,7 +307,11 @@ class _EditorDeNotaState extends State<EditorDeNota> {
                   label: const Text('Quitar foto'),
                   style: _estiloBoton,
                 ),
-              for (final s in NotasStyle.stickers)
+              for (final s in [
+                ...NotasStyle.stickers,
+                // Los de los paquetes que compraron en la casita.
+                ...PescaditosService.instance.ultimoEstado.value.stickersExtra,
+              ])
                 _OpcionDeSticker(
                   nombre: s,
                   elegido: _sticker == s,

@@ -115,7 +115,7 @@ class ResenaJuntos extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             item.title,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppTheme.azul,
               fontWeight: FontWeight.w700,
               fontSize: 22,
@@ -164,7 +164,7 @@ class BotonResena extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 2),
                   child: Text(
                     '$prom',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.azul,
                       fontWeight: FontWeight.w700,
                       fontSize: 13,

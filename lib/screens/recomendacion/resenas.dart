@@ -116,7 +116,7 @@ class _MiResenaState extends State<MiResena> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Tú',
                 style: TextStyle(
                   color: AppTheme.azul,
@@ -201,7 +201,7 @@ class SuResena extends StatelessWidget {
                   nombre,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w600,
                   ),
@@ -256,7 +256,7 @@ class SeccionResenas extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'Reseñas',
           style: TextStyle(
             color: AppTheme.azul,

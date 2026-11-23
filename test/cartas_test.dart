@@ -2,7 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/carta.dart';
 import 'package:taotao/screens/notes/cartas/avioncito.dart';
+import 'package:taotao/models/casita.dart';
+import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/screens/notes/cartas/carta_screen.dart';
+import 'package:taotao/screens/notes/cartas/carta_sorpresa.dart';
 import 'package:taotao/screens/notes/cartas/escritorio.dart';
 import 'package:taotao/screens/notes/cartas/sobre.dart';
 
@@ -39,6 +42,90 @@ void main() {
     ];
     final nuevas = LlegadaDeCartas.sinAnunciar(cartas, 'a', {'4'});
     expect(nuevas.map((c) => c.id), ['1']);
+  });
+
+  test('la carta sorpresa se reconoce y se ve distinta', () {
+    final c = Carta.fromData('s', {
+      'motivo': 'sorpresa',
+      'cuando': Carta.cuandoSorpresa,
+      'sorpresa': true,
+    });
+    expect(c.sorpresa, isTrue);
+    expect(c.etiqueta, 'Carta sorpresa ✨');
+    expect(Carta.fromData('n', {}).sorpresa, isFalse);
+  });
+
+  group('Carta sorpresa animada', () {
+    setUp(() => CuartoVivo.animar = false);
+
+    Widget escribir({required int pescaditos, List<String>? mandadas}) =>
+        MaterialApp(
+          home: EscribirCartaScreen(
+            uid: 'a',
+            partnerUid: 'b',
+            coupleId: 'c',
+            sorpresa: true,
+            casita: Stream.value(EstadoCasita(pescaditos: pescaditos)),
+            onEnviarSorpresa: (texto, _) async => mandadas?.add(texto),
+          ),
+        );
+
+    testWidgets('se manda pagando 30 pescaditos', (t) async {
+      final mandadas = <String>[];
+      await t.pumpWidget(escribir(pescaditos: 50, mandadas: mandadas));
+      await t.pump();
+      expect(find.text('Carta sorpresa'), findsOneWidget);
+      expect(find.textContaining('(tienen 50)'), findsOneWidget);
+      // Las sorpresas no piden "Ábrelo cuando…".
+      expect(find.text('estés triste'), findsNothing);
+      await t.enterText(find.byType(TextField), '¡Hola, amor!');
+      await t.tap(find.text('Mandar con los gatitos'));
+      await t.pump();
+      expect(mandadas, ['¡Hola, amor!']);
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('si no alcanza, avisa cuántos faltan', (t) async {
+      final mandadas = <String>[];
+      await t.pumpWidget(escribir(pescaditos: 10, mandadas: mandadas));
+      await t.pump();
+      await t.enterText(find.byType(TextField), 'Hola');
+      await t.tap(find.text('Mandar con los gatitos'));
+      await t.pump();
+      expect(find.textContaining('Les faltan 20 pescaditos'), findsOneWidget);
+      expect(mandadas, isEmpty);
+      // Se puede volver a carta normal.
+      await t.tap(find.byType(Switch));
+      await t.pump();
+      expect(find.text('Enviar en avioncito'), findsOneWidget);
+    });
+
+    testWidgets('llega con los gatitos y se puede abrir', (t) async {
+      bool? abrir;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => abrir = await mostrarLlegadaSorpresa(
+                context,
+                Carta.fromData('s', {'sorpresa': true}),
+              ),
+              child: const Text('ver'),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('ver'));
+      await t.pump();
+      for (var i = 0; i < 30; i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.text('¡Te llegó una carta sorpresa!'), findsOneWidget);
+      expect(find.byType(GatitosConSobre), findsOneWidget);
+      await t.tap(find.text('¡Ábrela!'));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(abrir, isTrue);
+    });
   });
 
   testWidgets('el escritorio cuenta las cartas abiertas', (tester) async {

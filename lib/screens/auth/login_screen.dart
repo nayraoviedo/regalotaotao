@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     _isRegister ? '¡Hola!' : '¡Hola de nuevo!',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.manuscrita,
                       fontSize: 46,
                       color: AppTheme.azul,

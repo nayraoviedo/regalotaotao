@@ -50,7 +50,7 @@ class RachaPastilla extends StatelessWidget {
                   texto,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.crema,
                     fontWeight: FontWeight.w600,
                   ),
@@ -64,15 +64,72 @@ class RachaPastilla extends StatelessWidget {
   }
 }
 
+/// Contador chiquito de la racha de preguntas, para la barra de arriba
+/// de la Pregunta del día: llamita y número.
+class RachaPreguntas extends StatelessWidget {
+  const RachaPreguntas({super.key, required this.racha, required this.onTap});
+
+  final Racha racha;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = racha.dias;
+    final viva = d > 0 && racha.hoyCompleto;
+    return Tooltip(
+      message: 'Días seguidos respondiendo juntos',
+      child: Material(
+        color: AppTheme.azul.withValues(alpha: 0.07),
+        shape: const StadiumBorder(),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Doodle(
+                  Icons.local_fire_department_rounded,
+                  size: 17,
+                  color: viva
+                      ? AppTheme.amarillo
+                      : AppTheme.gris.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$d',
+                  style: TextStyle(
+                    color: AppTheme.azul,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Hoja con el detalle de la racha.
 Future<void> showRachaSheet(
   BuildContext context, {
   required ValueListenable<Racha> racha,
   required (Gatito, Gatito) gatitos,
   required String partnerName,
-  required VoidCallback onAnimo,
-  required VoidCallback onPregunta,
+  VoidCallback? onAnimo,
+  VoidCallback? onPregunta,
+  String explicacion = RachaDetalle.explicacionPareja,
 }) {
+  VoidCallback? cerrarY(BuildContext context, VoidCallback? f) => f == null
+      ? null
+      : () {
+          Navigator.pop(context);
+          f();
+        };
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -87,14 +144,9 @@ Future<void> showRachaSheet(
           racha: r,
           gatitos: gatitos,
           partnerName: partnerName,
-          onAnimo: () {
-            Navigator.pop(context);
-            onAnimo();
-          },
-          onPregunta: () {
-            Navigator.pop(context);
-            onPregunta();
-          },
+          explicacion: explicacion,
+          onAnimo: cerrarY(context, onAnimo),
+          onPregunta: cerrarY(context, onPregunta),
         ),
       ),
     ),
@@ -108,15 +160,24 @@ class RachaDetalle extends StatelessWidget {
     required this.racha,
     required this.gatitos,
     required this.partnerName,
-    required this.onAnimo,
-    required this.onPregunta,
+    this.onAnimo,
+    this.onPregunta,
+    this.explicacion = explicacionPareja,
   });
+
+  /// Qué cuenta en la racha de pareja (la del inicio).
+  static const explicacionPareja =
+      'Un día cuenta cuando los dos registran su ánimo '
+      'o responden la pregunta del día.';
 
   final Racha racha;
   final (Gatito, Gatito) gatitos;
   final String partnerName;
-  final VoidCallback onAnimo;
-  final VoidCallback onPregunta;
+
+  /// Atajos para hacer tu parte hoy; sin ellos no se muestran botones.
+  final VoidCallback? onAnimo;
+  final VoidCallback? onPregunta;
+  final String explicacion;
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +215,7 @@ class RachaDetalle extends StatelessWidget {
                 children: [
                   Text(
                     '$d',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.manuscrita,
                       fontSize: 56,
                       height: 1,
@@ -163,7 +224,7 @@ class RachaDetalle extends StatelessWidget {
                   ),
                   Text(
                     d == 1 ? 'día seguido' : 'días seguidos',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.azul,
                       fontWeight: FontWeight.w700,
                     ),
@@ -179,11 +240,10 @@ class RachaDetalle extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Un día cuenta cuando los dos registran su ánimo '
-            'o responden la pregunta del día.',
+          Text(
+            explicacion,
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.gris, height: 1.3),
+            style: const TextStyle(color: AppTheme.gris, height: 1.3),
           ),
           const SizedBox(height: 18),
           _Semana(racha.semana, miGatito: miGatito, suGatito: suGatito),
@@ -207,11 +267,11 @@ class RachaDetalle extends StatelessWidget {
                 Container(
                   width: 42,
                   height: 42,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppTheme.amarillo,
                     shape: BoxShape.circle,
                   ),
-                  child: const Doodle(
+                  child: Doodle(
                     Icons.card_giftcard,
                     color: AppTheme.azul,
                     size: 22,
@@ -224,7 +284,7 @@ class RachaDetalle extends StatelessWidget {
                     children: [
                       Text(
                         'Premio a los $meta días',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppTheme.azul,
                           fontWeight: FontWeight.w700,
                         ),
@@ -434,14 +494,14 @@ class _Hoy extends StatelessWidget {
   const _Hoy({
     required this.racha,
     required this.partnerName,
-    required this.onAnimo,
-    required this.onPregunta,
+    this.onAnimo,
+    this.onPregunta,
   });
 
   final Racha racha;
   final String partnerName;
-  final VoidCallback onAnimo;
-  final VoidCallback onPregunta;
+  final VoidCallback? onAnimo;
+  final VoidCallback? onPregunta;
 
   @override
   Widget build(BuildContext context) {
@@ -463,30 +523,30 @@ class _Hoy extends StatelessWidget {
         Text(
           mensaje,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppTheme.azul,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w600),
         ),
-        if (!racha.hoyYo) ...[
+        if (!racha.hoyYo && (onAnimo != null || onPregunta != null)) ...[
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onAnimo,
-                  style: _boton,
-                  child: const Text('Mi ánimo'),
+              if (onAnimo case final f?)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: f,
+                    style: _boton,
+                    child: const Text('Mi ánimo'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onPregunta,
-                  style: _boton,
-                  child: const Text('Pregunta del día'),
+              if (onAnimo != null && onPregunta != null)
+                const SizedBox(width: 10),
+              if (onPregunta case final f?)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: f,
+                    style: _boton,
+                    child: const Text('Pregunta del día'),
+                  ),
                 ),
-              ),
             ],
           ),
         ],
@@ -510,6 +570,7 @@ Future<void> showRachaPremio(
   required (Gatito, Gatito) gatitos,
   required String partnerName,
   required Future<String?> Function() onEscoger,
+  String? logro,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -526,6 +587,7 @@ Future<void> showRachaPremio(
       gatitos: gatitos,
       partnerName: partnerName,
       onEscoger: onEscoger,
+      logro: logro,
     ),
   );
 }
@@ -537,9 +599,13 @@ class RachaPremioPopup extends StatefulWidget {
     required this.gatitos,
     required this.partnerName,
     required this.onEscoger,
+    this.logro,
   });
 
   final int meta;
+
+  /// Qué lograron, en una frase. Por defecto, la racha de pareja.
+  final String? logro;
   final (Gatito, Gatito) gatitos;
   final String partnerName;
 
@@ -582,7 +648,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                         Text(
                           '¡${widget.meta} días seguidos!',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: AppTheme.manuscrita,
                             fontSize: 34,
                             height: 1.1,
@@ -592,8 +658,9 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                         const SizedBox(height: 6),
                         Text(
                           premio == null
-                              ? 'Su racha de pareja llegó a ${widget.meta} '
-                                    'días. Se ganaron un premio: escoge '
+                              ? '${widget.logro ?? 'Su racha de pareja llegó '
+                                            'a ${widget.meta} días.'} '
+                                    'Se ganaron un premio: escoge '
                                     'uno de la lista de ${widget.partnerName}.'
                               : '${widget.partnerName} te debe:',
                           textAlign: TextAlign.center,
@@ -621,7 +688,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                             child: Text(
                               premio,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.azul,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
@@ -642,7 +709,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                               minimumSize: const Size.fromHeight(50),
                               shape: const StadiumBorder(),
                             ),
-                            icon: const Doodle(
+                            icon: Doodle(
                               Icons.card_giftcard,
                               color: AppTheme.amarillo,
                             ),
@@ -741,7 +808,7 @@ class _LlamitaState extends State<_Llamita>
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
           ),
-          child: const Doodle(
+          child: Doodle(
             Icons.local_fire_department_rounded,
             color: AppTheme.amarillo,
             size: 26,

@@ -84,6 +84,9 @@ flutter:
     - assets/animaciones/
     # Dibujos de las categorías de la recomendación del día.
     - assets/recomendaciones/
+    - assets/casita/
+    # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
+    - assets/cartas/
 
   # Letra manuscrita para los saludos (SIL Open Font License).
   fonts:

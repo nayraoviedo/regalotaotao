@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/carta.dart';
+import '../models/celebracion.dart';
 import 'db.dart';
 import 'notify_service.dart';
 
@@ -28,8 +29,19 @@ class CartasService {
     required String cuando,
     required String text,
     required Papel papel,
+    Celebracion? especial,
+    Pastel? pastel,
+    Ramo? ramo,
+    List<Regalito> regalitos = const [],
   }) async {
     final ref = await _col(coupleId).add({
+      if (especial != null) ...{
+        'especial': especial.id,
+        'pastel': ?pastel?.name,
+        'ramo': ?ramo?.name,
+        if (regalitos.isNotEmpty)
+          'regalitos': [for (final r in regalitos) r.name],
+      },
       'from': from,
       'to': to,
       'motivo': motivo,

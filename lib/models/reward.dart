@@ -51,10 +51,13 @@ class Achievement {
   /// Premio por llegar a 7, 30… días de racha (`taskTitle` dice cuántos).
   static const racha = 'racha';
 
+  /// Premio por responder juntos la pregunta del día 7, 30… días seguidos.
+  static const preguntas = 'preguntas';
+
   final String id;
   final String uid;
 
-  /// [pomodoro], [tarea] o [racha].
+  /// [pomodoro], [tarea], [racha] o [preguntas].
   final String kind;
   final String? taskTitle;
 

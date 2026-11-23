@@ -123,7 +123,7 @@ class _RecomendarFormState extends State<RecomendarForm> {
             children: [
               Text(
                 'Recomiéndale algo a ${widget.partnerName}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppTheme.manuscrita,
                   fontSize: 28,
                   color: AppTheme.azul,
@@ -153,7 +153,7 @@ class _RecomendarFormState extends State<RecomendarForm> {
                             ? AppTheme.azul
                             : AppTheme.azul.withValues(alpha: 0.12),
                       ),
-                      labelStyle: const TextStyle(
+                      labelStyle: TextStyle(
                         color: AppTheme.azul,
                         fontWeight: FontWeight.w600,
                       ),

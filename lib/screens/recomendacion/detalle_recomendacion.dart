@@ -110,7 +110,7 @@ class DetalleRecomendacion extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               rec.titulo,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppTheme.azul,
                 fontWeight: FontWeight.w700,
                 fontSize: 22,
@@ -121,7 +121,7 @@ class DetalleRecomendacion extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '“$n”',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.azul,
                   fontStyle: FontStyle.italic,
                   height: 1.35,

@@ -1,8 +1,15 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
+import '../../models/reward.dart';
+import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
+import '../racha/premio_racha.dart';
+import '../racha/racha_widgets.dart';
+import '../together/gatitos.dart';
 import 'carta_style.dart';
 import 'mis_preguntas.dart';
 import 'naipes.dart';
@@ -18,9 +25,13 @@ class DailyQuestionScreen extends StatefulWidget {
     super.key,
     required this.me,
     required this.couple,
+    this.partner,
   });
   final AppUser me;
   final Couple couple;
+
+  /// Para los gatitos y el nombre en la racha de preguntas.
+  final AppUser? partner;
 
   @override
   State<DailyQuestionScreen> createState() => _DailyQuestionScreenState();
@@ -37,10 +48,61 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
 
   TogetherService get _service => TogetherService.instance;
 
+  // ---- Racha de preguntas: días seguidos en que los dos respondieron ----
+  Racha? _racha;
+  StreamSubscription<Racha>? _rachaSub;
+  late final _premios = PremiosDeRacha(
+    tipo: Achievement.preguntas,
+    coupleId: widget.couple.id,
+    me: widget.me,
+    partner: widget.partner,
+    logro: (meta) =>
+        'Llevan $meta días seguidos respondiendo juntos la pregunta del día.',
+    motivo: (meta) => 'Respondieron $meta días seguidos la pregunta del día',
+  );
+
+  String get _partnerName => widget.partner?.name ?? 'Tu pareja';
+
+  @override
+  void initState() {
+    super.initState();
+    _rachaSub = RachaService.instance
+        .watchPreguntas(
+          widget.couple.id,
+          widget.me.uid,
+          widget.couple.partnerOf(widget.me.uid),
+        )
+        .listen((r) {
+          if (!mounted) return;
+          setState(() => _racha = r);
+          _premios.revisar(context, r);
+        }, onError: (_) {});
+  }
+
+  @override
+  void didUpdateWidget(DailyQuestionScreen old) {
+    super.didUpdateWidget(old);
+    _premios.partner = widget.partner;
+  }
+
   @override
   void dispose() {
+    _rachaSub?.cancel();
     _answer.dispose();
     super.dispose();
+  }
+
+  void _verRacha() {
+    final r = _racha;
+    if (r == null) return;
+    showRachaSheet(
+      context,
+      racha: ValueNotifier(r),
+      gatitos: Gatito.dePareja(widget.me, widget.partner),
+      partnerName: _partnerName,
+      explicacion:
+          'Un día cuenta cuando los dos responden la pregunta del día.',
+    );
   }
 
   void _sacar(DailyCard hoy) {
@@ -84,9 +146,10 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
       appBar: AppBar(
         title: const Text('Pregunta del día'),
         actions: [
+          if (_racha case final r?) RachaPreguntas(racha: r, onTap: _verRacha),
           IconButton(
             tooltip: 'Agregar mis preguntas al mazo',
-            icon: const Icon(Icons.edit_note),
+            icon: const Doodle(Icons.edit_note),
             onPressed: _misPreguntas,
           ),
         ],
@@ -139,7 +202,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
                     ? 'Tu pareja ya sacó\nla carta de hoy'
                     : 'La carta de hoy',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: CartaStyle.azul,
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
@@ -218,11 +281,22 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
             texto: theirs ?? 'Todavía no respondió ⏳',
             pendiente: theirs == null,
           ),
+          if (theirs != null && (_racha?.dias ?? 0) > 1) ...[
+            const SizedBox(height: 14),
+            Text(
+              'Llevan ${_racha!.dias} días seguidos respondiendo juntos',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: CartaStyle.gris,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
         const SizedBox(height: 20),
         TextButton.icon(
           onPressed: _misPreguntas,
-          icon: const Icon(Icons.edit_note),
+          icon: const Doodle(Icons.edit_note),
           label: const Text('Agregar una pregunta al mazo'),
         ),
       ],
@@ -240,10 +314,7 @@ class _Aviso extends StatelessWidget {
     child: Text(
       texto,
       textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: CartaStyle.azul,
-        fontWeight: FontWeight.w600,
-      ),
+      style: TextStyle(color: CartaStyle.azul, fontWeight: FontWeight.w600),
     ),
   );
 }

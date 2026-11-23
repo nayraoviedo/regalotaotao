@@ -103,6 +103,7 @@ final Map<int, String> _doodles = {
     Icons.close: 'cerrar',
     Icons.close_rounded: 'cerrar',
     Icons.edit: 'editar',
+    Icons.edit_note: 'editar',
     Icons.edit_outlined: 'editar',
     Icons.delete_outline: 'borrar',
     Icons.delete_outline_rounded: 'borrar',

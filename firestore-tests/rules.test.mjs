@@ -134,6 +134,8 @@ await ok('A guarda su premio de 7 días de racha', setDoc(doc(db('A'),'couples/c
 await no('A no inventa una meta de 5 días', setDoc(doc(db('A'),'couples/c1/achievements/racha5_2026-11-16_A'),{uid:'A',kind:'racha',meta:5,inicio:'2026-11-16',delivered:false}));
 await no('A no repite el premio de racha con otro id', setDoc(doc(db('A'),'couples/c1/achievements/otro'),{uid:'A',kind:'racha',meta:7,inicio:'2026-11-16',delivered:false}));
 await ok('A elige su premio de la racha', updateDoc(doc(db('A'),'couples/c1/achievements/racha7_2026-11-16_A'),{rewardId:'r1',rewardTitle:'Un abrazo largo',rewardChosenAt:serverTimestamp()}));
+await ok('A guarda su premio de 7 días respondiendo la pregunta', setDoc(doc(db('A'),'couples/c1/achievements/preguntas7_2026-11-16_A'),{uid:'A',kind:'preguntas',meta:7,inicio:'2026-11-16',taskTitle:'7 días respondiendo la pregunta',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+await no('A no usa el id de la racha de pareja para el de preguntas', setDoc(doc(db('A'),'couples/c1/achievements/racha30_2026-11-16_A'),{uid:'A',kind:'preguntas',meta:30,inicio:'2026-11-16',delivered:false}));
 await ok('A crea su tarea', setDoc(doc(db('A'),'users/A/pomodoroTasks/t1'),{title:'Leer',pomodoros:0,done:false}));
 await no('B no ve las tareas de A', getDoc(doc(db('B'),'users/A/pomodoroTasks/t1')));
 await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Te quiero',papel:'cuadricula',openedAt:null}));
@@ -152,6 +154,93 @@ function unlink(me, partner, id){ const d=db(me); const b=writeBatch(d); b.updat
 function reopen(me, partner, id){ const d=db(me); const b=writeBatch(d); b.update(doc(d,'couples',id),{endedAt:null,endedBy:null}); b.update(doc(d,'users',me),{coupleId:id}); b.update(doc(d,'users',partner),{coupleId:id}); return b.commit(); }
 await no('C no desvincula a A y B', unlink('C','B','c1'));
 await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db('A'),'users','B'),{coupleId:null}));
+// Casita de los gatitos y pescaditos.
+{
+  const h = new Date();
+  const hoy = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  const ganar = (u, id, mov, pescaditos, extra={}) => {
+    const d = db(u); const b = writeBatch(d);
+    b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), ...mov});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos, ultimoMov:id, ...extra}, {merge:true});
+    return b.commit();
+  };
+  await ok('A responde la pregunta de hoy', setDoc(doc(db('A'),'couples/c1/dailyAnswers',hoy),{answers:{A:'sí'}},{merge:true}));
+  await ok('A gana 10 por la pregunta', ganar('A',`pregunta_${hoy}_A`,{tipo:'pregunta',cantidad:10,ref:hoy},10));
+  await no('A no cobra la pregunta dos veces', ganar('A',`pregunta_${hoy}_A`,{tipo:'pregunta',cantidad:10,ref:hoy},20));
+  await no('B no cobra sin haber respondido', ganar('B',`pregunta_${hoy}_B`,{tipo:'pregunta',cantidad:10,ref:hoy},20));
+  await ok('A respondió hace mucho', setDoc(doc(db('A'),'couples/c1/dailyAnswers/2025-01-01'),{answers:{A:'viejo'}},{merge:true}));
+  await no('A no cobra un día viejo', ganar('A','pregunta_2025-01-01_A',{tipo:'pregunta',cantidad:10,ref:'2025-01-01'},20));
+  await no('A no se suma de más', ganar('A',`animo_${hoy}_A`,{tipo:'animo',cantidad:5,ref:hoy},60));
+  await no('A no se da 50 por el ánimo', ganar('A',`animo_${hoy}_A`,{tipo:'animo',cantidad:50,ref:hoy},60));
+  await ok('A gana 5 por su ánimo', ganar('A',`animo_${hoy}_A`,{tipo:'animo',cantidad:5,ref:hoy},15));
+  await ok('A gana 10 por su pomodoro', ganar('A','pomodoro_l1',{tipo:'pomodoro',cantidad:10,ref:'l1'},25));
+  await no('B no cobra el pomodoro de A', ganar('B','pomodoro_l1',{tipo:'pomodoro',cantidad:10,ref:'l1'},35));
+  await ok('A completa otro pomodoro', setDoc(doc(db('A'),'couples/c1/achievements/l9'),{uid:'A',kind:'pomodoro',taskTitle:null,rewardId:null,rewardTitle:null,delivered:false}));
+  await no('B no cobra un logro de A', ganar('B','pomodoro_l9',{tipo:'pomodoro',cantidad:10,ref:'l9'},35));
+  await no('un pomodoro solo no da 15', ganar('A','pomodoro_l9',{tipo:'pomodoro',cantidad:15,ref:'l9'},40));
+  await ok('A gana 10 por el otro pomodoro', ganar('A','pomodoro_l9',{tipo:'pomodoro',cantidad:10,ref:'l9'},35));
+  await no('A no cobra racha sin haberla logrado', ganar('A','racha7_2026-11-01',{tipo:'racha',meta:7,inicio:'2026-11-01',cantidad:50},85));
+  await no('la racha de 7 no da 150', ganar('A','racha7_2026-11-16',{tipo:'racha',meta:7,inicio:'2026-11-16',cantidad:150},185));
+  await ok('A gana 50 por la racha', ganar('A','racha7_2026-11-16',{tipo:'racha',meta:7,inicio:'2026-11-16',cantidad:50},85));
+  await no('A no gasta lo que no tienen', ganar('A','compra_sofa_azul',{tipo:'compra',cantidad:-120,ref:'sofa_azul'},-35,{tenemos:['sofa_azul']}));
+  await no('B no compra sin guardarlo en tenemos', ganar('B','compra_cuadro_corazon',{tipo:'compra',cantidad:-30,ref:'cuadro_corazon'},55));
+  await no('B no compra regalándose pescaditos', ganar('B','compra_cuadro_corazon',{tipo:'compra',cantidad:30,ref:'cuadro_corazon'},115,{tenemos:['cuadro_corazon']}));
+  await ok('B compra un cuadro con los pescaditos de los dos', ganar('B','compra_cuadro_corazon',{tipo:'compra',cantidad:-30,ref:'cuadro_corazon'},55,{tenemos:['cuadro_corazon'],puestos:{cuadro:'cuadro_corazon'}}));
+  await ok('A le pone un corbatín al gatito naranja', setDoc(doc(db('A'),'couples/c1/casita/estado'),{ropa:{naranja:{cuello:'mono'}}},{merge:true}));
+  await ok('A pone su foto pixelada en el cuadro', setDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:Array(168).fill(4294967295)},{merge:true}));
+  await no('la foto tiene que ser de 14 × 12', setDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:Array(5000).fill(1)},{merge:true}));
+  await ok('A quita la foto', updateDoc(doc(db('A'),'couples/c1/casita/estado'),{foto:deleteField()}));
+  await ok('A elige una meta para la alcancía', setDoc(doc(db('A'),'couples/c1/casita/estado'),{meta:'cuarto_jardin'},{merge:true}));
+  await ok('A deja un regalo envuelto', setDoc(doc(db('A'),'couples/c1/casita/estado'),{regalos:{cuadro_corazon:{de:'A',mensaje:'para ti'}}},{merge:true}));
+  await ok('B abre el regalo', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{'regalos.cuadro_corazon':deleteField(),'puestos.cuadro':'cuadro_corazon'}));
+  await no('los regalos tienen que ser un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{regalos:'x'},{merge:true}));
+  // Compras grandes (más de 100): las aprueba la pareja.
+  await ok('A guarda su racha de 30', setDoc(doc(db('A'),'couples/c1/achievements/racha30_2026-10-01_A'),{uid:'A',kind:'racha',meta:30,inicio:'2026-10-01',taskTitle:'Racha de 30 días',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+  await ok('A gana 150 por la racha de 30', ganar('A','racha30_2026-10-01',{tipo:'racha',meta:30,inicio:'2026-10-01',cantidad:150},205));
+  await no('B no compra el sofá azul sin que A lo apruebe', ganar('B','compra_sofa_azul',{tipo:'compra',cantidad:-120,ref:'sofa_azul'},85,{tenemos:['cuadro_corazon','sofa_azul']}));
+  await ok('B propone comprar el sofá azul', setDoc(doc(db('B'),'couples/c1/casita/estado'),{propuesta:{id:'sofa_azul_1',cosa:'sofa_azul',de:'B'}},{merge:true}));
+  await no('B no se aprueba su propia propuesta', ganar('B','compra_sofa_azul',{tipo:'compra',cantidad:-120,ref:'sofa_azul'},85,{tenemos:['cuadro_corazon','sofa_azul'],propuesta:deleteField()}));
+  await ok('A aprueba y se compra', ganar('A','compra_sofa_azul',{tipo:'compra',cantidad:-120,ref:'sofa_azul'},85,{tenemos:['cuadro_corazon','sofa_azul'],propuesta:deleteField()}));
+  await ok('A guarda otra racha de 30', setDoc(doc(db('A'),'couples/c1/achievements/racha30_2026-08-01_A'),{uid:'A',kind:'racha',meta:30,inicio:'2026-08-01',taskTitle:'Racha de 30 días',sessionId:null,rewardId:null,rewardTitle:null,delivered:false}));
+  await ok('A gana otros 150', ganar('A','racha30_2026-08-01',{tipo:'racha',meta:30,inicio:'2026-08-01',cantidad:150},235));
+  await ok('un regalo sorpresa grande no necesita aprobación', ganar('A','compra_sofa_rosa',{tipo:'compra',cantidad:-120,ref:'sofa_rosa',regalo:true},115,{tenemos:['cuadro_corazon','sofa_azul','sofa_rosa'],regalos:{sofa_rosa:{de:'A',mensaje:''}}}));
+  await ok('A le pone nombre al gatito bebé', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:{calico:'Mochi'}},{merge:true}));
+  await no('los nombres de los bebés van en un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:'Mochi'},{merge:true}));
+  await ok('B quita el cuadro', setDoc(doc(db('B'),'couples/c1/casita/estado'),{puestos:{cuadro:''}},{merge:true}));
+  await no('B no se regala pescaditos', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{pescaditos:999}));
+  await no('B no borra lo que compraron', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{tenemos:[]}));
+  await no('nadie cambia un movimiento', updateDoc(doc(db('A'),'couples/c1/casitaMovs/compra_cuadro_corazon'),{cantidad:-1}));
+  await no('nadie borra un movimiento', deleteDoc(doc(db('B'),'couples/c1/casitaMovs/pomodoro_l1')));
+  await no('un movimiento suelto no entra', setDoc(doc(db('A'),'couples/c1/casitaMovs/pomodoro_l2'),{uid:'A',creadoEn:serverTimestamp(),tipo:'pomodoro',cantidad:10,ref:'l1'}));
+  await ok('B ve la casita y los pescaditos', getDoc(doc(db('B'),'couples/c1/casita/estado')).then(s=>{ if(s.data().pescaditos!==115) throw new Error('pescaditos='+s.data().pescaditos); }));
+  // Cartas sorpresa animadas: 30 pescaditos, carta y pago juntos.
+  const sorpresa = (u, id, cantidad, pescaditos, carta={}) => {
+    const d = db(u); const b = writeBatch(d);
+    b.set(doc(d,'couples/c1/letters',id), {from:u,to:u==='A'?'B':'A',motivo:'sorpresa',cuando:'te llegue esta sorpresa',text:'¡Sorpresa!',papel:'cuadricula',sorpresa:true,openedAt:null,...carta});
+    b.set(doc(d,'couples/c1/casitaMovs','carta_'+id), {uid:u,creadoEn:serverTimestamp(),tipo:'carta',cantidad,ref:id});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos, ultimoMov:'carta_'+id}, {merge:true});
+    return b.commit();
+  };
+  await no('una carta sorpresa no sale gratis', setDoc(doc(db('A'),'couples/c1/letters/s0'),{from:'A',to:'B',motivo:'sorpresa',cuando:'te llegue esta sorpresa',text:'hola',papel:'cuadricula',sorpresa:true,openedAt:null}));
+  await no('la carta sorpresa cuesta 30, no 5', sorpresa('A','s1',-5,110));
+  await no('no se paga la carta de otro', sorpresa('A','s1',-30,85,{from:'B',to:'A'}));
+  await ok('A manda una carta sorpresa con 30 pescaditos', sorpresa('A','s1',-30,85));
+  await ok('B abre la carta sorpresa', updateDoc(doc(db('B'),'couples/c1/letters/s1'),{openedAt:serverTimestamp()}));
+  // Cartas de cumpleaños y aniversario, con pastel (gratis).
+  const especial = (id, extra) => setDoc(doc(db('A'),'couples/c1/letters',id),{from:'A',to:'B',motivo:'cumple',cuando:'sea tu cumpleaños',text:'¡Feliz cumple!',papel:'cuadricula',openedAt:null,...extra});
+  await ok('A manda una carta de cumpleaños con pastel', especial('k1',{especial:'cumple',pastel:'gatito'}));
+  await ok('y una de aniversario', especial('k2',{especial:'aniversario',pastel:'corazon'}));
+  await no('no hay cartas de otra cosa', especial('k3',{especial:'boda',pastel:'fresa'}));
+  await no('ni pasteles que no existen', especial('k4',{especial:'cumple',pastel:'pizza'}));
+  await ok('con ramo de flores y regalitos', especial('k5',{especial:'aniversario',ramo:'lila',regalitos:['peluche','chocolates']}));
+  await no('ni ramos de colores que no hay', especial('k6',{especial:'aniversario',ramo:'negro'}));
+  await no('ni regalitos que no existen', especial('k7',{especial:'cumple',regalitos:['auto']}));
+  await ok('se guarda cuándo sembraron', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:{tomatera:1764000000000}},{merge:true}));
+  await no('lo sembrado es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:'hoy'},{merge:true}));
+  await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
+  await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
+  await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
+}
 await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples','c1'),{endedAt:serverTimestamp(),endedBy:'B'}));
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));

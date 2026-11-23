@@ -10,16 +10,21 @@ import '../../models/mood.dart';
 import '../../services/couple_service.dart';
 import '../../services/mood_service.dart';
 import '../../services/reward_service.dart';
+import '../../services/pescaditos_service.dart';
 import '../../services/racha_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
+import '../../widgets/casita_widget_sync.dart';
 import '../../widgets/widget_celular_sync.dart';
 import '../profile/profile_screen.dart';
 import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
 import '../mood/mood_screen.dart';
 import '../notes/cartas/avioncito.dart';
+import '../notes/cartas/carta_pastel.dart';
+import '../notes/cartas/carta_screen.dart';
+import '../../services/cartas_service.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_screen.dart';
 import '../together/gatitos.dart';
@@ -27,9 +32,12 @@ import '../racha/racha_widgets.dart';
 import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
+import 'invitacion_pomodoro.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
+import '../casita/casita_inicio.dart';
+import '../casita/casa_en_corte.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -54,6 +62,7 @@ class HomeScreen extends StatelessWidget {
             return LlegadaDeCartas(
               uid: me.uid,
               coupleId: couple.id,
+              partnerName: partner?.name,
               onVer: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => NotesScreen(
@@ -68,7 +77,10 @@ class HomeScreen extends StatelessWidget {
                 me: me,
                 couple: couple,
                 partner: partner,
-                child: _HomeBody(me: me, partner: partner, couple: couple),
+                child: CasitaWidgetSync(
+                  coupleId: couple.id,
+                  child: _HomeBody(me: me, partner: partner, couple: couple),
+                ),
               ),
             );
           },
@@ -186,6 +198,17 @@ class _HomeBodyState extends State<_HomeBody> {
           meta: meta,
           inicio: inicio,
         );
+        // Bonus de pescaditos para la casita (uno por racha y meta).
+        unawaited(
+          PescaditosService.instance.intentar(
+            () => PescaditosService.instance.ganarRacha(
+              coupleId,
+              uid,
+              meta: meta,
+              inicio: inicio,
+            ),
+          ),
+        );
         if (!mounted) return;
         await _celebrar(meta, id);
       } catch (_) {
@@ -247,7 +270,9 @@ class _HomeBodyState extends State<_HomeBody> {
       gatitos: Gatito.dePareja(me, widget.partner),
       partnerName: widget.partner?.name ?? 'Tu pareja',
       onAnimo: () => _open(MoodScreen(me: me, coupleId: couple.id)),
-      onPregunta: () => _open(DailyQuestionScreen(me: me, couple: couple)),
+      onPregunta: () => _open(
+        DailyQuestionScreen(me: me, couple: couple, partner: widget.partner),
+      ),
     ).whenComplete(() {
       _racha.removeListener(sync);
       notifier.dispose();
@@ -350,11 +375,44 @@ class _HomeBodyState extends State<_HomeBody> {
             me: me,
             racha: racha,
             onRacha: _verRacha,
+            casita: CasitaInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              onTap: () => _open(
+                CasaScreen(
+                  coupleId: couple.id,
+                  me: me,
+                  partner: partner,
+                  inicioPareja: couple.startDate,
+                ),
+              ),
+            ),
             recomendacion: RecomendacionInicio(
               coupleId: couple.id,
               uid: me.uid,
               partnerUid: partnerUid,
               partnerName: partnerName,
+            ),
+            celebracion: CelebracionesHoy(
+              uid: me.uid,
+              partnerName: partnerName,
+              cumplePareja: partner?.cumple,
+              inicioPareja: couple.startDate,
+              cartas: CartasService.instance.watch(couple.id),
+              onMandar: (c) => _open(
+                EscribirCartaScreen(
+                  uid: me.uid,
+                  partnerUid: partnerUid,
+                  coupleId: couple.id,
+                  especial: c,
+                ),
+              ),
+            ),
+            invitacionPomodoro: InvitacionPomodoroInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerName: partnerName,
+              onAbrir: () => _open(PomodoroScreen(me: me, couple: couple)),
             ),
             partner: partner,
             dias: couple.daysTogether,
@@ -376,6 +434,7 @@ class _HomeBodyState extends State<_HomeBody> {
               SeccionInicio.pregunta => DailyQuestionScreen(
                 me: me,
                 couple: couple,
+                partner: partner,
               ),
               SeccionInicio.porHacer => BucketListScreen(
                 me: me,
@@ -393,13 +452,19 @@ class _HomeBodyState extends State<_HomeBody> {
       partnerName: partnerName,
       suGatito: suGatito,
       onDevolver: _mandarMimo,
-      child: HomeTabs(
-        index: _tab,
-        onChanged: (i) => setState(() => _tab = i),
-        inicio: inicio,
-        nosotros: TogetherScreen(couple: couple),
-        notas: NotesScreen(me: me, coupleId: couple.id, partnerUid: partnerUid),
-        perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+      child: AvisoPescaditos(
+        child: HomeTabs(
+          index: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+          inicio: inicio,
+          nosotros: TogetherScreen(couple: couple),
+          notas: NotesScreen(
+            me: me,
+            coupleId: couple.id,
+            partnerUid: partnerUid,
+          ),
+          perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+        ),
       ),
     );
   }

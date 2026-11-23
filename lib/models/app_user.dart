@@ -10,6 +10,7 @@ class AppUser {
     this.email,
     this.gatito,
     this.gatitoEn,
+    this.cumple,
   });
 
   final String uid;
@@ -32,6 +33,9 @@ class AppUser {
   /// se lo queda quien lo eligió primero.
   final DateTime? gatitoEn;
 
+  /// Su cumpleaños, 'MM-DD' (ver `Cumple`). `null` si no lo puso.
+  final String? cumple;
+
   String get initial =>
       name.isEmpty ? '?' : String.fromCharCode(name.runes.first).toUpperCase();
 
@@ -46,6 +50,7 @@ class AppUser {
       email: d['email'] as String?,
       gatito: d['gatito'] as String?,
       gatitoEn: (d['gatitoEn'] as Timestamp?)?.toDate(),
+      cumple: d['cumple'] as String?,
     );
   }
 }

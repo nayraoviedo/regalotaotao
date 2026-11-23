@@ -55,6 +55,12 @@ beforeEach(() => {
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
+    "couples/c1/letters/l3": { from: "ana", to: "beto", cuando: "sea tu cumpleaños", especial: "cumple", pastel: "fresa", ramo: "rosa", regalitos: ["peluche", "globos"], openedAt: null },
+    "couples/c1/letters/l2": { from: "ana", to: "beto", cuando: "te llegue esta sorpresa", sorpresa: true, openedAt: null },
+    "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
+    "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
+    "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
+    "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
 });
@@ -138,6 +144,25 @@ test("besos y abrazos llegan con su texto", async () => {
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
 });
 
+test("compras de la casita avisan a la pareja", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, t)).status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.body), ["Ana compró el sofá azul para los gatitos"]);
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "pomodoro_a1" }, t)).status, 403);
+  sent.length = 0;
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_cama_estrellas" }, t)).status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.body), ["Ana te dejó un regalo envuelto en la casita. ¡Ábrelo!"]);
+  assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, await idToken("beto"))).status, 403);
+});
+
+test("las compras grandes le piden el sí a la pareja", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "propuesta", coupleId: "c1", docId: "estado" }, t)).status, 200);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].notification.body, /^Ana quiere comprar .* para la casita/);
+  assert.equal((await call({ kind: "propuesta", coupleId: "c1", docId: "estado" }, await idToken("beto"))).status, 403);
+});
+
 test("no se envía dos veces el mismo aviso", async () => {
   const t = await idToken("ana");
   await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, t);
@@ -162,6 +187,21 @@ test("carta nueva avisa a la pareja, solo si la escribió quien llama", async ()
   assert.equal(r.status, 200);
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te mandó un avioncito: ábrelo cuando estés triste",
+  ]);
+});
+
+test("la carta sorpresa avisa distinto", async () => {
+  const r = await call({ kind: "letter", coupleId: "c1", docId: "l2" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.title), ["✨ ¡Carta sorpresa!"]);
+});
+
+test("la carta de cumpleaños llega con pastel", async () => {
+  const r = await call({ kind: "letter", coupleId: "c1", docId: "l3" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((m) => m.notification.title), ["🎂 ¡Feliz cumpleaños!"]);
+  assert.deepEqual(sent.map((m) => m.notification.body), [
+    "Ana te mandó un pastel, un ramo de flores, 2 regalitos y una carta de cumpleaños",
   ]);
 });
 

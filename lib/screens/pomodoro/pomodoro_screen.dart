@@ -9,6 +9,7 @@ import '../../models/pomodoro_session.dart';
 import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
+import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/reward_service.dart';
 import '../../services/user_service.dart';
@@ -94,6 +95,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     _partnerSub = UserService.instance
         .watchUser(_partnerUid)
         .listen((p) => setState(() => _partner = p));
+    // Si mi pareja me invitó (o ya estamos en una sesión juntos), abrir
+    // directo en "En pareja" para que la invitación se vea.
+    PomodoroService.instance.watchCurrent(_coupleId).first.then((s) {
+      if (!mounted || s == null) return;
+      final paraMi =
+          s.status == PomodoroStatus.pending && s.invitee == widget.me.uid;
+      if (paraMi || s.status == PomodoroStatus.accepted) {
+        setState(() => _juntos = true);
+      }
+    }, onError: (_) {});
   }
 
   @override
@@ -204,6 +215,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       kind: Achievement.pomodoro,
       taskTitle: task?.title,
       sessionId: sessionId,
+    );
+    unawaited(
+      PescaditosService.instance.intentar(
+        () => PescaditosService.instance.ganarPomodoro(
+          _coupleId,
+          widget.me.uid,
+          id,
+          juntos: sessionId != null,
+        ),
+      ),
     );
     if (task != null) await _rewards.addPomodoroToTask(widget.me.uid, task.id);
     if (!mounted) return;
@@ -1528,6 +1549,7 @@ class _RewardFeed extends StatelessWidget {
     final quienT = mine ? 'Terminaste' : '$partnerName terminó';
     if (a.kind == Achievement.tarea) return '$quienT "${a.taskTitle}"';
     if (a.kind == Achievement.racha) return '${a.taskTitle} juntos';
+    if (a.kind == Achievement.preguntas) return '${a.taskTitle} juntos';
     if (a.taskTitle != null) {
       return '$quien un pomodoro en "${a.taskTitle}"';
     }
@@ -1745,6 +1767,9 @@ class _RewardTile extends StatelessWidget {
           backgroundColor: PomodoroStyle.amarillo,
           foregroundColor: PomodoroStyle.azul,
           visualDensity: VisualDensity.compact,
+          // El tema pide botones a lo ancho; en una fila eso aplasta el
+          // texto de al lado hasta dejar una letra por línea.
+          minimumSize: const Size(0, 40),
           shape: const StadiumBorder(),
         ),
         child: const Text('Ya se lo di'),

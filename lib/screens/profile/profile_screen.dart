@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
+import '../../models/celebracion.dart';
 import '../../models/couple.dart';
 import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
@@ -64,6 +65,27 @@ class ProfileScreen extends StatelessWidget {
     );
     if (picked != null) {
       await CoupleService.instance.setStartDate(c.id, picked);
+    }
+  }
+
+  Future<void> _pickCumple(BuildContext context, AppUser user) async {
+    final f = Cumple.parse(user.cumple);
+    final picked = await showDatePicker(
+      context: context,
+      helpText: '¿Cuándo es tu cumpleaños?',
+      // El año no se guarda: solo el día y el mes.
+      initialDate: f == null
+          ? DateTime(2000, 1, 1)
+          : DateTime(2000, f.$1, f.$2),
+      firstDate: DateTime(1940),
+      lastDate: DateTime.now(),
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+    );
+    if (picked != null) {
+      await UserService.instance.updateCumple(
+        user.uid,
+        Cumple.guardar(picked.month, picked.day),
+      );
     }
   }
 
@@ -138,7 +160,7 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Text(
                           user.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: AppTheme.manuscrita,
                             fontSize: 36,
                             color: AppTheme.azul,
@@ -176,10 +198,7 @@ class ProfileScreen extends StatelessWidget {
                   // si uno lo elige, al otro le aparece directamente.
                   Card(
                     child: ListTile(
-                      leading: const Doodle(
-                        Icons.favorite,
-                        color: AppTheme.azul,
-                      ),
+                      leading: Doodle(Icons.favorite, color: AppTheme.azul),
                       title: Text(
                         c.startDate == null
                             ? 'Elige la fecha de nuestro aniversario'
@@ -195,16 +214,39 @@ class ProfileScreen extends StatelessWidget {
                       onTap: () => _pickAnniversary(context, c),
                     ),
                   ),
+                  // Cumpleaños: ese día la pareja puede mandarle un pastel.
                   Card(
                     child: ListTile(
-                      leading: UserAvatar(partner, size: 40, border: false),
-                      title: Text(partner?.name ?? 'Tu pareja'),
-                      subtitle: const Text('Tu pareja 💞'),
+                      leading: Doodle(Icons.cake, color: AppTheme.azul),
+                      title: Text(
+                        user.cumple == null
+                            ? 'Elige tu cumpleaños'
+                            : 'Mi cumpleaños',
+                      ),
+                      subtitle: Text(
+                        user.cumple == null
+                            ? 'Ese día tu pareja te puede mandar un pastel 🎂'
+                            : Cumple.texto(user.cumple),
+                      ),
+                      trailing: const Doodle(Icons.edit_calendar),
+                      onTap: () => _pickCumple(context, user),
                     ),
                   ),
                   Card(
                     child: ListTile(
-                      leading: const Doodle(Icons.key, color: AppTheme.azul),
+                      leading: UserAvatar(partner, size: 40, border: false),
+                      title: Text(partner?.name ?? 'Tu pareja'),
+                      subtitle: Text(
+                        partner?.cumple == null
+                            ? 'Tu pareja 💞'
+                            : 'Tu pareja 💞 · cumple el '
+                                  '${Cumple.texto(partner!.cumple)}',
+                      ),
+                    ),
+                  ),
+                  Card(
+                    child: ListTile(
+                      leading: Doodle(Icons.key, color: AppTheme.azul),
                       title: const Text('Mi código de pareja'),
                       subtitle: Text(
                         user.pairCode,
