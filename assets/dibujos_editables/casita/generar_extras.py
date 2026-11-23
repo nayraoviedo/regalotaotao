@@ -157,9 +157,14 @@ def alfombra_gatito():
 
 # ================================================================ ropita del cuerpo
 def cuerpo(nombre, pintar):
-    """Viste el cuerpo del gatito según la forma del sprite (filas 10 a 16)."""
+    """Viste el cuerpo del gatito según la forma del sprite (filas 10 a 16).
+
+    La ropa lleva una rayita oscura donde termina (cuello, puños y donde se
+    ve el pelito), para que se distinga del gatito.
+    """
     c = Capa()
     x0, y0 = GATITO_POS[nombre]
+    tela = {}
     for j in range(10, 17):
         fila = GATITO[j]
         for i, ch in enumerate(fila):
@@ -169,7 +174,16 @@ def cuerpo(nombre, pintar):
                     continue
                 col = pintar(i, j)
                 if col:
-                    c.px(x0 + i, y0 + j, col)
+                    tela[(i, j)] = col
+    for (i, j), col in tela.items():
+        borde = any(
+            (i + di, j + dj) not in tela
+            and 0 <= j + dj < len(GATITO)
+            and 0 <= i + di < len(GATITO[j + dj])
+            and GATITO[j + dj][i + di] in "Crwph"
+            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        )
+        c.px(x0 + i, y0 + j, TRAZO if borde else col)
     return c
 
 
@@ -224,7 +238,31 @@ def vestido_flores(i, j):
     return (250, 210, 220) if (i * 3 + j) % 5 else ROSA_OSC
 
 
+def pijama_estrellas(i, j):
+    return AMARILLO if (i * 2 + j * 3) % 7 == 0 else (70, 86, 150)
+
+
+def pijama_rayas(i, j):
+    return BLANCO if i % 2 else (150, 200, 236)
+
+
+def pijama_corazones(i, j):
+    return ROSA_OSC if (i + j) % 4 == 0 and i % 2 == 0 else (250, 200, 214)
+
+
+def pijama_dino(i, j):
+    if j == 10 and i % 3 == 0:
+        return AMARILLO  # puntitas del lomo
+    if 8 <= i <= 11 and j >= 12:
+        return (200, 232, 160)  # pancita
+    return (120, 186, 110)
+
+
 CUERPO = {
+    "pijama_estrellas": pijama_estrellas,
+    "pijama_rayas": pijama_rayas,
+    "pijama_corazones": pijama_corazones,
+    "pijama_dino": pijama_dino,
     "camiseta": camiseta,
     "poleron": poleron,
     "overol": overol,

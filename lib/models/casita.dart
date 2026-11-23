@@ -469,6 +469,10 @@ class Catalogo {
     Cosa('poleron', 'Polerón con capucha', 70, parte: Parte.cuerpo),
     Cosa('overol', 'Overol de jean', 70, parte: Parte.cuerpo),
     Cosa('pijama', 'Pijama de puntitos', 60, parte: Parte.cuerpo),
+    Cosa('pijama_estrellas', 'Pijama de estrellas', 60, parte: Parte.cuerpo),
+    Cosa('pijama_rayas', 'Pijama a rayas', 60, parte: Parte.cuerpo),
+    Cosa('pijama_corazones', 'Pijama de corazones', 60, parte: Parte.cuerpo),
+    Cosa('pijama_dino', 'Pijama de dinosaurio', 80, parte: Parte.cuerpo),
     Cosa('traje', 'Traje con corbata', 120, parte: Parte.cuerpo),
     Cosa('esmoquin', 'Esmoquin', 150, parte: Parte.cuerpo),
 
