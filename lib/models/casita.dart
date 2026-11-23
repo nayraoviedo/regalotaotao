@@ -93,6 +93,31 @@ enum Momento {
       : dia;
 }
 
+/// Cosas de pareja que hacen los gatitos grandes en algún cuarto. Los
+/// dibujos son `escena_<nombre>_1.png` y `_2.png` (se van alternando),
+/// encima de los gatitos sentados; ver `generar_escenas.py`.
+enum Escena {
+  drama(Cuarto.sala, 'viendo un drama'),
+  ovillo(Cuarto.sala, 'jugando con un ovillo'),
+  fideo(Cuarto.cocina, 'compartiendo un fideo'),
+  lectura(Cuarto.dormitorio, 'leyendo un cuento'),
+  burbujas(Cuarto.bano, 'jugando con burbujas'),
+  picnic(Cuarto.jardin, 'de picnic'),
+
+  /// De madrugada: el naranja come en la cocina y el blanco duerme.
+  medianoche(Cuarto.cocina, 'comiendo a medianoche');
+
+  const Escena(this.cuarto, this.que);
+
+  final Cuarto cuarto;
+
+  /// "Los gatitos están …".
+  final String que;
+
+  String capa(int tick) =>
+      Casita.asset('escena_${name}_${tick % 4 < 2 ? 1 : 2}');
+}
+
 /// Los cuartos de la casita. La sala viene con la casita; los demás se
 /// abren con pescaditos (se compran como una [Cosa] con [Cosa.cuarto]).
 enum Cuarto {
@@ -1166,24 +1191,70 @@ class EstadoCasita {
         _ => false,
       };
 
-  /// En qué cuarto andan los gatitos grandes (para la casa en corte): de
-  /// noche en el dormitorio (si tienen cama) o en la sala, y de día en un
-  /// cuarto abierto al azar que cambia cada media hora.
-  Cuarto dondeEstan([DateTime? ahora]) {
-    final hora = ahora ?? DateTime.now();
-    if (Momento.de(hora) == Momento.noche) {
-      return abierto(Cuarto.dormitorio) && puesto(Lugar.cama) != null
-          ? Cuarto.dormitorio
-          : Cuarto.sala;
+  /// Dónde duermen de noche: en la cama del dormitorio o en la camita de
+  /// la sala (null si no tienen ninguna).
+  Cuarto? get dondeDuermen {
+    if (abierto(Cuarto.dormitorio) && puesto(Lugar.cama) != null) {
+      return Cuarto.dormitorio;
     }
+    return puesto(Lugar.camita) != null ? Cuarto.sala : null;
+  }
+
+  /// El cuarto abierto al azar donde andan de día (cambia cada media hora).
+  Cuarto _cuartoDelRato(int rato) {
     final abiertos = [
       for (final c in Cuarto.values)
         if (abierto(c)) c,
     ];
+    return abiertos[_azar(99, rato) % abiertos.length];
+  }
+
+  /// Qué están haciendo juntos los gatitos grandes (null si nada en
+  /// especial: sentaditos o durmiendo).
+  ///
+  /// - De 0 a 2 de la mañana el naranja se levanta a comer a la cocina
+  ///   mientras el blanco duerme (si hay cocina y dónde dormir).
+  /// - De 18 a 22 ven su drama en la sala, antes de dormir.
+  /// - De día, casi siempre hacen algo en el cuarto donde andan.
+  Escena? escena([DateTime? ahora]) {
+    final hora = ahora ?? DateTime.now();
+    final h = hora.hour;
+    if (h < 2) {
+      return abierto(Cuarto.cocina) && dondeDuermen != null
+          ? Escena.medianoche
+          : null;
+    }
+    if (h >= 18 && h < 22) return Escena.drama;
+    if (Momento.de(hora) == Momento.noche) return null;
     final rato =
         hora.millisecondsSinceEpoch ~/
         const Duration(minutes: 30).inMilliseconds;
-    return abiertos[_azar(99, rato) % abiertos.length];
+    final cuarto = _cuartoDelRato(rato);
+    final opciones = [
+      for (final e in Escena.values)
+        if (e.cuarto == cuarto && e != Escena.medianoche) e,
+    ];
+    if (opciones.isEmpty || _azar(98, rato) % 4 == 0) return null;
+    return opciones[_azar(97, rato) % opciones.length];
+  }
+
+  /// En qué cuarto andan los gatitos grandes (para la casa en corte): el
+  /// de su [escena]; si no, de noche donde duermen (o la sala), y de día
+  /// un cuarto abierto al azar que cambia cada media hora.
+  Cuarto dondeEstan([DateTime? ahora]) {
+    final hora = ahora ?? DateTime.now();
+    if (escena(hora) case final e?) return e.cuarto;
+    if (Momento.de(hora) == Momento.noche) return dondeDuermen ?? Cuarto.sala;
+    return _cuartoDelRato(
+      hora.millisecondsSinceEpoch ~/ const Duration(minutes: 30).inMilliseconds,
+    );
+  }
+
+  /// ¿Hay algún gatito grande en [cuarto]? (A medianoche andan separados.)
+  bool hayGatitos(Cuarto cuarto, [DateTime? ahora]) {
+    final hora = ahora ?? DateTime.now();
+    return dondeEstan(hora) == cuarto ||
+        (escena(hora) == Escena.medianoche && dondeDuermen == cuarto);
   }
 
   /// ¿Hay tina para bañar a los gatitos? (en el baño)
@@ -1209,7 +1280,21 @@ class EstadoCasita {
         ? Casita.asset('${c.id}_2')
         : c.asset;
     final enLaTina = banando && conMuebles && sePuedenBanar(cuarto);
-    final duermen = !enLaTina && conMuebles && this.duermen(cuarto, momento);
+    // Las escenas solo con la hora de verdad (sin [ahora] quedan quietos).
+    final escena = conMuebles && ahora != null && !enLaTina
+        ? this.escena(ahora)
+        : null;
+    final aqui = escena?.cuarto == cuarto ? escena : null;
+    // A medianoche el blanco duerme solito.
+    final soloBlanco =
+        escena == Escena.medianoche &&
+        cuarto != Cuarto.cocina &&
+        dondeDuermen == cuarto;
+    final duermen =
+        !enLaTina &&
+        aqui == null &&
+        conMuebles &&
+        (soloBlanco || this.duermen(cuarto, momento));
     final cama = cuarto == Cuarto.sala ? 'camita' : 'cama';
     return [
       for (final l in cuarto.lugares)
@@ -1230,10 +1315,14 @@ class EstadoCasita {
       else if (enLaTina)
         Casita.asset('banando_${tick % 4 < 2 ? 1 : 2}')
       else if (duermen) ...[
-        Casita.asset('dormidos_$cama'),
+        Casita.asset(soloBlanco ? 'dormido_blanco_$cama' : 'dormidos_$cama'),
         Casita.asset('zzz_${cama}_${tick % 6 < 3 ? 1 : 2}'),
-      ] else
-        for (final g in const ['naranja', 'blanco']) ...[
+      ] else ...[
+        if (aqui == Escena.picnic) Casita.asset('escena_picnic_atras'),
+        for (final g in [
+          'naranja',
+          if (aqui != Escena.medianoche) 'blanco',
+        ]) ...[
           // Cada gatito mueve la cola a su ritmo y parpadea de vez en cuando.
           Casita.asset(
             (tick + (g == 'blanco' ? 3 : 0)) % 8 >= 6
@@ -1245,10 +1334,15 @@ class EstadoCasita {
           for (final p in Parte.values)
             if (prenda(g, p) case final c?) c.assetRopa(g),
         ],
+        if (aqui != null) aqui.capa(tick),
+      ],
       // Los bebés pasean (o duermen) encima del piso: ver [PaseoBebe].
       if (conMuebles && bebes.isNotEmpty)
         momento == Momento.noche ? Casita.bebesDurmiendo : Casita.bebesPaseando,
       if (momento != Momento.dia) Casita.asset(momento.name),
+      // El brillo de la tele en la penumbra.
+      if (conGatitos && aqui == Escena.drama && momento != Momento.dia)
+        Casita.asset('escena_drama_luz_${tick % 4 < 2 ? 1 : 2}'),
       if (momento == Momento.noche && conMuebles)
         for (final l in cuarto.lugares)
           if (puesto(l) case final c? when Casita.conLuz.contains(c.id))

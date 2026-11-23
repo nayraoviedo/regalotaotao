@@ -189,7 +189,7 @@ class _CuartoVivoState extends State<CuartoVivo> {
       tick: quieto ? 0 : _tick,
       banando: widget.banando,
       onBebe: widget.onBebe,
-      ahora: widget.ahora,
+      ahora: widget.ahora ?? DateTime.now(),
     );
   }
 }
