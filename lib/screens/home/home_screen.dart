@@ -140,6 +140,10 @@ class _HomeBodyState extends State<_HomeBody> {
   /// La primera vez que se llega al Inicio, los gatitos enseñan la app.
   Future<void> _tutorialPrimeraVez() async {
     if (!await TutorialScreen.debeMostrarse(widget.me.uid)) return;
+    // Un ratito para que llegue el nombre de la pareja (sale en el texto).
+    for (var i = 0; i < 20 && mounted && widget.partner == null; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
     if (!mounted) return;
     await TutorialScreen.abrir(context, me: widget.me, partner: widget.partner);
   }
