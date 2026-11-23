@@ -6,6 +6,7 @@ import '../models/bucket_item.dart';
 import '../models/daily_card.dart';
 import 'db.dart';
 import 'notify_service.dart';
+import 'racha_service.dart';
 
 export '../models/daily_card.dart';
 
@@ -228,10 +229,12 @@ class TogetherService {
     return [...mazo];
   }
 
-  Future<void> answerToday(String coupleId, String uid, String answer) =>
-      Db.coupleSub(coupleId, 'dailyAnswers').doc(todayKey()).set({
-        'answers': {uid: answer},
-      }, SetOptions(merge: true));
+  Future<void> answerToday(String coupleId, String uid, String answer) async {
+    await Db.coupleSub(coupleId, 'dailyAnswers').doc(todayKey()).set({
+      'answers': {uid: answer},
+    }, SetOptions(merge: true));
+    await RachaService.instance.marcarHoy(coupleId, uid);
+  }
 
   // ---- Cosas por hacer juntos ----
   Stream<List<BucketItem>> watchBucket(String coupleId) =>

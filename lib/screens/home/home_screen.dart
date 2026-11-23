@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
@@ -5,6 +7,8 @@ import '../../models/couple.dart';
 import '../../models/mood.dart';
 import '../../services/couple_service.dart';
 import '../../services/mood_service.dart';
+import '../../services/racha_service.dart';
+import '../../services/reward_service.dart';
 import '../../services/together_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
@@ -15,6 +19,9 @@ import '../mood/mood_screen.dart';
 import '../notes/cartas/avioncito.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_screen.dart';
+import '../pomodoro/reward_sheets.dart' show pickReward;
+import '../racha/racha_widgets.dart';
+import '../together/gatitos.dart';
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
 
@@ -78,6 +85,135 @@ class _HomeBody extends StatefulWidget {
 class _HomeBodyState extends State<_HomeBody> {
   int _tab = HomeTabs.tabInicio;
 
+  // ---- Racha de pareja ----
+  final _racha = ValueNotifier<Racha?>(null);
+  StreamSubscription<Racha>? _rachaSub;
+  String? _rachaDe;
+
+  /// Premios de racha ya revisados en esta sesión (para no leerlos de nuevo).
+  final _premiosRevisados = <String>{};
+  bool _celebrando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _escucharRacha();
+  }
+
+  @override
+  void didUpdateWidget(_HomeBody old) {
+    super.didUpdateWidget(old);
+    _escucharRacha();
+  }
+
+  @override
+  void dispose() {
+    _rachaSub?.cancel();
+    _racha.dispose();
+    super.dispose();
+  }
+
+  void _escucharRacha() {
+    final couple = widget.couple;
+    final pareja = couple.partnerOf(widget.me.uid);
+    final clave = '${couple.id}/$pareja';
+    if (_rachaDe == clave) return;
+    _rachaDe = clave;
+    _rachaSub?.cancel();
+    _rachaSub = RachaService.instance
+        .watch(couple.id, widget.me.uid, pareja)
+        .listen((r) {
+          _racha.value = r;
+          _revisarPremio(r);
+        }, onError: (_) {});
+  }
+
+  /// Al llegar a 7, 30, 60… días, cada uno recibe su premio una vez.
+  Future<void> _revisarPremio(Racha r) async {
+    final inicio = r.inicio;
+    if (inicio == null || _celebrando) return;
+    final coupleId = widget.couple.id;
+    final uid = widget.me.uid;
+    for (final meta in r.metasAlcanzadas) {
+      final id = RachaService.logroId(meta, inicio, uid);
+      if (!_premiosRevisados.add(id)) continue;
+      _celebrando = true;
+      try {
+        if (await RachaService.instance.yaCelebrado(coupleId, id)) continue;
+        await RachaService.instance.guardarLogro(
+          coupleId,
+          uid,
+          meta: meta,
+          inicio: inicio,
+        );
+        if (!mounted) return;
+        await _celebrar(meta, id);
+      } catch (_) {
+        // Sin conexión: se vuelve a intentar la próxima vez.
+        _premiosRevisados.remove(id);
+      } finally {
+        _celebrando = false;
+      }
+      return;
+    }
+  }
+
+  Future<void> _celebrar(int meta, String logroId) {
+    final me = widget.me;
+    final partner = widget.partner;
+    final coupleId = widget.couple.id;
+    final partnerUid = widget.couple.partnerOf(me.uid);
+    final partnerName = partner?.name ?? 'Tu pareja';
+    return showRachaPremio(
+      context,
+      meta: meta,
+      gatitos: Gatito.dePareja(me, partner),
+      partnerName: partnerName,
+      onEscoger: () async {
+        final reward = await pickReward(
+          context,
+          coupleId: coupleId,
+          uid: me.uid,
+          partnerUid: partnerUid,
+          partnerName: partnerName,
+          motivo: 'Llegaron a $meta días de racha',
+        );
+        if (reward == null) return null;
+        try {
+          await RewardService.instance.chooseReward(coupleId, logroId, reward);
+        } on RewardAlreadyChosen catch (e) {
+          return e.rewardTitle;
+        }
+        return reward.title;
+      },
+    );
+  }
+
+  void _verRacha() {
+    final me = widget.me;
+    final couple = widget.couple;
+    final racha = _racha.value;
+    if (racha == null) return;
+    final notifier = ValueNotifier<Racha>(racha);
+    void sync() {
+      final r = _racha.value;
+      if (r != null) notifier.value = r;
+    }
+
+    _racha.addListener(sync);
+    showRachaSheet(
+      context,
+      racha: notifier,
+      gatitos: Gatito.dePareja(me, widget.partner),
+      partnerName: widget.partner?.name ?? 'Tu pareja',
+      onAnimo: () => _open(MoodScreen(me: me, coupleId: couple.id)),
+      onPregunta: () => _open(DailyQuestionScreen(me: me, couple: couple)),
+    ).whenComplete(() {
+      _racha.removeListener(sync);
+      notifier.dispose();
+    });
+  }
+
   void _open(Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
@@ -106,26 +242,31 @@ class _HomeBodyState extends State<_HomeBody> {
       stream: MoodService.instance.watch(couple.id, me.uid),
       builder: (context, mio) => StreamBuilder<MoodEntry?>(
         stream: MoodService.instance.watch(couple.id, partnerUid),
-        builder: (context, suyo) => InicioView(
-          me: me,
-          partner: partner,
-          dias: couple.daysTogether,
-          miAnimo: mio.data?.mood,
-          suAnimo: suyo.data?.mood,
-          onTeExtrano: () => _teExtrano(partnerUid, partnerName),
-          onDiasJuntos: () => setState(() => _tab = HomeTabs.tabNosotros),
-          onAbrir: (seccion) => _open(switch (seccion) {
-            SeccionInicio.animo => MoodScreen(me: me, coupleId: couple.id),
-            SeccionInicio.pomodoro => PomodoroScreen(me: me, couple: couple),
-            SeccionInicio.pregunta => DailyQuestionScreen(
-              me: me,
-              couple: couple,
-            ),
-            SeccionInicio.porHacer => BucketListScreen(
-              me: me,
-              coupleId: couple.id,
-            ),
-          }),
+        builder: (context, suyo) => ValueListenableBuilder<Racha?>(
+          valueListenable: _racha,
+          builder: (context, racha, _) => InicioView(
+            me: me,
+            racha: racha,
+            onRacha: _verRacha,
+            partner: partner,
+            dias: couple.daysTogether,
+            miAnimo: mio.data?.mood,
+            suAnimo: suyo.data?.mood,
+            onTeExtrano: () => _teExtrano(partnerUid, partnerName),
+            onDiasJuntos: () => setState(() => _tab = HomeTabs.tabNosotros),
+            onAbrir: (seccion) => _open(switch (seccion) {
+              SeccionInicio.animo => MoodScreen(me: me, coupleId: couple.id),
+              SeccionInicio.pomodoro => PomodoroScreen(me: me, couple: couple),
+              SeccionInicio.pregunta => DailyQuestionScreen(
+                me: me,
+                couple: couple,
+              ),
+              SeccionInicio.porHacer => BucketListScreen(
+                me: me,
+                coupleId: couple.id,
+              ),
+            }),
+          ),
         ),
       ),
     );

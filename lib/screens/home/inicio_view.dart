@@ -3,9 +3,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
 import '../../models/mood.dart';
+import '../../models/racha.dart';
 import '../../theme.dart';
 import '../../widgets/mood_image.dart';
 import '../../widgets/user_avatar.dart';
+import '../racha/racha_widgets.dart';
 
 /// Secciones a las que se entra desde las tarjetas del inicio.
 enum SeccionInicio { animo, pomodoro, pregunta, porHacer }
@@ -59,6 +61,8 @@ class InicioView extends StatelessWidget {
     required this.onTeExtrano,
     required this.onDiasJuntos,
     required this.onAbrir,
+    this.racha,
+    this.onRacha,
   });
 
   final AppUser me;
@@ -71,6 +75,10 @@ class InicioView extends StatelessWidget {
   final VoidCallback onTeExtrano;
   final VoidCallback onDiasJuntos;
   final void Function(SeccionInicio) onAbrir;
+
+  /// Racha de pareja; `null` mientras carga (no se muestra).
+  final Racha? racha;
+  final VoidCallback? onRacha;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +102,8 @@ class InicioView extends StatelessWidget {
                     partner: partner,
                     dias: dias,
                     onDiasJuntos: onDiasJuntos,
+                    racha: racha,
+                    onRacha: onRacha,
                   ),
                 ),
               ],
@@ -161,12 +171,16 @@ class _Pareja extends StatelessWidget {
     required this.partner,
     required this.dias,
     required this.onDiasJuntos,
+    this.racha,
+    this.onRacha,
   });
 
   final AppUser me;
   final AppUser? partner;
   final int? dias;
   final VoidCallback onDiasJuntos;
+  final Racha? racha;
+  final VoidCallback? onRacha;
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +242,10 @@ class _Pareja extends StatelessWidget {
             ),
           ),
         ),
+        if (racha case final r?) ...[
+          const SizedBox(height: 8),
+          RachaPastilla(racha: r, onTap: onRacha ?? () {}),
+        ],
       ],
     );
   }
