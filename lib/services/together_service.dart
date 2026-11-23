@@ -8,6 +8,7 @@ import '../models/daily_card.dart';
 import '../models/mimo.dart';
 import 'db.dart';
 import 'notify_service.dart';
+import 'preguntas_propias_service.dart';
 import 'racha_service.dart';
 
 export '../models/daily_card.dart';
@@ -170,10 +171,31 @@ class TogetherService {
       ], questions.length);
     }
 
+    // Las preguntas que escribieron ustedes salen antes que las del mazo.
+    final propias = PreguntasPropiasService.instance;
+    final propia = PreguntaPropia.siguiente(await propias.todas(coupleId));
+
     return FirebaseFirestore.instance.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final existing = DailyCard.fromData(snap.data(), deck: questions).card;
       if (existing != null) return existing;
+      if (propia != null) {
+        final pRef = propias.ref(coupleId, propia.id);
+        final p = await tx.get(pRef);
+        if (p.exists && p.data()?['usadaEn'] == null) {
+          final card = PreguntaPropia.naipe(propia.id, questions.length);
+          tx.update(pRef, {'usadaEn': todayKey()});
+          tx.set(ref, {
+            'carta': card,
+            'question': p.data()?['texto'] ?? propia.texto,
+            'autor': propia.autor,
+            'propia': propia.id,
+            'drawnBy': uid,
+            if (!snap.exists) 'answers': <String, String>{},
+          }, SetOptions(merge: true));
+          return card;
+        }
+      }
       final c = await tx.get(coupleRef);
       final guardadas = (c.data()?['mazoUsado'] as List?)
           ?.map((e) => (e as num).toInt())

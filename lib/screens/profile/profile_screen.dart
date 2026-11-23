@@ -9,6 +9,7 @@ import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
 import '../together/elegir_gatito.dart';
+import 'datos_curiosos_screen.dart';
 import '../together/together_screen.dart';
 import '../../widgets/doodle.dart';
 
@@ -169,6 +170,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElegirGatito(me: user, partner: partner),
                   const SizedBox(height: 8),
+                  DatosCuriososCard(coupleId: c.id, uid: user.uid),
 
                   // Aniversario: se guarda en el espacio de pareja, así que
                   // si uno lo elige, al otro le aparece directamente.

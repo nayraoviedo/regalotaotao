@@ -5,6 +5,7 @@ class DailyCard {
     this.question,
     this.drawnBy,
     this.answers = const {},
+    this.autor,
   });
 
   /// Número del naipe (posición en `TogetherService.questions`).
@@ -13,6 +14,9 @@ class DailyCard {
   final String? question;
   final String? drawnBy;
   final Map<String, String> answers;
+
+  /// Si la pregunta de hoy la escribió uno de los dos, su uid.
+  final String? autor;
 
   bool get drawn => card != null;
 
@@ -33,6 +37,7 @@ class DailyCard {
       question: question,
       drawnBy: d['drawnBy'] as String?,
       answers: answers,
+      autor: d['autor'] as String?,
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../services/together_service.dart';
 import 'carta_style.dart';
+import 'mis_preguntas.dart';
 import 'naipes.dart';
 import '../../widgets/doodle.dart';
 
@@ -70,11 +71,26 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
     }
   }
 
+  void _misPreguntas() => abrirMisPreguntas(
+    context,
+    coupleId: widget.couple.id,
+    uid: widget.me.uid,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CartaStyle.crema,
-      appBar: AppBar(title: const Text('Pregunta del día')),
+      appBar: AppBar(
+        title: const Text('Pregunta del día'),
+        actions: [
+          IconButton(
+            tooltip: 'Agregar mis preguntas al mazo',
+            icon: const Icon(Icons.edit_note),
+            onPressed: _misPreguntas,
+          ),
+        ],
+      ),
       body: StreamBuilder<DailyCard>(
         stream: _stream,
         builder: (context, snap) {
@@ -159,7 +175,8 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
   Widget _vistaCarta(DailyCard hoy, String? mine) {
     final total = TogetherService.questions.length;
     final carta = hoy.card!;
-    final pregunta = carta < total
+    final propia = hoy.autor != null;
+    final pregunta = carta < total && !propia
         ? TogetherService.questions[carta]
         : (hoy.question ?? '');
     final theirs = hoy.answers[widget.couple.partnerOf(widget.me.uid)];
@@ -168,7 +185,16 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
       key: const ValueKey('carta'),
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
       children: [
-        CartaColgante(carta: carta, pregunta: pregunta, total: total),
+        CartaColgante(
+          carta: carta,
+          pregunta: pregunta,
+          total: total,
+          etiqueta: !propia
+              ? null
+              : hoy.autor == widget.me.uid
+              ? 'Pregunta de hoy · la escribiste tú ✍️'
+              : 'Pregunta de hoy · la escribió tu pareja ✍️',
+        ),
         const SizedBox(height: 28),
         if (mine == null) ...[
           if (theirs != null)
@@ -193,6 +219,12 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
             pendiente: theirs == null,
           ),
         ],
+        const SizedBox(height: 20),
+        TextButton.icon(
+          onPressed: _misPreguntas,
+          icon: const Icon(Icons.edit_note),
+          label: const Text('Agregar una pregunta al mazo'),
+        ),
       ],
     );
   }
