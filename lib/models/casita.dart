@@ -27,6 +27,9 @@ class Casita {
   // ---- Cuántos pescaditos da cada cosa ----
   static const porPregunta = 10;
   static const porAnimo = 5;
+
+  /// Completar la respiración guiada (una vez al día por persona).
+  static const porRespirar = 8;
   static const porPomodoro = 10;
   static const porPomodoroJuntos = 15;
 
@@ -1602,7 +1605,8 @@ class Propuesta {
 /// Un movimiento del monedero: `couples/{id}/casitaMovs/{id}`.
 ///
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
-/// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `pomodoro_{logro}`,
+/// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `respira_{día}_{uid}`,
+/// `pomodoro_{logro}`,
 /// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
 class Movimiento {
   const Movimiento({
@@ -1616,6 +1620,7 @@ class Movimiento {
 
   static const pregunta = 'pregunta';
   static const animo = 'animo';
+  static const respira = 'respira';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
@@ -1648,6 +1653,7 @@ class Movimiento {
   String get que => switch (tipo) {
     pregunta => 'respondió la pregunta del día',
     animo => 'contó cómo se siente',
+    respira => 'respiró con los gatitos',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {

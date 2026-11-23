@@ -238,6 +238,14 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('se guarda cuándo sembraron', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:{tomatera:1764000000000}},{merge:true}));
   await no('lo sembrado es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:'hoy'},{merge:true}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
+  // Respirar con los gatitos: 8 pescaditos, una vez al día por persona.
+  const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data().pescaditos;
+  await no('la respiración no da 50', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:50,ref:hoy},hay+50));
+  await no('B no cobra la respiración de A', ganar('B',`respira_${hoy}_A`,{tipo:'respira',cantidad:8,ref:hoy},hay+8));
+  await no('A no cobra la respiración de un día viejo', ganar('A','respira_2025-01-01_A',{tipo:'respira',cantidad:8,ref:'2025-01-01'},hay+8));
+  await ok('A gana 8 por respirar', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:8,ref:hoy},hay+8));
+  await no('A no cobra la respiración dos veces', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:8,ref:hoy},hay+16));
+  await ok('B también gana 8 por respirar', ganar('B',`respira_${hoy}_B`,{tipo:'respira',cantidad:8,ref:hoy},hay+16));
   await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
 }
