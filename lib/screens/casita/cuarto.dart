@@ -7,9 +7,19 @@ typedef ToqueCasita = void Function(Lugar? lugar);
 
 /// El cuarto de la casita en pixel art: todas las capas una encima de otra.
 class CuartoCasita extends StatelessWidget {
-  const CuartoCasita({super.key, required this.estado, this.onToque});
+  const CuartoCasita({
+    super.key,
+    required this.estado,
+    this.cuarto = Cuarto.sala,
+    this.conMuebles = true,
+    this.onToque,
+  });
 
   final EstadoCasita estado;
+  final Cuarto cuarto;
+
+  /// En false se dibuja vacío (un cuarto que todavía no abren).
+  final bool conMuebles;
 
   /// Si se da, tocar un mueble (o a los gatitos) avisa qué se tocó.
   final ToqueCasita? onToque;
@@ -18,9 +28,9 @@ class CuartoCasita extends StatelessWidget {
   static const zonaGatitos = ZonaCasita(20, 68, 41, 22);
 
   /// Qué hay en un punto del dibujo (en píxeles de 80×104).
-  static Object? queHay(double x, double y) {
+  static Object? queHay(double x, double y, [Cuarto cuarto = Cuarto.sala]) {
     if (zonaGatitos.contiene(x, y)) return zonaGatitos;
-    final lugares = [...Lugar.values]
+    final lugares = [...cuarto.lugares]
       ..sort((a, b) => (a.zona.w * a.zona.h).compareTo(b.zona.w * b.zona.h));
     for (final l in lugares) {
       if (l.zona.contiene(x, y)) return l;
@@ -33,7 +43,8 @@ class CuartoCasita extends StatelessWidget {
     final capas = Stack(
       fit: StackFit.expand,
       children: [
-        for (final a in estado.capas()) CapaCasita(a, key: ValueKey(a)),
+        for (final a in estado.capas(cuarto, conMuebles))
+          CapaCasita(a, key: ValueKey(a)),
       ],
     );
     return AspectRatio(
@@ -46,7 +57,7 @@ class CuartoCasita extends StatelessWidget {
                 onTapUp: (d) {
                   final x = d.localPosition.dx / c.maxWidth * Casita.ancho;
                   final y = d.localPosition.dy / c.maxHeight * Casita.alto;
-                  final hay = queHay(x, y);
+                  final hay = queHay(x, y, cuarto);
                   if (hay is Lugar) onToque!(hay);
                   if (hay == zonaGatitos) onToque!(null);
                 },

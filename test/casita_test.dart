@@ -23,10 +23,18 @@ void main() {
       for (final a in [
         Casita.asset('gatito_naranja'),
         Casita.asset('gatito_blanco'),
-        Casita.asset(Casita.marco),
+        Casita.asset('marco'),
+        Casita.asset('marco_jardin'),
         Casita.iconoPescadito,
       ]) {
         expect(File(a).existsSync(), isTrue, reason: 'falta $a');
+      }
+    });
+
+    test('el aviso del Worker tiene el nombre de todo lo que se compra', () {
+      final worker = File('worker/src/index.js').readAsStringSync();
+      for (final c in Catalogo.cosas.where((c) => !c.gratis)) {
+        expect(worker, contains('  ${c.id}: "'), reason: c.id);
       }
     });
 
@@ -87,6 +95,48 @@ void main() {
       expect(CuartoCasita.queHay(55, 25), Lugar.cuadro);
       expect(CuartoCasita.queHay(70, 88), Lugar.camita);
       expect(CuartoCasita.queHay(30, 95), Lugar.alfombra);
+      expect(CuartoCasita.queHay(10, 40, Cuarto.cocina), Lugar.refri);
+      expect(CuartoCasita.queHay(60, 50, Cuarto.dormitorio), Lugar.cama);
+      expect(CuartoCasita.queHay(66, 88, Cuarto.jardin), Lugar.estanque);
+    });
+
+    test('los cuartos nuevos se abren comprándolos', () {
+      const cerrado = EstadoCasita.vacio;
+      expect(cerrado.abierto(Cuarto.sala), isTrue);
+      expect(cerrado.abierto(Cuarto.cocina), isFalse);
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', 'refri_azul'],
+        'puestos': {'refri': 'refri_azul'},
+      });
+      expect(e.abierto(Cuarto.cocina), isTrue);
+      expect(e.capas(Cuarto.cocina), [
+        'assets/casita/cuarto_cocina.png',
+        'assets/casita/refri_azul.png',
+        'assets/casita/gatito_naranja.png',
+        'assets/casita/gatito_blanco.png',
+        'assets/casita/marco.png',
+      ]);
+      // El jardín tiene su propio marco de setos.
+      expect(e.capas(Cuarto.jardin).last, 'assets/casita/marco_jardin.png');
+      // Cada lugar es de un solo cuarto y cada cuarto tiene qué comprar.
+      for (final c in Cuarto.values) {
+        for (final l in c.lugares) {
+          expect(
+            Catalogo.de(l).length,
+            greaterThanOrEqualTo(2),
+            reason: l.name,
+          );
+        }
+        if (c != Cuarto.sala) expect(Catalogo.abre(c)!.precio, c.precio);
+      }
+      const m = Movimiento(
+        id: 'compra_cuarto_cocina',
+        tipo: Movimiento.compra,
+        uid: 'a',
+        cantidad: -200,
+        ref: 'cuarto_cocina',
+      );
+      expect(m.que, 'abrió la cocina');
     });
   });
 
@@ -110,6 +160,7 @@ void main() {
       EstadoCasita estado, {
       List<(Cosa, String?)>? compras,
       List<(Lugar, Cosa?)>? puestos,
+      Cuarto? cuarto,
     }) => MaterialApp(
       home: CasitaView(
         estado: estado,
@@ -126,6 +177,7 @@ void main() {
         onComprar: (c, g) async => compras?.add((c, g)),
         onPoner: (l, c) async => puestos?.add((l, c)),
         onVestir: (_, _, _) async {},
+        cuartoInicial: cuarto,
       ),
     );
 
@@ -176,6 +228,26 @@ void main() {
         (Lugar.sofa, 'sofa_rosa'),
         (Lugar.sofa, null),
       ]);
+    });
+
+    testWidgets('abrir la cocina con pescaditos', (t) async {
+      final compras = <(Cosa, String?)>[];
+      await t.pumpWidget(
+        pantalla(const EstadoCasita(pescaditos: 250), compras: compras),
+      );
+      await t.tap(find.text('Cocina').first);
+      await t.pumpAndSettle();
+      expect(find.text('Abrir cocina · '), findsOneWidget);
+      // Sus muebles no se compran hasta abrirla.
+      await t.tap(find.text('Estufa retro'));
+      await t.pump();
+      expect(find.textContaining('Primero abran cocina'), findsOneWidget);
+      await t.tap(find.text('Abrir cocina · '));
+      await t.pumpAndSettle();
+      expect(find.text('¿Comprar Cocina?'), findsOneWidget);
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'cuarto_cocina');
     });
 
     testWidgets('la ropita se compra para un gatito', (t) async {

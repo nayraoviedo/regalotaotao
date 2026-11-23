@@ -55,6 +55,7 @@ class CasitaView extends StatefulWidget {
     required this.onPoner,
     required this.onVestir,
     this.categoriaInicial,
+    this.cuartoInicial,
   });
 
   final EstadoCasita estado;
@@ -68,13 +69,61 @@ class CasitaView extends StatefulWidget {
   /// Categoría elegida al abrir (`null` = ropita).
   final Lugar? categoriaInicial;
 
+  /// Cuarto que se ve al abrir (la sala si no se dice).
+  final Cuarto? cuartoInicial;
+
   @override
   State<CasitaView> createState() => _CasitaViewState();
 }
 
 class _CasitaViewState extends State<CasitaView> {
   /// Categoría de la tienda: un lugar del cuarto, o `null` para la ropita.
-  late Lugar? _categoria = widget.categoriaInicial ?? Lugar.sofa;
+  late Cuarto _cuarto = widget.cuartoInicial ?? Cuarto.sala;
+  late Lugar? _categoria =
+      widget.categoriaInicial ??
+      _ordenDe(widget.cuartoInicial ?? Cuarto.sala).first;
+
+  /// Orden de las categorías de la tienda: lo más vistoso primero.
+  static List<Lugar> _ordenDe(Cuarto cuarto) => cuarto == Cuarto.sala
+      ? const [
+          Lugar.sofa,
+          Lugar.alfombra,
+          Lugar.lampara,
+          Lugar.ventana,
+          Lugar.cuadro,
+          Lugar.planta,
+          Lugar.camita,
+          Lugar.pared,
+          Lugar.piso,
+        ]
+      : switch (cuarto) {
+          Cuarto.cocina => const [
+            Lugar.estufa,
+            Lugar.refri,
+            Lugar.mesa,
+            Lugar.repisa,
+            Lugar.comedero,
+          ],
+          Cuarto.dormitorio => const [
+            Lugar.cama,
+            Lugar.ropero,
+            Lugar.velador,
+            Lugar.alfombraCama,
+            Lugar.cuadroCama,
+          ],
+          _ => const [
+            Lugar.arbol,
+            Lugar.asiento,
+            Lugar.estanque,
+            Lugar.flores,
+            Lugar.farol,
+          ],
+        };
+
+  void _verCuarto(Cuarto c) => setState(() {
+    _cuarto = c;
+    _categoria = _ordenDe(c).first;
+  });
   final _tiendaKey = GlobalKey();
 
   EstadoCasita get _estado => widget.estado;
@@ -113,6 +162,13 @@ class _CasitaViewState extends State<CasitaView> {
   }
 
   Future<void> _tocar(Cosa cosa) async {
+    if (cosa.lugar case final l? when !_estado.abierto(l.cuarto)) {
+      final abrir = Catalogo.abre(l.cuarto)!;
+      _aviso(
+        'Primero abran ${abrir.nombre.toLowerCase()} (${abrir.precio} pescaditos)',
+      );
+      return;
+    }
     if (!_estado.tiene(cosa)) return _comprar(cosa);
     if (cosa.esRopa) return _vestir(cosa);
     final lugar = cosa.lugar!;
@@ -195,7 +251,12 @@ class _CasitaViewState extends State<CasitaView> {
     if (ok != true) return;
     try {
       await widget.onComprar(cosa, gatito);
-      _aviso('¡${cosa.nombre} ya está en la casita!');
+      if (cosa.cuarto case final c?) {
+        _verCuarto(c);
+        _aviso('¡Abrieron ${cosa.nombre.toLowerCase()}! Ahora a decorarla');
+      } else {
+        _aviso('¡${cosa.nombre} ya está en la casita!');
+      }
     } on SinPescaditos catch (e) {
       _aviso('Les faltan ${e.faltan} pescaditos');
     } catch (_) {
@@ -270,6 +331,9 @@ class _CasitaViewState extends State<CasitaView> {
       cosa.esRopa ? _zonaRopa(gatito ?? 'naranja') : cosa.zona;
 
   List<String> _capasDe(Cosa cosa, {String? gatito}) {
+    if (cosa.cuarto case final c?) {
+      return _estado.capas(c, false);
+    }
     if (cosa.esRopa) {
       final g = gatito ?? 'naranja';
       return [Casita.asset('gatito_$g'), cosa.assetRopa(g)];
@@ -311,22 +375,42 @@ class _CasitaViewState extends State<CasitaView> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
+          _Cuartos(elegido: _cuarto, estado: _estado, onElegir: _verCuarto),
+          const SizedBox(height: 12),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),
-              child: CuartoCasita(estado: _estado, onToque: _elegir),
+              child: _estado.abierto(_cuarto)
+                  ? CuartoCasita(
+                      key: ValueKey(_cuarto),
+                      estado: _estado,
+                      cuarto: _cuarto,
+                      onToque: _elegir,
+                    )
+                  : _CuartoCerrado(
+                      key: ValueKey(_cuarto),
+                      estado: _estado,
+                      cuarto: _cuarto,
+                      onAbrir: () => _comprar(Catalogo.abre(_cuarto)!),
+                    ),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Toca un mueble o a los gatitos para cambiarlos',
+          Text(
+            _estado.abierto(_cuarto)
+                ? 'Toca un mueble o a los gatitos para cambiarlos'
+                : 'Ábranlo con pescaditos para empezar a decorarlo',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.gris, fontSize: 13),
+            style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
           const SizedBox(height: 20),
           _Titulo('Tienda', key: _tiendaKey),
           const SizedBox(height: 8),
-          _Categorias(elegida: _categoria, onElegir: _elegir),
+          _Categorias(
+            orden: _ordenDe(_cuarto),
+            elegida: _categoria,
+            onElegir: _elegir,
+          ),
           const SizedBox(height: 12),
           _Vitrina(
             cosas: _categoria == null
@@ -388,8 +472,13 @@ class _Titulo extends StatelessWidget {
 }
 
 class _Categorias extends StatelessWidget {
-  const _Categorias({required this.elegida, required this.onElegir});
+  const _Categorias({
+    required this.orden,
+    required this.elegida,
+    required this.onElegir,
+  });
 
+  final List<Lugar> orden;
   final Lugar? elegida;
   final ValueChanged<Lugar?> onElegir;
 
@@ -404,18 +493,6 @@ class _Categorias extends StatelessWidget {
         onSelected: (_) => onElegir(lugar),
       ),
     );
-    // Orden de la tienda: lo más vistoso primero.
-    const orden = [
-      Lugar.sofa,
-      Lugar.alfombra,
-      Lugar.lampara,
-      Lugar.ventana,
-      Lugar.cuadro,
-      Lugar.planta,
-      Lugar.camita,
-      Lugar.pared,
-      Lugar.piso,
-    ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -424,6 +501,108 @@ class _Categorias extends StatelessWidget {
           for (final l in orden) chip(l.nombre, l),
         ],
       ),
+    );
+  }
+}
+
+/// Pestañas de los cuartos. Los que faltan abrir muestran su precio.
+class _Cuartos extends StatelessWidget {
+  const _Cuartos({
+    required this.elegido,
+    required this.estado,
+    required this.onElegir,
+  });
+
+  final Cuarto elegido;
+  final EstadoCasita estado;
+  final ValueChanged<Cuarto> onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final c in Cuarto.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                showCheckmark: false,
+                selected: elegido == c,
+                selectedColor: AppTheme.azul,
+                labelStyle: TextStyle(
+                  color: elegido == c ? AppTheme.crema : AppTheme.azul,
+                  fontWeight: FontWeight.w600,
+                ),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(c.nombre),
+                    if (!estado.abierto(c)) ...[
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.lock_rounded,
+                        size: 14,
+                        color: elegido == c ? AppTheme.crema : AppTheme.gris,
+                      ),
+                    ],
+                  ],
+                ),
+                onSelected: (_) => onElegir(c),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Un cuarto que todavía no abren: vacío, más clarito y con su precio.
+class _CuartoCerrado extends StatelessWidget {
+  const _CuartoCerrado({
+    super.key,
+    required this.estado,
+    required this.cuarto,
+    required this.onAbrir,
+  });
+
+  final EstadoCasita estado;
+  final Cuarto cuarto;
+  final VoidCallback onAbrir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Opacity(
+          opacity: 0.45,
+          child: CuartoCasita(
+            estado: estado,
+            cuarto: cuarto,
+            conMuebles: false,
+          ),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+          ),
+          onPressed: onAbrir,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  'Abrir ${cuarto.nombre.toLowerCase()} · ',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Pescaditos(cuarto.precio, tamano: 14, color: AppTheme.amarillo),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
