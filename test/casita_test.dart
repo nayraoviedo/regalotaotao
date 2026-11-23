@@ -401,6 +401,23 @@ void main() {
       );
     });
 
+    test('en el huerto no se repite la palabra', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_huerto'],
+      });
+      for (var m = 0; m < 20 * 60; m += 30) {
+        final t = DateTime(2026, 11, 23, 8).add(Duration(minutes: m));
+        if (e.escena(t) == Escena.huerto) {
+          expect(
+            CasaView.queHacen(e, t),
+            'Los gatitos están regando el huerto en el jardín',
+          );
+          return;
+        }
+      }
+      fail('nunca riegan el huerto');
+    });
+
     test('escenas de pareja según la hora', () {
       final e = EstadoCasita.fromMap({
         'tenemos': ['cuarto_dormitorio', 'cama_estrellas', 'cuarto_cocina'],

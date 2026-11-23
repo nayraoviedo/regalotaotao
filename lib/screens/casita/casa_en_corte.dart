@@ -333,6 +333,8 @@ class CasaView extends StatelessWidget {
   static String _el(Cuarto c) => switch (c) {
     Cuarto.cocina => 'la cocina',
     Cuarto.sala => 'la sala',
+    // El huerto es parte del jardín ("regando el huerto en el jardín").
+    Cuarto.huerto => 'el jardín',
     _ => 'el ${c.nombre.toLowerCase()}',
   };
 }

@@ -105,7 +105,7 @@ enum Escena {
   burbujas(Cuarto.bano, 'jugando con burbujas'),
   picnic(Cuarto.jardin, 'de picnic'),
   pelotas(Cuarto.juegos, 'jugando con pelotitas'),
-  huerto(Cuarto.huerto, 'regando las plantitas'),
+  huerto(Cuarto.huerto, 'regando el huerto'),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
   medianoche(Cuarto.cocina, 'comiendo a medianoche');
