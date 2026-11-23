@@ -9,6 +9,7 @@ import '../../widgets/mood_image.dart';
 import '../../widgets/user_avatar.dart';
 import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
+import 'mimos.dart';
 
 /// Secciones a las que se entra desde las tarjetas del inicio.
 enum SeccionInicio { animo, pomodoro, pregunta, porHacer }
@@ -65,6 +66,7 @@ class InicioView extends StatelessWidget {
     this.miGatito = Gatito.naranja,
     this.suGatito = Gatito.blanco,
     this.onAbrazo,
+    this.onMimo,
     this.misTeExtrano,
     this.susTeExtrano,
     this.racha,
@@ -96,6 +98,9 @@ class InicioView extends StatelessWidget {
 
   /// Manda un abrazo a la pareja. Se ofrece cuando su ánimo no anda bien.
   final Future<void> Function()? onAbrazo;
+
+  /// Manda un beso o un abrazo desde el botón de "Te extraño".
+  final void Function(Mimo)? onMimo;
 
   /// Cuántos "te extraño" mandó cada uno; `null` mientras se cargan.
   final int? misTeExtrano;
@@ -134,7 +139,7 @@ class InicioView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _BotonTeExtrano(onTap: onTeExtrano),
+                  BotonMimos(onTeExtrano: onTeExtrano, onMimo: onMimo),
                   ConteoTeExtrano(
                     mios: misTeExtrano,
                     suyos: susTeExtrano,
@@ -291,25 +296,6 @@ class _Pareja extends StatelessWidget {
           RachaPastilla(racha: r, onTap: onRacha ?? () {}),
         ],
       ],
-    );
-  }
-}
-
-class _BotonTeExtrano extends StatelessWidget {
-  const _BotonTeExtrano({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onTap,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(58),
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-      ),
-      icon: const Icon(Icons.favorite, color: AppTheme.amarillo),
-      label: const Text('Te extraño'),
     );
   }
 }

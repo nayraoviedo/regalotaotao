@@ -106,10 +106,18 @@ const KINDS = {
     collection: "abrazos",
     check: (d, uid, partner) => d.from === uid && d.to === partner,
     dedupeKey: () => "enviado",
-    message: (name) => ({
+    message: (name, d) => ({
       title: "🤗 Un abrazo para ti",
-      body: `${name} vio cómo te sientes y te manda un abrazo apretado`,
+      body: d.mood
+        ? `${name} vio cómo te sientes y te manda un abrazo apretado`
+        : `${name} te manda un abrazo apretado`,
     }),
+  },
+  kiss: {
+    collection: "besos",
+    check: (d, uid, partner) => d.from === uid && d.to === partner,
+    dedupeKey: () => "enviado",
+    message: (name) => ({ title: "😘 Un beso para ti", body: `${name} te mandó un beso` }),
   },
   letter: {
     collection: "letters",

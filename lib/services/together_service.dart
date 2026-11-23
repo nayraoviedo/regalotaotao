@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/bucket_item.dart';
 import '../models/recomendacion.dart' show Resena;
 import '../models/daily_card.dart';
+import '../models/mimo.dart';
 import 'db.dart';
 import 'notify_service.dart';
 import 'racha_service.dart';
@@ -295,22 +296,45 @@ class TogetherService {
     NotifyService.instance.send(NotifyKind.missYou, coupleId, ref.id);
   }
 
-  /// Abrazo para la pareja cuando su ánimo no anda bien. Se guarda en
-  /// `couples/{id}/abrazos` y el Worker le manda la notificación.
+  /// Abrazo para la pareja. Se guarda en `couples/{id}/abrazos` y el
+  /// Worker le manda la notificación. [mood] es su ánimo cuando se manda
+  /// desde la tarjeta de "está triste"; desde el botón del inicio va vacío.
   Future<void> sendHug(
     String coupleId, {
     required String from,
     required String to,
-    required String mood,
+    String? mood,
   }) async {
     final ref = await Db.coupleSub(coupleId, 'abrazos').add({
       'from': from,
       'to': to,
-      'mood': mood,
+      'mood': ?mood,
       'createdAt': FieldValue.serverTimestamp(),
     });
     NotifyService.instance.send(NotifyKind.hug, coupleId, ref.id);
   }
+
+  /// Beso para la pareja, en `couples/{id}/besos`.
+  Future<void> sendKiss(
+    String coupleId, {
+    required String from,
+    required String to,
+  }) async {
+    final ref = await Db.coupleSub(
+      coupleId,
+      'besos',
+    ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
+    NotifyService.instance.send(NotifyKind.kiss, coupleId, ref.id);
+  }
+
+  /// Los últimos besos o abrazos de la pareja (de los dos), para mostrar la
+  /// animación al que los recibe. Solo 5, para leer poquito.
+  Stream<List<MimoRecibido>> watchMimos(String coupleId, Mimo mimo) =>
+      Db.coupleSub(coupleId, mimo.coleccion)
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .snapshots()
+          .map((q) => [for (final d in q.docs) MimoRecibido.fromDoc(mimo, d)]);
 
   /// Cuántos "te extraño" mandó [from] en esta pareja.
   ///
