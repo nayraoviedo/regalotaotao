@@ -473,23 +473,13 @@ class _GatitoProvisional extends CustomPainter {
       Paint()..color = Colors.white,
     );
 
-    // Antifaz plomo, más oscuro alrededor de los ojitos, con el hocico
-    // blanco en forma de "V", como el ragdoll.
+    // Manchitas plomo alrededor de los ojitos (la frente queda blanca),
+    // con el hocico blanco en forma de "V".
     canvas.save();
     canvas.clipPath(
       Path()..addOval(
         Rect.fromCenter(center: centro, width: s * 0.62, height: s * 0.46),
       ),
-    );
-    canvas.drawPath(
-      _peludo(
-        Offset(s * 0.5, s * 0.24),
-        s * 0.2,
-        s * 0.12,
-        mechones: 12,
-        largo: 0.2,
-      ),
-      plomoClaro,
     );
     for (final l in [-1.0, 1.0]) {
       final c = Offset(s * 0.5 + l * s * 0.135, s * 0.365);
