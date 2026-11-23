@@ -37,7 +37,7 @@ class CieloInicio extends StatelessWidget {
         asset,
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
-        errorBuilder: (_, _, _) => const DecoratedBox(
+        errorBuilder: (_, _, _) => DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -256,7 +256,7 @@ class _Pareja extends StatelessWidget {
           child: Text(
             '${me.name} & $partnerName',
             maxLines: 1,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppTheme.manuscrita,
               fontSize: 32,
               color: AppTheme.crema,
@@ -276,7 +276,7 @@ class _Pareja extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Doodle(
+                  Doodle(
                     Icons.favorite,
                     nombre: 'te_extrano',
                     size: 14,
@@ -292,7 +292,7 @@ class _Pareja extends StatelessWidget {
                           : '$dias días juntos',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppTheme.crema,
                         fontWeight: FontWeight.w600,
                       ),
@@ -391,7 +391,7 @@ class _AnimoDeHoy extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 14),
           child: Column(
             children: [
-              const Row(
+              Row(
                 children: [
                   Text(
                     'Mi ánimo',
@@ -572,7 +572,7 @@ class _SuGatitoTristeState extends State<SuGatitoTriste> {
                   Text(
                     '${widget.partnerName} está '
                     '${widget.animo.label.toLowerCase()}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.azul,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -649,7 +649,7 @@ class _Acceso extends StatelessWidget {
               Text(
                 titulo,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.azul,
                   fontWeight: FontWeight.w600,
                   height: 1.2,

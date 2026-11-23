@@ -138,7 +138,7 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Text(
                           user.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: AppTheme.manuscrita,
                             fontSize: 36,
                             color: AppTheme.azul,
@@ -176,10 +176,7 @@ class ProfileScreen extends StatelessWidget {
                   // si uno lo elige, al otro le aparece directamente.
                   Card(
                     child: ListTile(
-                      leading: const Doodle(
-                        Icons.favorite,
-                        color: AppTheme.azul,
-                      ),
+                      leading: Doodle(Icons.favorite, color: AppTheme.azul),
                       title: Text(
                         c.startDate == null
                             ? 'Elige la fecha de nuestro aniversario'
@@ -204,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   Card(
                     child: ListTile(
-                      leading: const Doodle(Icons.key, color: AppTheme.azul),
+                      leading: Doodle(Icons.key, color: AppTheme.azul),
                       title: const Text('Mi código de pareja'),
                       subtitle: Text(
                         user.pairCode,

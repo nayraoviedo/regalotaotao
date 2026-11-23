@@ -61,11 +61,7 @@ class DatoDelDia extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             d.texto,
-            style: const TextStyle(
-              color: AppTheme.azul,
-              fontSize: 16,
-              height: 1.35,
-            ),
+            style: TextStyle(color: AppTheme.azul, fontSize: 16, height: 1.35),
           ),
         ],
       ),

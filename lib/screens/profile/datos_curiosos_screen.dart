@@ -23,10 +23,7 @@ class DatosCuriososCard extends StatelessWidget {
         final n = snap.data?.length ?? 0;
         return Card(
           child: ListTile(
-            leading: const Doodle(
-              Icons.lightbulb_outline,
-              color: AppTheme.azul,
-            ),
+            leading: Doodle(Icons.lightbulb_outline, color: AppTheme.azul),
             title: const Text('Datos curiosos sobre mí'),
             subtitle: Text(
               n == 0
@@ -213,7 +210,7 @@ class _FilaDato extends StatelessWidget {
               children: [
                 Text(
                   d.texto,
-                  style: const TextStyle(color: AppTheme.azul, fontSize: 16),
+                  style: TextStyle(color: AppTheme.azul, fontSize: 16),
                 ),
                 if (esHoy) ...[
                   const SizedBox(height: 4),
@@ -227,7 +224,7 @@ class _FilaDato extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Editar',
-            icon: const Doodle(Icons.edit, size: 20, color: AppTheme.azul),
+            icon: Doodle(Icons.edit, size: 20, color: AppTheme.azul),
             onPressed: onEditar,
           ),
           IconButton(

@@ -8,6 +8,7 @@ import 'package:taotao/models/casita.dart';
 import 'package:taotao/screens/casita/casita_screen.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
+import 'package:taotao/theme.dart';
 
 void main() {
   group('Catálogo', () {
@@ -17,7 +18,17 @@ void main() {
       for (final c in Catalogo.cosas) {
         final archivos = c.esRopa
             ? [c.assetRopa('naranja'), c.assetRopa('blanco')]
+            : c.especial == Especial.stickers
+            ? [
+                for (final n in Catalogo.stickersDe[c.id]!)
+                  'assets/notas/sticker_$n.png',
+              ]
+            : c.especial == Especial.tema
+            ? <String>[]
             : [c.asset];
+        if (c.especial == Especial.tema) {
+          expect(TemaApp.de(c.claveTema).clave, c.claveTema, reason: c.id);
+        }
         for (final a in archivos) {
           expect(File(a).existsSync(), isTrue, reason: 'falta $a');
         }
@@ -47,6 +58,26 @@ void main() {
         }
       }
       expect(Catalogo.cosas.where((c) => c.gratis).length, 8);
+    });
+  });
+
+  group('Temas y stickers', () {
+    test('lo comprado se puede usar', () {
+      const e = EstadoCasita(tenemos: {'tema_menta', 'stickers_comida'});
+      expect(e.temas, ['clasico', 'menta']);
+      expect(e.stickersExtra, ['pizza', 'onigiri', 'boba', 'helado']);
+      expect(EstadoCasita.vacio.stickersExtra, isEmpty);
+      expect(TemaApp.de('nada'), TemaApp.clasico);
+    });
+
+    test('los colores de la app siguen al tema', () {
+      addTearDown(() => AppTheme.tema.value = TemaApp.clasico);
+      AppTheme.tema.value = TemaApp.de('sakura');
+      expect(AppTheme.azul, TemaApp.de('sakura').principal);
+      expect(
+        AppTheme.light.scaffoldBackgroundColor,
+        TemaApp.de('sakura').fondo,
+      );
     });
   });
 
@@ -535,6 +566,25 @@ void main() {
       await t.tap(find.text('¡Sí, comprarlo!'));
       await t.pumpAndSettle();
       expect(aprobadas.single.cosa, 'sofa_azul');
+    });
+
+    testWidgets('usar un tema comprado cambia los colores', (t) async {
+      addTearDown(() => AppTheme.tema.value = TemaApp.clasico);
+      await t.pumpWidget(
+        pantalla(const EstadoCasita(tenemos: {'tema_lavanda'})),
+      );
+      await t.ensureVisible(find.text('✨ Temas y stickers'));
+      await t.tap(find.text('✨ Temas y stickers'));
+      await t.pumpAndSettle();
+      expect(find.text('Stickers de gatitos'), findsOneWidget);
+      await t.tap(find.text('Tema lavanda'));
+      await t.pumpAndSettle();
+      expect(AppTheme.tema.value.clave, 'lavanda');
+      expect(find.text('En uso ✓'), findsOneWidget);
+      // Tocarlo otra vez vuelve al clásico.
+      await t.tap(find.text('Tema lavanda'));
+      await t.pumpAndSettle();
+      expect(AppTheme.tema.value, TemaApp.clasico);
     });
 
     testWidgets('lo que ya tienen se pone o se quita', (t) async {

@@ -11,8 +11,37 @@ import 'services/push_service.dart';
 import 'services/user_service.dart';
 import 'theme.dart';
 
-class TaotaoApp extends StatelessWidget {
+class TaotaoApp extends StatefulWidget {
   const TaotaoApp({super.key});
+
+  @override
+  State<TaotaoApp> createState() => _TaotaoAppState();
+}
+
+class _TaotaoAppState extends State<TaotaoApp> {
+  @override
+  void initState() {
+    super.initState();
+    AppTheme.tema.addListener(_cambioDeTema);
+  }
+
+  @override
+  void dispose() {
+    AppTheme.tema.removeListener(_cambioDeTema);
+    super.dispose();
+  }
+
+  /// Los colores de AppTheme salen del tema elegido: al cambiarlo se
+  /// vuelve a dibujar todo (sin cerrar las pantallas abiertas).
+  void _cambioDeTema() {
+    setState(() {});
+    void redibujar(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(redibujar);
+    }
+
+    (context as Element).visitChildren(redibujar);
+  }
 
   @override
   Widget build(BuildContext context) {

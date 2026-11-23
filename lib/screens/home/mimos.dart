@@ -38,7 +38,7 @@ class BotonMimos extends StatelessWidget {
     final mimos = onMimo == null ? [Mimo.teExtrano] : Mimo.values;
     return Material(
       color: AppTheme.azul,
-      shape: const StadiumBorder(),
+      shape: StadiumBorder(),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         height: 58,
@@ -84,7 +84,7 @@ class _Segmento extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (principal)
-              const Doodle(
+              Doodle(
                 Icons.favorite,
                 nombre: 'te_extrano',
                 color: AppTheme.amarillo,
@@ -101,7 +101,7 @@ class _Segmento extends StatelessWidget {
                   size: 20,
                 ),
               ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Flexible(
               child: Text(
                 mimo.boton,
@@ -134,7 +134,7 @@ class _Segmento extends StatelessWidget {
 class CuadrosMimo {
   CuadrosMimo._();
 
-  static const carpeta = 'assets/animaciones/';
+  static final carpeta = 'assets/animaciones/';
 
   static String prefijo(Mimo mimo, Gatito manda) =>
       '$carpeta${mimo.name}_${manda.id}_';
@@ -156,7 +156,7 @@ class CuadrosMimo {
       final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       return de(manifest.listAssets(), mimo, manda);
     } catch (_) {
-      return const [];
+      return [];
     }
   }
 }
@@ -187,7 +187,7 @@ class _AnimacionMimoState extends State<AnimacionMimo>
     with SingleTickerProviderStateMixin {
   late final _reloj = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 3200),
+    duration: Duration(milliseconds: 3200),
   )..forward();
   List<String>? _cuadros;
 
@@ -206,7 +206,7 @@ class _AnimacionMimoState extends State<AnimacionMimo>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    for (final c in _cuadros ?? const <String>[]) {
+    for (final c in _cuadros ?? <String>[]) {
       precacheImage(AssetImage(c), context);
     }
   }
@@ -227,7 +227,7 @@ class _AnimacionMimoState extends State<AnimacionMimo>
       return min((t / 0.3 * (total - 1)).floor(), total - 1);
     }
     if (t >= 0.85) return total - 1;
-    const paso = 0.14;
+    final paso = 0.14;
     return (t / paso).floor() % total;
   }
 
@@ -242,7 +242,7 @@ class _AnimacionMimoState extends State<AnimacionMimo>
           final t = _reloj.value;
           final Widget dibujo;
           if (cuadros == null) {
-            dibujo = const SizedBox.expand();
+            dibujo = SizedBox.expand();
           } else if (cuadros.isEmpty) {
             dibujo = _Respaldo(
               manda: widget.manda,
@@ -317,7 +317,7 @@ class _Corazones extends CustomPainter {
   final double t;
   final bool desdeIzquierda;
 
-  static const _colores = [
+  static final _colores = [
     Color(0xFFE8735A),
     Color(0xFFF4B3A8),
     AppTheme.amarillo,
@@ -462,7 +462,7 @@ class _VentanaMimoState extends State<_VentanaMimo> {
                   Text(
                     widget.titulo,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.manuscrita,
                       fontSize: 28,
                       color: AppTheme.azul,

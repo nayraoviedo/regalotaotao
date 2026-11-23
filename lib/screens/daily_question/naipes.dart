@@ -7,8 +7,8 @@ import 'criatura.dart';
 import '../../widgets/doodle.dart';
 
 /// Tamaño de un naipe del mazo.
-const _ancho = 110.0;
-const _alto = 160.0;
+final _ancho = 110.0;
+final _alto = 160.0;
 
 /// Cara de un naipe: blanca, con la criatura al centro y corazones en
 /// las esquinas.
@@ -18,7 +18,7 @@ class NaipeFrente extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const corazon = Doodle(Icons.favorite, size: 14, color: CartaStyle.azul);
+    final corazon = Doodle(Icons.favorite, size: 14, color: CartaStyle.azul);
     return Container(
       width: _ancho,
       height: _alto,
@@ -29,7 +29,7 @@ class NaipeFrente extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          const Positioned(left: 8, top: 8, child: corazon),
+          Positioned(left: 8, top: 8, child: corazon),
           Positioned(
             right: 8,
             bottom: 8,
@@ -385,7 +385,7 @@ class _Tarjeta extends StatelessWidget {
             child: Text(
               widget.pregunta,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: CartaStyle.azul,
                 fontSize: 22,
                 height: 1.3,

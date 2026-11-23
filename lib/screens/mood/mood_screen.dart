@@ -97,7 +97,7 @@ class _MoodScreenState extends State<MoodScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 children: [
-                  const Text(
+                  Text(
                     'En este momento,\n¿cómo te sientes?',
                     textAlign: TextAlign.center,
                     style: TextStyle(

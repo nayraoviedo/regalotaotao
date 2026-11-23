@@ -20,7 +20,7 @@ class _FondoFlotanteState extends State<FondoFlotante>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 40),
+    duration: Duration(seconds: 40),
   )..repeat();
 
   late final List<_Adorno> _adornos = _crear();
@@ -42,7 +42,7 @@ class _FondoFlotanteState extends State<FondoFlotante>
     });
   }
 
-  static const _colores = [
+  static final _colores = [
     AppTheme.amarillo,
     Color(0xFFB8C3E6), // azul suave
     Color(0xFF8C9AD0), // azul medio
@@ -58,7 +58,7 @@ class _FondoFlotanteState extends State<FondoFlotante>
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,

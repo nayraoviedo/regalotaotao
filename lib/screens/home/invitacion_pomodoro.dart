@@ -79,7 +79,7 @@ class InvitacionPomodoroCard extends StatelessWidget {
                   children: [
                     Text(
                       '$partnerName te invita a un pomodoro',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppTheme.azul,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -96,7 +96,7 @@ class InvitacionPomodoroCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Doodle(Icons.chevron_right, color: AppTheme.azul),
+              Doodle(Icons.chevron_right, color: AppTheme.azul),
             ],
           ),
         ),
