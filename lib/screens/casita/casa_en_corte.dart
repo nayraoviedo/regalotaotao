@@ -82,7 +82,6 @@ class _CasaEnCorteState extends State<CasaEnCorte> {
     final quieto = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final tick = quieto ? 0 : _tick;
     final estado = widget.estado;
-    final gatitos = estado.dondeEstan(ahora);
     return AspectRatio(
       aspectRatio: CasaEnCorte.ancho / CasaEnCorte.alto,
       child: LayoutBuilder(
@@ -113,7 +112,7 @@ class _CasaEnCorteState extends State<CasaEnCorte> {
                       momento: momento,
                       tick: tick,
                       ahora: ahora,
-                      conGatitos: cuarto == gatitos,
+                      conGatitos: estado.hayGatitos(cuarto, ahora),
                     ),
                   ),
                 Positioned.fill(
@@ -264,7 +263,6 @@ class CasaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final donde = estado.dondeEstan(ahora);
     return Scaffold(
       backgroundColor: const Color(0xFFE3F1FA),
       appBar: AppBar(
@@ -297,7 +295,7 @@ class CasaView extends StatelessWidget {
           CasaEnCorte(estado: estado, onCuarto: onCuarto, ahora: ahora),
           const SizedBox(height: 14),
           Text(
-            'Los gatitos están en ${_el(donde)}',
+            queHacen(estado, ahora ?? DateTime.now()),
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w700),
           ),
@@ -310,6 +308,22 @@ class CasaView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// "Los gatitos están viendo un drama en la sala", etc.
+  static String queHacen(EstadoCasita estado, DateTime ahora) {
+    final donde = estado.dondeEstan(ahora);
+    return switch (estado.escena(ahora)) {
+      Escena.medianoche =>
+        'El gatito naranja se levantó a comer a medianoche y el blanco '
+            'duerme en ${_el(estado.dondeDuermen ?? Cuarto.sala)}',
+      final e? => 'Los gatitos están ${e.que} en ${_el(donde)}',
+      null
+          when Momento.de(ahora) == Momento.noche &&
+              estado.duermen(donde, Momento.noche) =>
+        'Los gatitos duermen en ${_el(donde)}',
+      null => 'Los gatitos están en ${_el(donde)}',
+    };
   }
 
   static String _el(Cuarto c) => switch (c) {

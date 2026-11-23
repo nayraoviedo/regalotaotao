@@ -375,6 +375,88 @@ void main() {
       );
     });
 
+    test('escenas de pareja según la hora', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_dormitorio', 'cama_estrellas', 'cuarto_cocina'],
+        'puestos': {'cama': 'cama_estrellas'},
+      });
+      String a(String n) => 'assets/casita/$n.png';
+      // Todos los dibujos existen.
+      for (final esc in Escena.values) {
+        for (final tick in [0, 2]) {
+          expect(File(esc.capa(tick)).existsSync(), isTrue, reason: esc.name);
+        }
+      }
+      // A las 8 de la noche ven su drama en la sala, con el brillo de la tele.
+      final ocho = DateTime(2026, 11, 23, 20);
+      expect(e.escena(ocho), Escena.drama);
+      expect(e.dondeEstan(ocho), Cuarto.sala);
+      final drama = e.capas(Cuarto.sala, true, Momento.noche, 0, false, ocho);
+      expect(drama, containsAll([a('gatito_blanco'), a('escena_drama_1')]));
+      expect(drama, contains(a('escena_drama_luz_1')));
+      // A la una: el naranja come en la cocina y el blanco duerme solito.
+      final una = DateTime(2026, 11, 24, 1);
+      expect(e.escena(una), Escena.medianoche);
+      final cocina = e.capas(Cuarto.cocina, true, Momento.noche, 0, false, una);
+      expect(cocina, contains(a('gatito_naranja')));
+      expect(cocina, isNot(contains(a('gatito_blanco'))));
+      expect(cocina, contains(a('escena_medianoche_1')));
+      final cama = e.capas(
+        Cuarto.dormitorio,
+        true,
+        Momento.noche,
+        0,
+        false,
+        una,
+      );
+      expect(cama, contains(a('dormido_blanco_cama')));
+      expect(cama, isNot(contains(a('dormidos_cama'))));
+      expect(e.hayGatitos(Cuarto.cocina, una), isTrue);
+      expect(e.hayGatitos(Cuarto.dormitorio, una), isTrue);
+      expect(e.hayGatitos(Cuarto.sala, una), isFalse);
+      // Sin cocina no hay comilona: duermen los dos.
+      final sinCocina = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_dormitorio', 'cama_estrellas'],
+        'puestos': {'cama': 'cama_estrellas'},
+      });
+      expect(sinCocina.escena(una), isNull);
+      expect(
+        sinCocina.capas(Cuarto.dormitorio, true, Momento.noche, 0, false, una),
+        contains(a('dormidos_cama')),
+      );
+      expect(
+        CasaView.queHacen(e, ocho),
+        'Los gatitos están viendo un drama en la sala',
+      );
+      expect(
+        CasaView.queHacen(e, una),
+        'El gatito naranja se levantó a comer a medianoche y el blanco '
+        'duerme en el dormitorio',
+      );
+      expect(
+        CasaView.queHacen(e, DateTime(2026, 11, 23, 23)),
+        'Los gatitos duermen en el dormitorio',
+      );
+      // A las 23 duermen juntos.
+      expect(e.escena(DateTime(2026, 11, 23, 23)), isNull);
+      // De día la escena siempre es del cuarto donde andan, y hay varias.
+      final vistas = <Escena>{};
+      for (var m = 0; m < 10 * 60; m += 30) {
+        final t = DateTime(2026, 11, 23, 8).add(Duration(minutes: m));
+        if (e.escena(t) case final esc?) {
+          expect(esc.cuarto, e.dondeEstan(t));
+          expect(esc, isNot(Escena.medianoche));
+          vistas.add(esc);
+        }
+      }
+      expect(vistas.length, greaterThan(1));
+      // Sin la hora (vistas quietas) no hay escena.
+      expect(
+        e.capas(Cuarto.sala, true, Momento.noche, 0),
+        isNot(contains(a('escena_drama_1'))),
+      );
+    });
+
     test('en el baño, con tina, se bañan los gatitos', () {
       final e = EstadoCasita.fromMap({
         'tenemos': ['cuarto_bano', 'tina_blanca'],
