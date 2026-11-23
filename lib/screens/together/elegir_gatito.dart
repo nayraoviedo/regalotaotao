@@ -58,7 +58,7 @@ class _ElegirGatitoScreenState extends State<ElegirGatitoScreen> {
                         ? '¿Qué gatito eres?'
                         : 'Hola, ${widget.me.name}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.manuscrita,
                       fontSize: 38,
                       color: AppTheme.azul,
@@ -138,7 +138,7 @@ class ElegirGatito extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '¿Qué gatito eres?',
               style: TextStyle(
                 color: AppTheme.azul,
@@ -231,7 +231,7 @@ class OpcionGatito extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   gatito.nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w700,
                   ),

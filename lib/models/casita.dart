@@ -234,7 +234,17 @@ class ZonaCasita {
       px >= x && px < x + w && py >= y && py < y + h;
 }
 
-/// Algo de la tienda: un mueble (con [lugar]) o ropita (con [parte]).
+/// Cosas de la tienda que no van en la casita sino en el resto de la app.
+enum Especial {
+  /// Un tema de colores para toda la app (`tema_<clave>`, ver [TemaApp]).
+  tema,
+
+  /// Un paquete de stickers para las notas (ver [Catalogo.stickersDe]).
+  stickers,
+}
+
+/// Algo de la tienda: un mueble (con [lugar]), ropita (con [parte]), un
+/// cuarto o algo especial para la app ([especial]).
 class Cosa {
   const Cosa(
     this.id,
@@ -246,12 +256,17 @@ class Cosa {
     this.cuarto,
     this.fiesta,
     this.deEpoca = false,
+    this.especial,
   }) : assert(
          (lugar != null ? 1 : 0) +
                  (parte != null ? 1 : 0) +
-                 (cuarto != null ? 1 : 0) ==
+                 (cuarto != null ? 1 : 0) +
+                 (especial != null ? 1 : 0) ==
              1,
        );
+
+  /// Tema de colores o paquete de stickers.
+  final Especial? especial;
 
   final String id;
   final String nombre;
@@ -283,6 +298,10 @@ class Cosa {
 
   bool get esRopa => parte != null;
   bool get esCuarto => cuarto != null;
+  bool get esEspecial => especial != null;
+
+  /// Clave del tema (`tema_sakura` → `sakura`).
+  String get claveTema => id.substring('tema_'.length);
   bool get gratis => precio == 0;
 
   /// PNG del mueble. La ropita tiene uno por gatito ([assetRopa]).
@@ -469,6 +488,32 @@ class Catalogo {
     Cosa('cielo_dia', 'Cielo de día', 0, lugar: Lugar.cielo),
     Cosa('cielo_atardecer', 'Atardecer', 80, lugar: Lugar.cielo),
     Cosa('cielo_noche', 'Noche estrellada', 80, lugar: Lugar.cielo),
+
+    // ---- Especiales: temas de la app y stickers para las notas ----
+    Cosa('tema_sakura', 'Tema rosa sakura', 100, especial: Especial.tema),
+    Cosa('tema_menta', 'Tema menta', 100, especial: Especial.tema),
+    Cosa('tema_lavanda', 'Tema lavanda', 100, especial: Especial.tema),
+    Cosa('tema_durazno', 'Tema durazno', 100, especial: Especial.tema),
+    Cosa('tema_cielo', 'Tema cielo', 100, especial: Especial.tema),
+    Cosa(
+      'stickers_gatitos',
+      'Stickers de gatitos',
+      60,
+      especial: Especial.stickers,
+    ),
+    Cosa(
+      'stickers_comida',
+      'Stickers de comida',
+      60,
+      especial: Especial.stickers,
+    ),
+    Cosa('stickers_amor', 'Stickers de amor', 60, especial: Especial.stickers),
+    Cosa(
+      'stickers_cielo',
+      'Stickers del cielo',
+      60,
+      especial: Especial.stickers,
+    ),
 
     // ---- Ropa casual y formal (conjuntos) ----
     Cosa('camiseta', 'Camiseta a rayas', 50, parte: Parte.cuerpo),
@@ -826,6 +871,16 @@ class Catalogo {
 
   /// La cosa que abre [cuarto] (null para la sala, que ya viene).
   static Cosa? abre(Cuarto cuarto) => porId(cuarto.idCompra);
+
+  /// Stickers de cada paquete (PNG en `assets/notas/sticker_<nombre>.png`).
+  static const stickersDe = {
+    'stickers_gatitos': ['cara_naranja', 'cara_ragdoll', 'pescadito', 'ovillo'],
+    'stickers_comida': ['pizza', 'onigiri', 'boba', 'helado'],
+    'stickers_amor': ['carta', 'anillo', 'beso', 'globo'],
+    'stickers_cielo': ['luna', 'nube', 'arcoiris', 'sol'],
+  };
+
+  static List<Cosa> get especiales => cosas.where((c) => c.esEspecial).toList();
 }
 
 /// Estado de la casita: `couples/{id}/casita/estado`.
@@ -951,9 +1006,22 @@ class EstadoCasita {
 
   bool enUso(Cosa c) => c.esRopa
       ? quienLleva(c).isNotEmpty
-      : c.esCuarto
+      : c.esCuarto || c.esEspecial
       ? tiene(c)
       : puesto(c.lugar!)?.id == c.id;
+
+  /// Stickers de los paquetes que compraron (además de los de siempre).
+  List<String> get stickersExtra => [
+    for (final e in Catalogo.stickersDe.entries)
+      if (tenemos.contains(e.key)) ...e.value,
+  ];
+
+  /// Temas de la app que pueden usar (el clásico siempre).
+  List<String> get temas => [
+    'clasico',
+    for (final c in Catalogo.cosas)
+      if (c.especial == Especial.tema && tenemos.contains(c.id)) c.claveTema,
+  ];
 
   /// ¿Los gatitos duermen en este cuarto? De noche, si hay camita (en la
   /// sala) o cama (en el dormitorio).

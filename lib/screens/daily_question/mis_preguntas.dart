@@ -124,7 +124,7 @@ class _MisPreguntasViewState extends State<MisPreguntasView> {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
         children: [
-          const Text(
+          Text(
             'Tus preguntas para el mazo',
             style: TextStyle(
               color: CartaStyle.azul,
@@ -163,7 +163,7 @@ class _MisPreguntasViewState extends State<MisPreguntasView> {
                   : 'Tu pareja tiene $deLaPareja preguntas esperando en el '
                         'mazo 🤫',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: CartaStyle.azul,
                 fontWeight: FontWeight.w600,
               ),
@@ -204,7 +204,7 @@ class _Fila extends StatelessWidget {
               children: [
                 Text(
                   p.texto,
-                  style: const TextStyle(color: CartaStyle.azul, fontSize: 16),
+                  style: TextStyle(color: CartaStyle.azul, fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -219,7 +219,7 @@ class _Fila extends StatelessWidget {
           if (p.pendiente)
             IconButton(
               tooltip: 'Editar',
-              icon: const Doodle(Icons.edit, size: 20, color: CartaStyle.azul),
+              icon: Doodle(Icons.edit, size: 20, color: CartaStyle.azul),
               onPressed: () => onEditar(p),
             ),
           IconButton(

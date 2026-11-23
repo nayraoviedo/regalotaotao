@@ -34,7 +34,15 @@ class PescaditosService {
       Db.coupleSub(coupleId, 'casitaMovs');
 
   Stream<EstadoCasita> watch(String coupleId) =>
-      _estado(coupleId).snapshots().map((d) => EstadoCasita.fromMap(d.data()));
+      _estado(coupleId).snapshots().map((d) {
+        final e = EstadoCasita.fromMap(d.data());
+        ultimoEstado.value = e;
+        return e;
+      });
+
+  /// Lo último que se leyó de la casita (para las notas: qué stickers
+  /// compraron).
+  final ultimoEstado = ValueNotifier<EstadoCasita>(EstadoCasita.vacio);
 
   Stream<List<Movimiento>> watchMovimientos(
     String coupleId, {

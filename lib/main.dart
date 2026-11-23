@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app.dart';
 import 'firebase_options.dart';
 import 'services/push_service.dart';
+import 'services/tema_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,5 +17,6 @@ Future<void> main() async {
     runApp(FirebaseMissingApp(error: e.toString()));
     return;
   }
+  await TemaService.cargar();
   runApp(const TaotaoApp());
 }

@@ -80,7 +80,7 @@ class TarjetaCasita extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Nuestra casita',
                       style: TextStyle(
                         color: AppTheme.azul,
@@ -207,7 +207,7 @@ class GananciaPill extends StatelessWidget {
               Flexible(
                 child: Text(
                   ganancia.motivo,
-                  style: const TextStyle(color: AppTheme.crema, fontSize: 14),
+                  style: TextStyle(color: AppTheme.crema, fontSize: 14),
                 ),
               ),
             ],

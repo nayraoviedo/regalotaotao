@@ -43,7 +43,7 @@ class _RecomendacionesScreenState extends State<RecomendacionesScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reseñas'),
-          bottom: const TabBar(
+          bottom: TabBar(
             labelColor: AppTheme.azul,
             unselectedLabelColor: AppTheme.gris,
             indicatorColor: AppTheme.amarillo,
@@ -162,7 +162,7 @@ class ListaHechasJuntos extends StatelessWidget {
                               i.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.azul,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -314,10 +314,7 @@ class _Filtro extends StatelessWidget {
       backgroundColor: Colors.white,
       selectedColor: AppTheme.amarillo.withValues(alpha: 0.45),
       side: BorderSide(color: AppTheme.azul.withValues(alpha: 0.12)),
-      labelStyle: const TextStyle(
-        color: AppTheme.azul,
-        fontWeight: FontWeight.w600,
-      ),
+      labelStyle: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w600),
       shape: const StadiumBorder(),
     ),
   );
@@ -365,7 +362,7 @@ class _Item extends StatelessWidget {
                       rec.titulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppTheme.azul,
                         fontWeight: FontWeight.w600,
                       ),

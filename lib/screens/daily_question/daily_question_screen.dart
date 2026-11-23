@@ -202,7 +202,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
                     ? 'Tu pareja ya sacó\nla carta de hoy'
                     : 'La carta de hoy',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: CartaStyle.azul,
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
@@ -314,10 +314,7 @@ class _Aviso extends StatelessWidget {
     child: Text(
       texto,
       textAlign: TextAlign.center,
-      style: const TextStyle(
-        color: CartaStyle.azul,
-        fontWeight: FontWeight.w600,
-      ),
+      style: TextStyle(color: CartaStyle.azul, fontWeight: FontWeight.w600),
     ),
   );
 }

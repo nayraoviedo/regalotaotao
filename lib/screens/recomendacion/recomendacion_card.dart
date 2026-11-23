@@ -42,7 +42,7 @@ class BotonReproducir extends StatelessWidget {
         child: Image.asset(
           asset,
           errorBuilder: (_, _, _) => DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppTheme.amarillo,
               shape: BoxShape.circle,
             ),
@@ -102,7 +102,7 @@ class RecomendacionCard extends StatelessWidget {
             InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: onHistorial,
-              child: const Row(
+              child: Row(
                 children: [
                   Expanded(
                     child: Text(

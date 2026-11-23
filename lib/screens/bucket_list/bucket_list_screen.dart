@@ -188,7 +188,7 @@ class _BucketListScreenState extends State<BucketListScreen>
             children: [
               Text(
                 item.title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.azul,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -196,14 +196,11 @@ class _BucketListScreenState extends State<BucketListScreen>
               ),
               const SizedBox(height: 4),
               Text(item.category, style: const TextStyle(color: AppTheme.gris)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ListTile(
-                leading: const Doodle(
-                  Icons.delete_outline,
-                  color: AppTheme.azul,
-                ),
-                title: const Text('Eliminar de la lista'),
-                subtitle: const Text('Se quita para los dos'),
+                leading: Doodle(Icons.delete_outline, color: AppTheme.azul),
+                title: Text('Eliminar de la lista'),
+                subtitle: Text('Se quita para los dos'),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -238,9 +235,9 @@ class _BucketListScreenState extends State<BucketListScreen>
           IconButton(
             tooltip: 'Agregar',
             onPressed: _agregar,
-            icon: const Doodle(Icons.add_circle_outline),
+            icon: Doodle(Icons.add_circle_outline),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
         ],
       ),
       body: StreamBuilder<List<BucketItem>>(
@@ -248,7 +245,7 @@ class _BucketListScreenState extends State<BucketListScreen>
         builder: (context, snap) {
           final items = _demo ?? snap.data;
           if (items == null) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
           if (!_entrada.isAnimating && _entrada.value == 0) {
             _entrada.forward();
@@ -349,19 +346,16 @@ class _BucketListScreenState extends State<BucketListScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const SizedBox(
-                    width: _Compania.ancho,
-                    height: _Compania.alto,
-                  ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: _Compania.ancho, height: _Compania.alto),
+                  SizedBox(width: 6),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
+                      padding: EdgeInsets.only(bottom: 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const FittedBox(
+                          FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -377,7 +371,7 @@ class _BucketListScreenState extends State<BucketListScreen>
                             items.isEmpty
                                 ? 'Su primera aventura empieza aquí'
                                 : '$hechas de ${items.length} cumplidas',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppTheme.gris,
                               fontSize: 13,
                             ),
@@ -470,15 +464,15 @@ class _Ruta {
   final _tramos = <(Offset, Offset, double, double)>[];
 
   /// Distancia del descanso al borde de abajo de la escalera.
-  static const pisoCasa = 52.0;
+  static final pisoCasa = 52.0;
 
-  static const subida = 650.0;
-  static const pausa = 450.0;
-  static const salto = 230.0;
-  static const ultimo = 360.0;
+  static final subida = 650.0;
+  static final pausa = 450.0;
+  static final salto = 230.0;
+  static final ultimo = 360.0;
 
   /// El segundo gatito sale un poquito después que el primero.
-  static const retraso = 140.0;
+  static final retraso = 140.0;
 
   /// Duración total del paseo (ms), contando al gatito que va detrás.
   static double tiempos(int destino, int pasos) =>
@@ -528,10 +522,10 @@ class _Escalon extends StatelessWidget {
       child: Row(
         children: [
           _Casilla(marcada: item.done),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               style: TextStyle(
                 color: item.done ? AppTheme.gris : AppTheme.azul,
                 fontSize: 16,
@@ -549,7 +543,7 @@ class _Escalon extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           if (item.done)
             BotonResena(resenas: item.resenas, onTap: onResenar)
           else
@@ -566,8 +560,8 @@ class _Escalon extends StatelessWidget {
             onPressed: onOpciones,
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: const Doodle(
+            constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Doodle(
               Icons.delete_outline_rounded,
               size: 19,
               color: Color(0xFFB9B5AE),
@@ -600,13 +594,10 @@ class _EscalonLibre extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: Row(
         children: [
-          Opacity(
-            opacity: primero ? 1 : 0.55,
-            child: const _Casilla(marcada: false),
-          ),
-          const SizedBox(width: 12),
+          Opacity(opacity: primero ? 1 : 0.55, child: _Casilla(marcada: false)),
+          SizedBox(width: 12),
           if (primero)
-            const Expanded(
+            Expanded(
               child: Text(
                 'Toca para agregar algo…',
                 maxLines: 1,
@@ -637,7 +628,7 @@ class _CasillaState extends State<_Casilla>
     with SingleTickerProviderStateMixin {
   late final AnimationController _destellos = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 700),
+    duration: Duration(milliseconds: 700),
   );
 
   @override
@@ -654,7 +645,7 @@ class _CasillaState extends State<_Casilla>
 
   @override
   Widget build(BuildContext context) {
-    const lado = 28.0;
+    final lado = 28.0;
     return SizedBox(
       width: lado,
       height: lado,
@@ -675,20 +666,20 @@ class _CasillaState extends State<_Casilla>
             ),
           ),
           AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+            duration: Duration(milliseconds: 250),
             curve: Curves.easeOutBack,
             width: lado,
             height: lado,
             decoration: BoxDecoration(
               color: widget.marcada ? AppTheme.amarillo : Colors.white,
               borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: const Color(0xFFE2B84E), width: 2),
+              border: Border.all(color: Color(0xFFE2B84E), width: 2),
             ),
             child: AnimatedScale(
               scale: widget.marcada ? 1 : 0,
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               curve: Curves.easeOutBack,
-              child: const Doodle(
+              child: Doodle(
                 Icons.check_rounded,
                 size: 20,
                 color: AppTheme.azul,
@@ -705,7 +696,7 @@ class _Destellos extends CustomPainter {
   _Destellos(this.t);
   final double t;
 
-  static const _colores = [
+  static final _colores = [
     AppTheme.amarillo,
     EscaleraColores.azulSuave,
     EscaleraColores.azulMedio,
@@ -876,7 +867,7 @@ class _NuevoPendienteState extends State<_NuevoPendiente> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Un escalón más',
             style: TextStyle(
               fontFamily: AppTheme.manuscrita,
@@ -913,7 +904,7 @@ class _NuevoPendienteState extends State<_NuevoPendiente> {
                   selectedColor: AppTheme.amarillo,
                   backgroundColor: Colors.white,
                   side: BorderSide.none,
-                  labelStyle: const TextStyle(
+                  labelStyle: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w600,
                   ),

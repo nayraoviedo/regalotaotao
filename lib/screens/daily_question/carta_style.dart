@@ -16,17 +16,17 @@ import '../../theme.dart';
 /// Opcional: `assets/criaturas/reverso.png` (vertical, 2:3) para el dorso
 /// de los naipes. Si no está, se dibuja un dorso azul con corazones.
 class CartaStyle {
-  static const totalCriaturas = 8;
-  static const reverso = 'assets/criaturas/reverso.png';
+  static final totalCriaturas = 8;
+  static final reverso = 'assets/criaturas/reverso.png';
 
   /// Número de criatura (1…8) para el naipe [carta] (0…n).
   static int criaturaDe(int carta) => carta % totalCriaturas + 1;
   static String criaturaAsset(int criatura) =>
       'assets/criaturas/criatura_$criatura.png';
 
-  static const azul = AppTheme.azul;
-  static const crema = AppTheme.crema;
-  static const amarillo = AppTheme.amarillo;
+  static final azul = AppTheme.azul;
+  static final crema = AppTheme.crema;
+  static final amarillo = AppTheme.amarillo;
   static const gris = AppTheme.gris;
   static const cielo = Color(0xFFDDE3F3); // fondo detrás del dibujo
   static const cieloClaro = Color(0xFFE9EDF8);

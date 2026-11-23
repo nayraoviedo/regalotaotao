@@ -137,7 +137,7 @@ class DiasJuntosView extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          const Positioned.fill(child: FondoFlotante()),
+          Positioned.fill(child: FondoFlotante()),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, box) => SingleChildScrollView(
@@ -294,10 +294,7 @@ class _GatitoConFotoState extends State<_GatitoConFoto>
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.azul,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -354,7 +351,7 @@ class _Contador extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text(
+        Text(
           'Llevamos juntos',
           style: TextStyle(
             color: AppTheme.azul,
@@ -366,7 +363,7 @@ class _Contador extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           '$dias ${dias == 1 ? 'día' : 'días'}',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppTheme.manuscrita,
             color: AppTheme.azul,
             fontSize: 60,
@@ -416,7 +413,7 @@ class _BarraHito extends StatelessWidget {
                             '${hito.faltan == 1 ? 'día' : 'días'} para '
                             '${hito.nombre.contains('año') ? 'nuestro' : 'los'} '
                             '${hito.nombre}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
@@ -435,7 +432,7 @@ class _BarraHito extends StatelessWidget {
                 ),
                 child: Text(
                   hito.esHoy ? 'D-DAY' : 'D-${hito.faltan}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -500,7 +497,7 @@ class _Barra extends StatelessWidget {
                 width: x,
                 height: alto,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Color(0xFF8C9AD0), AppTheme.azul],
                   ),
                   borderRadius: BorderRadius.circular(alto),
@@ -531,7 +528,7 @@ class _SinFecha extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text(
+        Text(
           '¿Desde cuándo estamos juntos?',
           textAlign: TextAlign.center,
           style: TextStyle(

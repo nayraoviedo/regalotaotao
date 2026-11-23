@@ -50,7 +50,7 @@ class RachaPastilla extends StatelessWidget {
                   texto,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.crema,
                     fontWeight: FontWeight.w600,
                   ),
@@ -99,7 +99,7 @@ class RachaPreguntas extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   '$d',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.azul,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -215,7 +215,7 @@ class RachaDetalle extends StatelessWidget {
                 children: [
                   Text(
                     '$d',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTheme.manuscrita,
                       fontSize: 56,
                       height: 1,
@@ -224,7 +224,7 @@ class RachaDetalle extends StatelessWidget {
                   ),
                   Text(
                     d == 1 ? 'día seguido' : 'días seguidos',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.azul,
                       fontWeight: FontWeight.w700,
                     ),
@@ -267,11 +267,11 @@ class RachaDetalle extends StatelessWidget {
                 Container(
                   width: 42,
                   height: 42,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppTheme.amarillo,
                     shape: BoxShape.circle,
                   ),
-                  child: const Doodle(
+                  child: Doodle(
                     Icons.card_giftcard,
                     color: AppTheme.azul,
                     size: 22,
@@ -284,7 +284,7 @@ class RachaDetalle extends StatelessWidget {
                     children: [
                       Text(
                         'Premio a los $meta días',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppTheme.azul,
                           fontWeight: FontWeight.w700,
                         ),
@@ -523,10 +523,7 @@ class _Hoy extends StatelessWidget {
         Text(
           mensaje,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppTheme.azul,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w600),
         ),
         if (!racha.hoyYo && (onAnimo != null || onPregunta != null)) ...[
           const SizedBox(height: 10),
@@ -651,7 +648,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                         Text(
                           '¡${widget.meta} días seguidos!',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: AppTheme.manuscrita,
                             fontSize: 34,
                             height: 1.1,
@@ -691,7 +688,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                             child: Text(
                               premio,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.azul,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
@@ -712,7 +709,7 @@ class _RachaPremioPopupState extends State<RachaPremioPopup> {
                               minimumSize: const Size.fromHeight(50),
                               shape: const StadiumBorder(),
                             ),
-                            icon: const Doodle(
+                            icon: Doodle(
                               Icons.card_giftcard,
                               color: AppTheme.amarillo,
                             ),
@@ -811,7 +808,7 @@ class _LlamitaState extends State<_Llamita>
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
           ),
-          child: const Doodle(
+          child: Doodle(
             Icons.local_fire_department_rounded,
             color: AppTheme.amarillo,
             size: 26,

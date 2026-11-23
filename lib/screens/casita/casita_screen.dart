@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../services/foto_pixelada.dart';
 import '../../services/pescaditos_service.dart';
+import '../../services/tema_service.dart';
+import '../notes/tablero/formas.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
 import 'cuarto.dart';
@@ -147,6 +149,7 @@ class _CasitaViewState extends State<CasitaView> {
   static const _catRopa = '_ropa';
   static const _catRopita = '_ropita';
   static const _catEpoca = '_epoca';
+  static const _catEspecial = '_especial';
 
   List<String> _categoriasDe(Cuarto cuarto) => [
     if (_fiestas.isNotEmpty) _catFiesta,
@@ -155,6 +158,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catRopa,
     _catEpoca,
     _catRopita,
+    _catEspecial,
   ];
 
   String _nombreCat(String cat) => switch (cat) {
@@ -162,6 +166,7 @@ class _CasitaViewState extends State<CasitaView> {
     _catRopa => 'Ropa',
     _catRopita => 'Accesorios',
     _catEpoca => 'De época',
+    _catEspecial => '✨ Temas y stickers',
     _ => Lugar.deId(cat)?.nombre ?? cat,
   };
 
@@ -183,6 +188,7 @@ class _CasitaViewState extends State<CasitaView> {
         (c) => c.parte != Parte.cuerpo && !c.deEpoca,
       ),
       _catEpoca => Catalogo.ropa.where((c) => c.deEpoca),
+      _catEspecial => Catalogo.especiales,
       _ => Catalogo.de(Lugar.deId(cat)!),
     };
     return todas.where(visible).toList();
@@ -329,6 +335,11 @@ class _CasitaViewState extends State<CasitaView> {
       return;
     }
     if (cosa.esRopa) return _vestir(cosa);
+    if (cosa.especial == Especial.stickers) {
+      _aviso('Ya están en sus notas: elíjanlos al escribir una nota 📝');
+      return;
+    }
+    if (cosa.especial == Especial.tema) return _usarTema(cosa);
     final lugar = cosa.lugar!;
     final enUso = _estado.enUso(cosa);
     if (enUso && lugar.siempreLleno) return;
@@ -367,10 +378,12 @@ class _CasitaViewState extends State<CasitaView> {
                 Center(
                   child: SizedBox(
                     height: 110,
-                    child: RecorteCasita(
-                      capas: _capasDe(cosa, gatito: gatito),
-                      zona: _zonaDe(cosa, gatito: gatito),
-                    ),
+                    child: cosa.esEspecial
+                        ? VistaEspecial(cosa)
+                        : RecorteCasita(
+                            capas: _capasDe(cosa, gatito: gatito),
+                            zona: _zonaDe(cosa, gatito: gatito),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -461,6 +474,10 @@ class _CasitaViewState extends State<CasitaView> {
         return;
       }
       await widget.onComprar(cosa, gatito);
+      if (cosa.especial == Especial.tema) {
+        await _usarTema(cosa);
+        return;
+      }
       if (cosa.cuarto case final c?) {
         _verCuarto(c);
         _aviso('¡Abrieron ${cosa.nombre.toLowerCase()}! Ahora a decorarla');
@@ -472,6 +489,21 @@ class _CasitaViewState extends State<CasitaView> {
     } catch (_) {
       _aviso('No se pudo comprar, intenta otra vez');
     }
+  }
+
+  /// Cambia los colores de la app (en este celular). Tocar el tema que ya
+  /// está puesto vuelve al clásico.
+  Future<void> _usarTema(Cosa cosa) async {
+    final enUso = AppTheme.tema.value.clave == cosa.claveTema;
+    final tema = enUso ? TemaApp.clasico : TemaApp.de(cosa.claveTema);
+    TemaService.usar(tema);
+    if (!mounted) return;
+    setState(() {});
+    _aviso(
+      enUso
+          ? 'Volviste al tema clásico'
+          : '¡Listo! La app ahora es ${tema.nombre.toLowerCase()}',
+    );
   }
 
   Future<void> _aprobar(Propuesta p) async {
@@ -801,7 +833,7 @@ class _Titulo extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     texto,
-    style: const TextStyle(
+    style: TextStyle(
       color: AppTheme.azul,
       fontSize: 18,
       fontWeight: FontWeight.w700,
@@ -891,13 +923,13 @@ class _AvisoFiesta extends StatelessWidget {
                 Text(
                   '${f.emoji} ${f.nombre}: cosas especiales hasta el '
                   '${_fecha(f.activaEn(hoy, inicioPareja: inicioPareja)!.$2)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.crema,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               const SizedBox(height: 2),
-              const Text(
+              Text(
                 'Lo que compren se queda para siempre',
                 style: TextStyle(color: AppTheme.amarillo, fontSize: 12),
               ),
@@ -1072,7 +1104,10 @@ class _Vitrina extends StatelessWidget {
                 child: _Articulo(
                   cosa: cosa,
                   tiene: estado.tiene(cosa),
-                  enUso: estado.enUso(cosa),
+                  enUso: cosa.especial == Especial.tema
+                      ? estado.tiene(cosa) &&
+                            AppTheme.tema.value.clave == cosa.claveTema
+                      : estado.enUso(cosa),
                   envuelto: estado.envuelto(cosa),
                   alcanza: estado.pescaditos >= cosa.precio,
                   capas: capasDe(cosa),
@@ -1119,7 +1154,7 @@ class _Articulo extends StatelessWidget {
         child: Pescaditos(cosa.precio, tamano: 13, color: AppTheme.azul),
       );
     } else if (envuelto) {
-      pie = const Text(
+      pie = Text(
         'Envuelto 🎁',
         style: TextStyle(
           fontSize: 12,
@@ -1129,7 +1164,11 @@ class _Articulo extends StatelessWidget {
       );
     } else {
       pie = Text(
-        enUso ? 'Puesto ✓' : (cosa.esRopa ? 'Ponérselo' : 'Poner'),
+        switch (cosa.especial) {
+          Especial.stickers => 'En tus notas ✓',
+          Especial.tema => enUso ? 'En uso ✓' : 'Usar',
+          null => enUso ? 'Puesto ✓' : (cosa.esRopa ? 'Ponérselo' : 'Poner'),
+        },
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -1142,7 +1181,7 @@ class _Articulo extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: enUso
-            ? const BorderSide(color: AppTheme.amarillo, width: 2)
+            ? BorderSide(color: AppTheme.amarillo, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -1161,7 +1200,9 @@ class _Articulo extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(6),
-                    child: RecorteCasita(capas: capas, zona: zona),
+                    child: cosa.esEspecial
+                        ? VistaEspecial(cosa)
+                        : RecorteCasita(capas: capas, zona: zona),
                   ),
                 ),
               ),
@@ -1171,7 +1212,7 @@ class _Articulo extends StatelessWidget {
                 maxLines: 2,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   height: 1.15,
                   color: AppTheme.azul,
@@ -1360,7 +1401,7 @@ class Alcancia extends StatelessWidget {
                   listo
                       ? '¡Ya les alcanza para ${meta.nombre}!'
                       : 'Ahorrando juntos para ${meta.nombre}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.azul,
                   ),
@@ -1465,11 +1506,16 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
                 child: child,
               ),
               child: _abierto
-                  ? RecorteCasita(
-                      key: const ValueKey('cosa'),
-                      capas: widget.capas,
-                      zona: widget.zona,
-                    )
+                  ? (widget.cosa.esEspecial
+                        ? VistaEspecial(
+                            widget.cosa,
+                            key: const ValueKey('cosa'),
+                          )
+                        : RecorteCasita(
+                            key: const ValueKey('cosa'),
+                            capas: widget.capas,
+                            zona: widget.zona,
+                          ))
                   : GestureDetector(
                       key: const ValueKey('caja'),
                       onTap: _anim.isAnimating ? null : _abrir,
@@ -1589,6 +1635,84 @@ class _AvisoPropuesta extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Vista previa de un tema (sus colores) o de un paquete de stickers.
+class VistaEspecial extends StatelessWidget {
+  const VistaEspecial(this.cosa, {super.key});
+  final Cosa cosa;
+
+  @override
+  Widget build(BuildContext context) {
+    if (cosa.especial == Especial.stickers) {
+      final stickers = Catalogo.stickersDe[cosa.id] ?? const [];
+      return FittedBox(
+        child: SizedBox(
+          width: 80,
+          height: 80,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            runAlignment: WrapAlignment.center,
+            children: [
+              for (final s in stickers)
+                Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Sticker(s, size: 36),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+    final tema = TemaApp.de(cosa.claveTema);
+    return FittedBox(
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: tema.fondo,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: tema.principal, width: 2),
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 12,
+              decoration: BoxDecoration(
+                color: tema.principal,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: 22,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                CircleAvatar(radius: 7, backgroundColor: tema.acento),
+                const Spacer(),
+                Container(
+                  width: 30,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: tema.principal,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
