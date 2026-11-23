@@ -503,16 +503,34 @@ class _CasitaViewState extends State<CasitaView> {
                   ),
                 ],
                 if (sePuedeRegalar) ...[
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: regalo,
-                    title: Text('🎁 Es un regalo sorpresa para $pareja'),
-                    subtitle: const Text('Le aparece envuelto en la casita'),
-                    onChanged: (v) => setDialog(() {
-                      regalo = v ?? false;
-                      if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
-                    }),
+                  const SizedBox(height: 12),
+                  // Dos caminos, sin imponer el regalo: por defecto es
+                  // para los dos y regalar es solo si uno quiere.
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<bool>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: Text('🏠 Para los dos'),
+                        ),
+                        ButtonSegment(value: true, label: Text('🎁 Regalar')),
+                      ],
+                      selected: {regalo},
+                      onSelectionChanged: (s) => setDialog(() {
+                        regalo = s.first;
+                        if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    regalo
+                        ? 'Le llega envuelto a $pareja en la casita '
+                              'y lo abre cuando quiera.'
+                        : 'Va directo a la casita, para los dos.',
+                    style: const TextStyle(color: AppTheme.gris, fontSize: 13),
                   ),
                   if (regalo)
                     TextField(
