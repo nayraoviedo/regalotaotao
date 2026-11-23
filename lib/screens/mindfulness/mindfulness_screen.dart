@@ -271,8 +271,8 @@ class _MindfulnessScreenState extends State<MindfulnessScreen>
             children: [
               // Tres anillos de aire, del más grande al más chico.
               for (final (i, color) in [
-                (0, azul.withValues(alpha: 0.05)),
-                (1, azul.withValues(alpha: 0.07)),
+                (0, const Color(0xFFC9D7EE).withValues(alpha: 0.45)),
+                (1, const Color(0xFFC9D7EE).withValues(alpha: 0.7)),
                 (2, Colors.white.withValues(alpha: 0.75)),
               ])
                 Container(
@@ -332,12 +332,11 @@ class _MindfulnessScreenState extends State<MindfulnessScreen>
           calma: _calma,
         ),
         const SizedBox(height: 6),
-        Text(
-          _momento == _Momento.respirando
-              ? 'Respiración ${_ciclo + 1} de $totalCiclos'
-              : 'Cada respiración llena un pescadito',
-          style: TextStyle(color: AppTheme.gris, fontSize: 13),
-        ),
+        Text(switch (_momento) {
+          _Momento.antes => 'Cada respiración llena un pescadito',
+          _Momento.respirando => 'Respiración ${_ciclo + 1} de $totalCiclos',
+          _Momento.listo => '¡$totalCiclos respiraciones completas!',
+        }, style: TextStyle(color: AppTheme.gris, fontSize: 13)),
         const SizedBox(height: 16),
         if (_conPareja) ...[_premio(), const SizedBox(height: 16)],
         switch (_momento) {
@@ -349,6 +348,7 @@ class _MindfulnessScreenState extends State<MindfulnessScreen>
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               foregroundColor: AppTheme.azul,
+              backgroundColor: Colors.transparent,
               side: BorderSide(color: AppTheme.azul.withValues(alpha: 0.4)),
             ),
             onPressed: _parar,
