@@ -73,7 +73,11 @@ class InicioView extends StatelessWidget {
     this.racha,
     this.onRacha,
     this.recomendacion,
+    this.invitacionPomodoro,
   });
+
+  /// Aviso de que tu pareja te invitó a un pomodoro (si hay).
+  final Widget? invitacionPomodoro;
 
   /// Rectángulo de la recomendación del día, debajo del ánimo.
   final Widget? recomendacion;
@@ -147,6 +151,7 @@ class InicioView extends StatelessWidget {
                     partnerName: partnerName,
                   ),
                   const SizedBox(height: 16),
+                  ?invitacionPomodoro,
                   if (suAnimo case final animo? when animo.suggestMindfulness)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),

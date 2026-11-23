@@ -94,6 +94,16 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     _partnerSub = UserService.instance
         .watchUser(_partnerUid)
         .listen((p) => setState(() => _partner = p));
+    // Si mi pareja me invitó (o ya estamos en una sesión juntos), abrir
+    // directo en "En pareja" para que la invitación se vea.
+    PomodoroService.instance.watchCurrent(_coupleId).first.then((s) {
+      if (!mounted || s == null) return;
+      final paraMi =
+          s.status == PomodoroStatus.pending && s.invitee == widget.me.uid;
+      if (paraMi || s.status == PomodoroStatus.accepted) {
+        setState(() => _juntos = true);
+      }
+    }, onError: (_) {});
   }
 
   @override
@@ -1746,6 +1756,9 @@ class _RewardTile extends StatelessWidget {
           backgroundColor: PomodoroStyle.amarillo,
           foregroundColor: PomodoroStyle.azul,
           visualDensity: VisualDensity.compact,
+          // El tema pide botones a lo ancho; en una fila eso aplasta el
+          // texto de al lado hasta dejar una letra por línea.
+          minimumSize: const Size(0, 40),
           shape: const StadiumBorder(),
         ),
         child: const Text('Ya se lo di'),

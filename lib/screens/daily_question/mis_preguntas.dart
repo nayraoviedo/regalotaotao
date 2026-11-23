@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../services/preguntas_propias_service.dart';
+import '../../widgets/doodle.dart';
 import '../../widgets/editar_texto.dart';
 import 'carta_style.dart';
 
@@ -151,7 +152,7 @@ class _MisPreguntasViewState extends State<MisPreguntasView> {
           ),
           FilledButton.icon(
             onPressed: _guardando ? null : _agregar,
-            icon: const Icon(Icons.add),
+            icon: const Doodle(Icons.add),
             label: const Text('Agregar al mazo'),
           ),
           if (deLaPareja > 0) ...[
@@ -218,12 +219,12 @@ class _Fila extends StatelessWidget {
           if (p.pendiente)
             IconButton(
               tooltip: 'Editar',
-              icon: const Icon(Icons.edit, size: 20, color: CartaStyle.azul),
+              icon: const Doodle(Icons.edit, size: 20, color: CartaStyle.azul),
               onPressed: () => onEditar(p),
             ),
           IconButton(
             tooltip: 'Borrar',
-            icon: const Icon(Icons.delete_outline, color: CartaStyle.gris),
+            icon: const Doodle(Icons.delete_outline, color: CartaStyle.gris),
             onPressed: () => widget.onBorrar(p),
           ),
         ],

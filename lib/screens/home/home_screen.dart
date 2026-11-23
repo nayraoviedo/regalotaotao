@@ -27,6 +27,7 @@ import '../racha/racha_widgets.dart';
 import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
+import 'invitacion_pomodoro.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import '../recomendacion/recomendacion_inicio.dart';
@@ -357,6 +358,12 @@ class _HomeBodyState extends State<_HomeBody> {
               uid: me.uid,
               partnerUid: partnerUid,
               partnerName: partnerName,
+            ),
+            invitacionPomodoro: InvitacionPomodoroInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerName: partnerName,
+              onAbrir: () => _open(PomodoroScreen(me: me, couple: couple)),
             ),
             partner: partner,
             dias: couple.daysTogether,

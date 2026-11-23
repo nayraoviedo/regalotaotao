@@ -28,6 +28,11 @@ class RachaService {
       }, SetOptions(merge: true));
 
   /// Racha en vivo de [yo] y [pareja].
+  ///
+  /// Se escuchan los últimos [_enVivo] días por rango de fechas (el id de
+  /// cada día es `yyyy-MM-dd`, así que el orden alfabético es el de las
+  /// fechas). No se ordena al revés por id: Firestore no lo permite
+  /// ("descending key scans") y la racha no se mostraba.
   Stream<Racha> watch(String coupleId, String yo, String pareja) =>
       _watch(_dias(coupleId), _leer, yo, pareja);
 
@@ -50,8 +55,13 @@ class RachaService {
     String yo,
     String pareja,
   ) {
+    final hoy = DateTime.now();
+    DateTime diaAntes(DateTime d, int n) =>
+        DateTime(d.year, d.month, d.day - n);
     // Días más viejos que los que se escuchan en vivo (se leen una vez).
     final viejos = <String, Set<String>>{};
+    // Primer día que ya está cargado (en vivo o leído una vez).
+    var limite = diaAntes(hoy, _enVivo);
     var hayMasViejos = true;
     late StreamController<Racha> ctrl;
     StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? sub;
@@ -61,18 +71,20 @@ class RachaService {
       Racha calcular() =>
           Racha.calcular({...viejos, ...enVivo}, yo: yo, pareja: pareja);
       var racha = calcular();
-      // Si la racha llega hasta el día más viejo cargado, seguimos
-      // leyendo hacia atrás hasta encontrar dónde empezó.
-      while (q.docs.length == _enVivo && hayMasViejos) {
-        final claves = [...viejos.keys, ...enVivo.keys]..sort();
-        if (racha.inicio != claves.first) break;
+      // Si la racha llega hasta el primer día cargado, seguimos leyendo
+      // hacia atrás de a 100 días hasta encontrar dónde empezó.
+      while (hayMasViejos && racha.inicio == Racha.clave(limite)) {
+        final desde = diaAntes(limite, 100);
         final mas = await dias
-            .orderBy(FieldPath.documentId, descending: true)
-            .startAfter([claves.first])
-            .limit(100)
+            .where(
+              FieldPath.documentId,
+              isGreaterThanOrEqualTo: Racha.clave(desde),
+            )
+            .where(FieldPath.documentId, isLessThan: Racha.clave(limite))
             .get();
         viejos.addAll(leer(mas.docs));
-        hayMasViejos = mas.docs.length == 100;
+        hayMasViejos = mas.docs.isNotEmpty;
+        limite = desde;
         racha = calcular();
       }
       if (!ctrl.isClosed) ctrl.add(racha);
@@ -81,8 +93,10 @@ class RachaService {
     ctrl = StreamController<Racha>(
       onListen: () {
         sub = dias
-            .orderBy(FieldPath.documentId, descending: true)
-            .limit(_enVivo)
+            .where(
+              FieldPath.documentId,
+              isGreaterThanOrEqualTo: Racha.clave(limite),
+            )
             .snapshots()
             .listen(emitir, onError: ctrl.addError);
       },
