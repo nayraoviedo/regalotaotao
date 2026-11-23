@@ -111,3 +111,53 @@ enum Pastel {
   static Pastel inicial(Celebracion c) =>
       c == Celebracion.aniversario ? corazon : fresa;
 }
+
+/// Ramos de flores, del color que elijan (`assets/cartas/ramo_<color>.png`).
+enum Ramo {
+  rojo('Rosas rojas', 0xFFDC3C4C),
+  rosa('Rosadas', 0xFFF496B0),
+  amarillo('Amarillas', 0xFFF8CE46),
+  lila('Lilas', 0xFFBEA0E6),
+  blanco('Blancas', 0xFFFCFAF6),
+  celeste('Celestes', 0xFF96C4F0),
+  mixto('De colores', 0xFFF6C84C);
+
+  const Ramo(this.nombre, this.color);
+  final String nombre;
+
+  /// Color de muestra para elegirlo (ARGB).
+  final int color;
+
+  String get asset => 'assets/cartas/ramo_$name.png';
+
+  static Ramo? deId(String? id) {
+    for (final r in values) {
+      if (r.name == id) return r;
+    }
+    return null;
+  }
+}
+
+/// Regalitos que acompañan la carta (`assets/cartas/regalito_<id>.png`).
+enum Regalito {
+  peluche('Peluche'),
+  chocolates('Chocolates'),
+  globos('Globos'),
+  cajita('Cajita de regalo'),
+  taza('Tacita');
+
+  const Regalito(this.nombre);
+  final String nombre;
+
+  String get asset => 'assets/cartas/regalito_$name.png';
+
+  static List<Regalito> deIds(Object? ids) => [
+    if (ids is List)
+      for (final id in ids)
+        for (final r in values)
+          if (r.name == id) r,
+  ];
+}
+
+/// Lo que se manda con la carta especial.
+typedef Regalos = ({Pastel? pastel, Ramo? ramo, List<Regalito> regalitos});

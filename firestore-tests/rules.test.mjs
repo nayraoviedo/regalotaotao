@@ -232,6 +232,9 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('y una de aniversario', especial('k2',{especial:'aniversario',pastel:'corazon'}));
   await no('no hay cartas de otra cosa', especial('k3',{especial:'boda',pastel:'fresa'}));
   await no('ni pasteles que no existen', especial('k4',{especial:'cumple',pastel:'pizza'}));
+  await ok('con ramo de flores y regalitos', especial('k5',{especial:'aniversario',ramo:'lila',regalitos:['peluche','chocolates']}));
+  await no('ni ramos de colores que no hay', especial('k6',{especial:'aniversario',ramo:'negro'}));
+  await no('ni regalitos que no existen', especial('k7',{especial:'cumple',regalitos:['auto']}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
   await no('C no ve la casita', getDoc(doc(db('C'),'couples/c1/casita/estado')));
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));

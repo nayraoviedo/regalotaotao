@@ -20,6 +20,8 @@ class Carta {
     this.sorpresa = false,
     this.especial,
     this.pastel,
+    this.ramo,
+    this.regalitos = const [],
   });
 
   final String id;
@@ -44,6 +46,13 @@ class Carta {
   /// velitas para soplar.
   final Celebracion? especial;
   final Pastel? pastel;
+
+  /// Ramo de flores y regalitos que vienen con la carta especial.
+  final Ramo? ramo;
+  final List<Regalito> regalitos;
+
+  /// ¿Trae algo (pastel, ramo o regalitos)?
+  bool get conRegalos => pastel != null || ramo != null || regalitos.isNotEmpty;
 
   /// Motivo y "cuándo" de las cartas sorpresa.
   static const motivoSorpresa = 'sorpresa';
@@ -73,6 +82,8 @@ class Carta {
     sorpresa: d['sorpresa'] == true,
     especial: Celebracion.deId(d['especial'] as String?),
     pastel: d['pastel'] == null ? null : Pastel.deId(d['pastel'] as String?),
+    ramo: Ramo.deId(d['ramo'] as String?),
+    regalitos: Regalito.deIds(d['regalitos']),
   );
 }
 

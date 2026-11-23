@@ -372,10 +372,11 @@ const KINDS = {
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
     dedupeKey: () => "enviado",
     message: (name, d) =>
-      d.especial === "cumple"
-        ? { title: "🎂 ¡Feliz cumpleaños!", body: `${name} te mandó un pastel y una carta de cumpleaños` }
-        : d.especial === "aniversario"
-        ? { title: "💞 ¡Feliz aniversario!", body: `${name} te mandó un pastel y una carta de aniversario` }
+      d.especial === "cumple" || d.especial === "aniversario"
+        ? {
+            title: d.especial === "cumple" ? "🎂 ¡Feliz cumpleaños!" : "💞 ¡Feliz aniversario!",
+            body: `${name} te mandó ${regalosEspeciales(d)} de ${d.especial === "cumple" ? "cumpleaños" : "aniversario"}`,
+          }
         : d.sorpresa === true
         ? {
             title: "✨ ¡Carta sorpresa!",
@@ -387,6 +388,18 @@ const KINDS = {
           },
   },
 };
+
+// "un pastel, un ramo de flores y una carta", para el aviso.
+function regalosEspeciales(d) {
+  const n = Array.isArray(d.regalitos) ? d.regalitos.length : 0;
+  const cosas = [
+    ...(d.pastel ? ["un pastel"] : []),
+    ...(d.ramo ? ["un ramo de flores"] : []),
+    ...(n === 1 ? ["un regalito"] : n > 1 ? [`${n} regalitos`] : []),
+    "una carta",
+  ];
+  return cosas.length === 1 ? cosas[0] : `${cosas.slice(0, -1).join(", ")} y ${cosas.at(-1)}`;
+}
 
 async function handleNotify(sa, uid, kind, coupleId, docId) {
   const spec = KINDS[kind];

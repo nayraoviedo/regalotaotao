@@ -53,7 +53,93 @@ class PastelConVelas extends StatelessWidget {
   );
 }
 
-/// Para elegir qué pastel mandar.
+/// Un dibujito de regalo (ramo o regalito), del mismo tamaño que los
+/// pasteles.
+class DibujoRegalo extends StatelessWidget {
+  const DibujoRegalo(this.asset, {super.key, this.ancho = 64});
+
+  final String asset;
+  final double ancho;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    asset,
+    width: ancho,
+    height: ancho / Pastel.proporcion,
+    fit: BoxFit.fill,
+    filterQuality: FilterQuality.none,
+    errorBuilder: (_, _, _) =>
+        SizedBox(width: ancho, height: ancho / Pastel.proporcion),
+  );
+}
+
+/// Una opción para elegir (con su dibujito y su nombre).
+class _Opcion extends StatelessWidget {
+  const _Opcion({
+    required this.dibujo,
+    required this.nombre,
+    required this.elegida,
+    required this.onTap,
+  });
+
+  final Widget dibujo;
+  final String nombre;
+  final bool elegida;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: elegida,
+    label: nombre,
+    child: Material(
+      color: elegida ? AppTheme.amarillo.withValues(alpha: 0.22) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: elegida
+              ? AppTheme.amarillo
+              : CartasStyle.azul.withValues(alpha: 0.12),
+          width: elegida ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+          child: SizedBox(
+            width: 64,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: 64 / Pastel.proporcion, child: dibujo),
+                const SizedBox(height: 2),
+                Text(
+                  nombre,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 12, color: CartasStyle.azul),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _Ninguno extends StatelessWidget {
+  const _Ninguno();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Doodle(Icons.block, color: CartasStyle.gris.withValues(alpha: 0.6)),
+  );
+}
+
+/// Para elegir qué pastel mandar (o ninguno).
 class ElegirPastel extends StatelessWidget {
   const ElegirPastel({
     super.key,
@@ -61,8 +147,8 @@ class ElegirPastel extends StatelessWidget {
     required this.onElegir,
   });
 
-  final Pastel elegido;
-  final ValueChanged<Pastel> onElegir;
+  final Pastel? elegido;
+  final ValueChanged<Pastel?> onElegir;
 
   @override
   Widget build(BuildContext context) => Wrap(
@@ -70,45 +156,75 @@ class ElegirPastel extends StatelessWidget {
     runSpacing: 8,
     children: [
       for (final p in Pastel.values)
-        Semantics(
-          button: true,
-          selected: p == elegido,
-          label: p.nombre,
-          child: Material(
-            color: p == elegido
-                ? AppTheme.amarillo.withValues(alpha: 0.22)
-                : Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: p == elegido
-                    ? AppTheme.amarillo
-                    : CartasStyle.azul.withValues(alpha: 0.12),
-                width: p == elegido ? 2 : 1,
-              ),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => onElegir(p),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PastelConVelas(pastel: p, ancho: 64, prendidas: false),
-                    const SizedBox(height: 2),
-                    Text(
-                      p.nombre.replaceFirst('Pastel ', ''),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: CartasStyle.azul,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        _Opcion(
+          dibujo: PastelConVelas(pastel: p, ancho: 64, prendidas: false),
+          nombre: p.nombre.replaceFirst('Pastel ', ''),
+          elegida: p == elegido,
+          onTap: () => onElegir(p),
+        ),
+      _Opcion(
+        dibujo: const _Ninguno(),
+        nombre: 'Sin pastel',
+        elegida: elegido == null,
+        onTap: () => onElegir(null),
+      ),
+    ],
+  );
+}
+
+/// Para elegir el ramo de flores por su color (o ninguno).
+class ElegirRamo extends StatelessWidget {
+  const ElegirRamo({super.key, required this.elegido, required this.onElegir});
+
+  final Ramo? elegido;
+  final ValueChanged<Ramo?> onElegir;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final r in Ramo.values)
+        _Opcion(
+          dibujo: DibujoRegalo(r.asset),
+          nombre: r.nombre,
+          elegida: r == elegido,
+          onTap: () => onElegir(r),
+        ),
+      _Opcion(
+        dibujo: const _Ninguno(),
+        nombre: 'Sin flores',
+        elegida: elegido == null,
+        onTap: () => onElegir(null),
+      ),
+    ],
+  );
+}
+
+/// Para elegir regalitos (los que quiera).
+class ElegirRegalitos extends StatelessWidget {
+  const ElegirRegalitos({
+    super.key,
+    required this.elegidos,
+    required this.onTocar,
+  });
+
+  final Set<Regalito> elegidos;
+
+  /// Lo pone o lo saca.
+  final ValueChanged<Regalito> onTocar;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final r in Regalito.values)
+        _Opcion(
+          dibujo: DibujoRegalo(r.asset),
+          nombre: r.nombre,
+          elegida: elegidos.contains(r),
+          onTap: () => onTocar(r),
         ),
     ],
   );
@@ -271,7 +387,9 @@ class _LlegadaPastelState extends State<LlegadaPastel>
     vsync: this,
     duration: const Duration(seconds: 8),
   )..repeat();
-  bool _soplaron = false;
+
+  /// Sin pastel no hay velitas que soplar.
+  late bool _soplaron = widget.carta.pastel == null;
 
   @override
   void dispose() {
@@ -281,18 +399,40 @@ class _LlegadaPastelState extends State<LlegadaPastel>
 
   Celebracion get _que => widget.carta.especial ?? Celebracion.cumple;
 
+  /// Qué le mandaron, en palabras.
+  String get _queMandaron {
+    final k = widget.carta;
+    final cosas = [
+      if (k.pastel != null) 'un pastel',
+      if (k.ramo != null) 'un ramo de flores',
+      if (k.regalitos.length == 1) 'un regalito',
+      if (k.regalitos.length > 1) '${k.regalitos.length} regalitos',
+    ];
+    final de = widget.de ?? 'Tu pareja';
+    if (cosas.isEmpty) return '$de te mandó una carta especial';
+    final lista = cosas.length == 1
+        ? cosas.first
+        : '${cosas.sublist(0, cosas.length - 1).join(', ')} y ${cosas.last}';
+    return '$de te mandó $lista, y una carta';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pastel = widget.carta.pastel ?? Pastel.inicial(_que);
+    final carta = widget.carta;
+    final pastel = carta.pastel;
+    final extras = [
+      if (carta.ramo case final r?) r.asset,
+      for (final r in carta.regalitos) r.asset,
+    ];
     final titulo = switch (_que) {
       Celebracion.cumple => '¡Feliz cumpleaños!',
       Celebracion.aniversario => '¡Feliz aniversario!',
     };
-    final subtitulo = _soplaron
+    final subtitulo = _soplaron && pastel != null
         ? (_que == Celebracion.cumple
               ? '¡Pide un deseo! Y ahora, tu carta 💌'
               : '¡Por muchos años más juntos! 💌')
-        : '${widget.de ?? 'Tu pareja'} te mandó un pastel y una carta';
+        : _queMandaron;
     return Material(
       type: MaterialType.transparency,
       child: AnimatedBuilder(
@@ -339,14 +479,46 @@ class _LlegadaPastelState extends State<LlegadaPastel>
                   ),
                 ),
                 Positioned(
-                  left: (c.maxWidth - ancho) / 2,
-                  top: c.maxHeight * 0.34 - salto,
-                  child: PastelConVelas(
-                    pastel: pastel,
-                    ancho: ancho,
-                    prendidas: !_soplaron,
-                    humito: _soplaron,
-                    paso: (_c.value * 48).floor(),
+                  left: 16,
+                  right: 16,
+                  top: c.maxHeight * 0.3 - salto,
+                  child: Column(
+                    children: [
+                      // El pastel; si no hay, lo primero que le mandaron.
+                      if (pastel != null)
+                        PastelConVelas(
+                          pastel: pastel,
+                          ancho: extras.isEmpty ? ancho : ancho * 0.85,
+                          prendidas: !_soplaron,
+                          humito: _soplaron,
+                          paso: (_c.value * 48).floor(),
+                        )
+                      else if (extras.isNotEmpty)
+                        DibujoRegalo(extras.first, ancho: ancho),
+                      if (extras.length > (pastel == null ? 1 : 0)) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final (i, a)
+                                in extras.skip(pastel == null ? 1 : 0).indexed)
+                              Transform.translate(
+                                // Cada regalito se mece a su ritmo.
+                                offset: Offset(
+                                  0,
+                                  math.sin(_c.value * math.pi * 12 + i) * 2,
+                                ),
+                                child: DibujoRegalo(
+                                  a,
+                                  ancho: math.min(72, ancho / 2.6),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Positioned(

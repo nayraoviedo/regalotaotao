@@ -31,11 +31,16 @@ class CartasService {
     required Papel papel,
     Celebracion? especial,
     Pastel? pastel,
+    Ramo? ramo,
+    List<Regalito> regalitos = const [],
   }) async {
     final ref = await _col(coupleId).add({
       if (especial != null) ...{
         'especial': especial.id,
-        'pastel': (pastel ?? Pastel.inicial(especial)).name,
+        'pastel': ?pastel?.name,
+        'ramo': ?ramo?.name,
+        if (regalitos.isNotEmpty)
+          'regalitos': [for (final r in regalitos) r.name],
       },
       'from': from,
       'to': to,

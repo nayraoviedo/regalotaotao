@@ -394,7 +394,7 @@ class EscribirCartaScreen extends StatefulWidget {
   final Celebracion? especial;
 
   /// Para pruebas: qué hacer al mandar la carta especial, sin Firebase.
-  final Future<void> Function(String texto, Pastel pastel)? onEnviarEspecial;
+  final Future<void> Function(String texto, Regalos regalos)? onEnviarEspecial;
 
   @override
   State<EscribirCartaScreen> createState() => _EscribirCartaScreenState();
@@ -407,7 +407,12 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   Papel _papel = Papel.cuadricula;
   bool _enviando = false;
   late bool _sorpresa = widget.especial == null && widget.sorpresa;
-  late Pastel _pastel = Pastel.inicial(widget.especial ?? Celebracion.cumple);
+  late Pastel? _pastel = Pastel.inicial(widget.especial ?? Celebracion.cumple);
+  // En el aniversario, el ramo de rosas viene elegido.
+  late Ramo? _ramo = widget.especial == Celebracion.aniversario
+      ? Ramo.rojo
+      : null;
+  final _regalitos = <Regalito>{};
   Celebracion? get _especial => widget.especial;
   int? _pescaditos;
   StreamSubscription<EstadoCasita>? _casita;
@@ -485,7 +490,15 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
         return;
       }
       if (_especial case final esp?) {
-        await (widget.onEnviarEspecial?.call(texto, _pastel) ??
+        final regalos = (
+          pastel: _pastel,
+          ramo: _ramo,
+          regalitos: [
+            for (final r in Regalito.values)
+              if (_regalitos.contains(r)) r,
+          ],
+        );
+        await (widget.onEnviarEspecial?.call(texto, regalos) ??
             CartasService.instance.enviar(
               widget.coupleId,
               from: widget.uid,
@@ -495,7 +508,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
               text: texto,
               papel: _papel,
               especial: esp,
-              pastel: _pastel,
+              pastel: regalos.pastel,
+              ramo: regalos.ramo,
+              regalitos: regalos.regalitos,
             ));
       } else {
         await CartasService.instance.enviar(
@@ -599,6 +614,38 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
               elegido: _pastel,
               onElegir: (p) => setState(() => _pastel = p),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Un ramo de flores',
+              style: TextStyle(
+                fontFamily: AppTheme.manuscrita,
+                fontSize: 26,
+                color: CartasStyle.azul,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElegirRamo(
+              elegido: _ramo,
+              onElegir: (r) => setState(() => _ramo = r),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Y regalitos',
+              style: TextStyle(
+                fontFamily: AppTheme.manuscrita,
+                fontSize: 26,
+                color: CartasStyle.azul,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElegirRegalitos(
+              elegidos: _regalitos,
+              onTocar: (r) => setState(
+                () => _regalitos.contains(r)
+                    ? _regalitos.remove(r)
+                    : _regalitos.add(r),
+              ),
+            ),
           ] else if (widget.coupleId.isNotEmpty) ...[
             OpcionSorpresa(
               activa: _sorpresa,
@@ -697,7 +744,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                 ),
           label: Text(
             _especial != null
-                ? 'Mandar pastel y carta'
+                ? (_pastel == null && _ramo == null && _regalitos.isEmpty
+                      ? 'Mandar la carta'
+                      : 'Mandar regalos y carta')
                 : _sorpresa
                 ? 'Mandar con los gatitos'
                 : 'Enviar en avioncito',

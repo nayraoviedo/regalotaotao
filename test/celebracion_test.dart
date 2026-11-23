@@ -69,7 +69,7 @@ void main() {
   testWidgets('en su cumple, se elige el pastel y se manda la carta', (
     t,
   ) async {
-    final mandadas = <(String, Pastel)>[];
+    final mandadas = <(String, Regalos)>[];
     await t.pumpWidget(
       MaterialApp(
         home: EscribirCartaScreen(
@@ -83,16 +83,29 @@ void main() {
     );
     await t.pump();
     expect(find.text('Feliz cumpleaños'), findsOneWidget);
-    expect(find.text('Feliz cumpleaños 🎂'), findsOneWidget);
+    expect(
+      find.text('Feliz cumpleaños 🎂', skipOffstage: false),
+      findsOneWidget,
+    );
     // Sin "Ábrelo cuando…" ni carta sorpresa.
     expect(find.text('estés triste'), findsNothing);
     expect(find.byType(Switch), findsNothing);
     await t.tap(find.text('gatito'));
     await t.pump();
-    await t.enterText(find.byType(TextField), '¡Feliz cumple, amor!');
-    await t.tap(find.text('Mandar pastel y carta'));
+    // Un ramo lila y dos regalitos.
+    await t.ensureVisible(find.text('Lilas'));
+    await t.tap(find.text('Lilas'));
+    await t.ensureVisible(find.text('Globos'));
+    await t.tap(find.text('Globos'));
+    await t.tap(find.text('Peluche'));
     await t.pump();
-    expect(mandadas, [('¡Feliz cumple, amor!', Pastel.gatito)]);
+    await t.enterText(find.byType(TextField), '¡Feliz cumple, amor!');
+    await t.tap(find.text('Mandar regalos y carta'));
+    await t.pump();
+    expect(mandadas.single.$1, '¡Feliz cumple, amor!');
+    expect(mandadas.single.$2.pastel, Pastel.gatito);
+    expect(mandadas.single.$2.ramo, Ramo.lila);
+    expect(mandadas.single.$2.regalitos, [Regalito.peluche, Regalito.globos]);
     await t.pumpAndSettle();
   });
 
@@ -104,7 +117,12 @@ void main() {
           builder: (context) => TextButton(
             onPressed: () async => abrir = await mostrarLlegadaPastel(
               context,
-              Carta.fromData('k', {'especial': 'cumple', 'pastel': 'fresa'}),
+              Carta.fromData('k', {
+                'especial': 'cumple',
+                'pastel': 'fresa',
+                'ramo': 'rosa',
+                'regalitos': ['taza'],
+              }),
               de: 'Xixi',
             ),
             child: const Text('ver'),
@@ -115,7 +133,13 @@ void main() {
     await t.tap(find.text('ver'));
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('¡Feliz cumpleaños!'), findsOneWidget);
-    expect(find.text('Xixi te mandó un pastel y una carta'), findsOneWidget);
+    expect(
+      find.text(
+        'Xixi te mandó un pastel, un ramo de flores y un regalito, y una carta',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(DibujoRegalo), findsNWidgets(2));
     expect(
       t.widget<PastelConVelas>(find.byType(PastelConVelas)).prendidas,
       isTrue,
@@ -130,6 +154,53 @@ void main() {
     await t.tap(find.text('Abrir la carta'));
     await t.pump(const Duration(milliseconds: 400));
     expect(abrir, isTrue);
+  });
+
+  testWidgets('sin pastel, llegan las flores y se abre directo', (t) async {
+    bool? abrir;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => abrir = await mostrarLlegadaPastel(
+              context,
+              Carta.fromData('k', {'especial': 'aniversario', 'ramo': 'rojo'}),
+              de: 'Xixi',
+            ),
+            child: const Text('ver'),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('ver'));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.text('¡Feliz aniversario!'), findsOneWidget);
+    expect(
+      find.text('Xixi te mandó un ramo de flores, y una carta'),
+      findsOneWidget,
+    );
+    expect(find.byType(PastelConVelas), findsNothing);
+    expect(find.text('Soplar las velitas'), findsNothing);
+    await t.tap(find.text('Abrir la carta'));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(abrir, isTrue);
+  });
+
+  test('las flores y los regalitos tienen su dibujo', () {
+    for (final r in Ramo.values) {
+      expect(File(r.asset).existsSync(), isTrue, reason: r.name);
+    }
+    for (final r in Regalito.values) {
+      expect(File(r.asset).existsSync(), isTrue, reason: r.name);
+    }
+    final c = Carta.fromData('k', {
+      'especial': 'aniversario',
+      'ramo': 'mixto',
+      'regalitos': ['globos', 'nada', 'cajita'],
+    });
+    expect(c.ramo, Ramo.mixto);
+    expect(c.regalitos, [Regalito.globos, Regalito.cajita]);
+    expect(c.pastel, isNull);
   });
 
   testWidgets('en el inicio aparece solo el día especial', (t) async {

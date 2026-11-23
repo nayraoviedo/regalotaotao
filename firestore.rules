@@ -156,6 +156,12 @@ service cloud.firestore {
           && request.resource.data.get('especial', null) in [null, 'cumple', 'aniversario']
           && request.resource.data.get('pastel', null)
                in [null, 'fresa', 'chocolate', 'gatito', 'corazon']
+          && request.resource.data.get('ramo', null)
+               in [null, 'rojo', 'rosa', 'amarillo', 'lila', 'blanco', 'celeste', 'mixto']
+          && request.resource.data.get('regalitos', []) is list
+          && request.resource.data.get('regalitos', []).size() <= 5
+          && request.resource.data.get('regalitos', [])
+               .hasOnly(['peluche', 'chocolates', 'globos', 'cajita', 'taza'])
           // Una carta sorpresa se paga con pescaditos en el mismo momento.
           && (request.resource.data.get('sorpresa', false) == false
               || (request.resource.data.sorpresa == true
