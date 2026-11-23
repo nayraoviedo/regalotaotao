@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../models/mood.dart';
+import 'ojo_acuarela.dart';
 
 /// Muestra el dibujo del ánimo (`assets/moods/<id>.png`).
 /// Si el PNG aún no existe, dibuja la carita de un gatito provisional.
@@ -175,9 +176,12 @@ class MoodBlobPainter extends CustomPainter {
 
   void _boquita(Canvas c, double y) => _linea(c, .465, y, .535, y);
 
-  void _puntos(Canvas c, double y, {double dx = 0, double r = .022}) {
-    c.drawCircle(Offset(.38 + dx, y), r, _relleno);
-    c.drawCircle(Offset(.62 + dx, y), r, _relleno);
+  /// Ojitos abiertos: grandes estilo acuarela, del color de cada gatito.
+  void _puntos(Canvas c, double y, {double dx = 0}) {
+    final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
+    final mirada = Offset(dx * 4, 0);
+    dibujarOjoAcuarela(c, Offset(.38, y), .05, iris, mirada: mirada);
+    dibujarOjoAcuarela(c, Offset(.62, y), .05, iris, mirada: mirada);
   }
 
   void _rubor(Canvas c, double y) {
@@ -237,10 +241,12 @@ class MoodBlobPainter extends CustomPainter {
         );
         _boquita(c, my);
       case 'ansioso':
-        final blanco = Paint()..color = Colors.white;
+        // Ojos muy abiertos, con la pupila chiquita.
+        final iris = _naranja ? OjoAcuarela.naranja : OjoAcuarela.blanco;
         for (final x in [.38, .62]) {
-          c.drawCircle(Offset(x, ey), .045, blanco);
-          c.drawCircle(Offset(x, ey), .022, _relleno);
+          dibujarOjoAcuarela(c, Offset(x, ey), .055, iris);
+          c.drawCircle(Offset(x, ey), .03, Paint()..color = iris);
+          c.drawCircle(Offset(x, ey), .016, _relleno);
         }
         _boquita(c, my + .02);
       case 'enojado':

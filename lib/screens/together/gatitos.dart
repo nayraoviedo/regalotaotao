@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
+import '../../widgets/ojo_acuarela.dart';
 
 /// Los dos gatitos que se sientan sobre las fotos de perfil.
 ///
@@ -267,28 +268,14 @@ class _GatitoProvisional extends CustomPainter {
       }
     }
 
-    // Ojitos (los del ragdoll, azules).
+    // Ojitos grandes estilo acuarela (los del ragdoll, azules).
     for (final l in [-1.0, 1.0]) {
       final c = Offset(s * 0.5 + l * s * 0.12, s * 0.37);
-      if (ragdoll) {
-        canvas.drawOval(
-          Rect.fromCenter(center: c, width: s * 0.085, height: s * 0.095),
-          Paint()..color = const Color(0xFF7FB3E8),
-        );
-        canvas.drawOval(
-          Rect.fromCenter(center: c, width: s * 0.04, height: s * 0.07),
-          Paint()..color = const Color(0xFF2B2B3A),
-        );
-      } else {
-        canvas.drawOval(
-          Rect.fromCenter(center: c, width: s * 0.06, height: s * 0.075),
-          Paint()..color = const Color(0xFF2B2B3A),
-        );
-      }
-      canvas.drawCircle(
-        c + Offset(s * 0.012, -s * 0.018),
-        s * 0.012,
-        Paint()..color = Colors.white,
+      dibujarOjoAcuarela(
+        canvas,
+        c,
+        s * 0.052,
+        ragdoll ? OjoAcuarela.blanco : OjoAcuarela.naranja,
       );
       // Cachetitos.
       canvas.drawOval(
@@ -501,22 +488,10 @@ class _GatitoProvisional extends CustomPainter {
     canvas.drawPath(hocico, blanco);
     canvas.restore();
 
-    // Ojitos azules.
+    // Ojitos azules grandes estilo acuarela.
     for (final l in [-1.0, 1.0]) {
       final c = Offset(s * 0.5 + l * s * 0.135, s * 0.37);
-      canvas.drawOval(
-        Rect.fromCenter(center: c, width: s * 0.095, height: s * 0.1),
-        Paint()..color = const Color(0xFF6FA3DA),
-      );
-      canvas.drawOval(
-        Rect.fromCenter(center: c, width: s * 0.045, height: s * 0.075),
-        Paint()..color = const Color(0xFF232634),
-      );
-      canvas.drawCircle(
-        c + Offset(s * 0.014, -s * 0.02),
-        s * 0.014,
-        Paint()..color = Colors.white,
-      );
+      dibujarOjoAcuarela(canvas, c, s * 0.055, OjoAcuarela.blanco);
       // Cachetitos.
       canvas.drawOval(
         Rect.fromCenter(
