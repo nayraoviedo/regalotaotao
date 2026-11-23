@@ -12,6 +12,7 @@ class PomodoroSession {
     required this.minutes,
     required this.status,
     this.startedAt,
+    this.cancelledBy,
   });
 
   final String id;
@@ -20,6 +21,9 @@ class PomodoroSession {
   final int minutes;
   final PomodoroStatus status;
   final DateTime? startedAt;
+
+  /// Quién detuvo (o se salió de) la sesión.
+  final String? cancelledBy;
 
   DateTime? get endsAt => startedAt?.add(Duration(minutes: minutes));
 
@@ -35,6 +39,7 @@ class PomodoroSession {
         orElse: () => PomodoroStatus.pending,
       ),
       startedAt: (d['startedAt'] as Timestamp?)?.toDate(),
+      cancelledBy: d['cancelledBy'] as String?,
     );
   }
 }

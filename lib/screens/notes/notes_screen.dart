@@ -4,14 +4,16 @@ import '../../models/app_user.dart';
 import '../../models/carta.dart';
 import '../../models/note.dart';
 import '../../services/notes_service.dart';
-import '../../widgets/text_prompt.dart';
 import 'cartas/carta_screen.dart';
-import 'cartas/cartas_style.dart';
 import 'cartas/escritorio.dart';
-import 'cartas/papel.dart';
+import 'tablero/detalle.dart';
+import 'tablero/editor.dart';
+import 'tablero/formas.dart';
+import 'tablero/notas_style.dart';
+import 'tablero/tablero.dart';
 
-/// Tres pestañas: notas compartidas de la pareja, mis notas privadas y el
-/// escritorio de cartas "Ábrelo cuando…".
+/// Tres pestañas: el tablero de notas de los dos, el tablero de mis notas
+/// privadas y el escritorio de cartas "Ábrelo cuando…".
 /// Una nota privada se puede compartir (y dejar de compartir).
 class NotesScreen extends StatelessWidget {
   const NotesScreen({
@@ -20,6 +22,9 @@ class NotesScreen extends StatelessWidget {
     required this.coupleId,
     required this.partnerUid,
     this.initialTab = 0,
+    this.demoDeLosDos,
+    this.demoPrivadas,
+    this.demoCartas,
   });
   final AppUser me;
   final String coupleId;
@@ -29,22 +34,165 @@ class NotesScreen extends StatelessWidget {
   final int initialTab;
   static const tabCartas = 2;
 
+  /// Para pruebas y capturas: notas y cartas de ejemplo sin Firebase.
+  final Stream<List<Note>>? demoDeLosDos;
+  final Stream<List<Note>>? demoPrivadas;
+  final Stream<List<Carta>>? demoCartas;
+
+  NotesService get _service => NotesService.instance;
+
+  Future<void> _crear(BuildContext context, {required bool compartida}) async {
+    final nota = await Navigator.of(context)
+        .push<Note>(MaterialPageRoute(builder: (_) => const EditorDeNota()));
+    if (nota == null) return;
+    if (compartida) {
+      await _service.addShared(coupleId, me.uid, nota.contenido());
+    } else {
+      await _service.addPrivate(me.uid, nota.contenido());
+    }
+  }
+
+  Future<void> _editar(
+    BuildContext context,
+    Note nota, {
+    required bool privada,
+  }) async {
+    final editada = await Navigator.of(
+      context,
+    ).push<Note>(MaterialPageRoute(builder: (_) => EditorDeNota(nota: nota)));
+    if (editada == null) return;
+    if (privada) {
+      await _service.updatePrivate(coupleId, me.uid, nota, editada.contenido());
+    } else {
+      await _service.updateShared(coupleId, nota.id, editada.contenido());
+    }
+  }
+
+  Future<bool> _confirmarBorrar(BuildContext context) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('¿Borrar esta nota?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Borrar'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  void _abrirCompartida(BuildContext context, Note nota) {
+    final mia = nota.authorId == me.uid;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => DetalleDeNota(
+          nota: nota,
+          autor: mia ? 'Escrita por ti' : 'Escrita por tu pareja',
+          onToggle: (items) =>
+              _service.setSharedItems(coupleId, nota.id, items),
+          acciones: [
+            if (mia) ...[
+              AccionDeNota('Editar', Icons.edit_outlined, () async {
+                Navigator.pop(ctx);
+                await _editar(context, nota, privada: false);
+              }),
+              AccionDeNota('Borrar', Icons.delete_outline, () async {
+                if (!await _confirmarBorrar(ctx)) return;
+                if (ctx.mounted) Navigator.pop(ctx);
+                await _service.deleteShared(coupleId, nota.id);
+              }, peligro: true),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _abrirPrivada(BuildContext context, Note nota) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => DetalleDeNota(
+          nota: nota,
+          autor: nota.isShared ? 'Mía, compartida' : 'Solo la ves tú',
+          onToggle: (items) => _service.updatePrivate(coupleId, me.uid, nota, {
+            'items': items.map((i) => i.toMap()).toList(),
+          }),
+          acciones: [
+            AccionDeNota('Editar', Icons.edit_outlined, () async {
+              Navigator.pop(ctx);
+              await _editar(context, nota, privada: true);
+            }),
+            if (coupleId.isNotEmpty)
+              nota.isShared
+                  ? AccionDeNota(
+                      'Dejar de compartir',
+                      Icons.link_off,
+                      () async {
+                        Navigator.pop(ctx);
+                        await _service.unshare(coupleId, me.uid, nota);
+                      },
+                    )
+                  : AccionDeNota('Compartir', Icons.favorite_border, () async {
+                      Navigator.pop(ctx);
+                      await _service.share(coupleId, me.uid, nota);
+                    }),
+            AccionDeNota('Borrar', Icons.delete_outline, () async {
+              if (!await _confirmarBorrar(ctx)) return;
+              if (ctx.mounted) Navigator.pop(ctx);
+              await _service.unshare(coupleId, me.uid, nota);
+              await _service.deletePrivate(me.uid, nota.id);
+            }, peligro: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _marcar(Note nota, int i, {required bool privada}) {
+    final items = [...nota.items!];
+    items[i] = items[i].copyWith(hecho: !items[i].hecho);
+    final mapa = items.map((e) => e.toMap()).toList();
+    if (privada) {
+      _service.updatePrivate(coupleId, me.uid, nota, {'items': mapa});
+    } else {
+      _service.setSharedItems(coupleId, nota.id, items);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final service = NotesService.instance;
     return DefaultTabController(
       length: 3,
       initialIndex: initialTab,
       child: Builder(
         builder: (context) {
           return Scaffold(
+            backgroundColor: NotasStyle.crema,
             appBar: AppBar(
-              title: const Text('Notas'),
+              title: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Sticker('gatito', size: 30),
+                  SizedBox(width: 8),
+                  Text('Notas', style: TextStyle(fontWeight: FontWeight.w700)),
+                ],
+              ),
               bottom: const TabBar(
+                labelColor: NotasStyle.azul,
+                unselectedLabelColor: NotasStyle.gris,
+                indicatorColor: NotasStyle.azul,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelStyle: TextStyle(fontWeight: FontWeight.w700),
                 tabs: [
-                  Tab(text: 'De los dos'),
-                  Tab(text: 'Privadas'),
-                  Tab(text: 'Cartas'),
+                  _Pestana(Icons.favorite_border, 'De los dos'),
+                  _Pestana(Icons.lock_outline, 'Privadas'),
+                  _Pestana(Icons.mail_outline, 'Cartas'),
                 ],
               ),
             ),
@@ -63,79 +211,29 @@ class NotesScreen extends StatelessWidget {
                   );
                   return;
                 }
-                final isShared = tab == 0;
-                final text = await promptText(
-                  context,
-                  title: isShared ? 'Nota para los dos' : 'Nota privada',
-                );
-                if (text == null) return;
-                if (isShared) {
-                  await service.addShared(coupleId, me.uid, text);
-                } else {
-                  await service.addPrivate(me.uid, text);
-                }
+                await _crear(context, compartida: tab == 0);
               },
             ),
             body: TabBarView(
               children: [
-                _NoteList(
-                  stream: service.watchShared(coupleId),
-                  empty: 'Aún no hay notas compartidas.',
-                  itemBuilder: (note) => _NotaEnPapel(
-                    note: note,
-                    papel: Papel.cuadricula,
-                    autor: note.authorId == me.uid ? 'Tú' : 'Tu pareja',
-                    accion: note.authorId == me.uid
-                        ? IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () =>
-                                service.deleteShared(coupleId, note.id),
-                          )
-                        : null,
-                  ),
+                TableroDeNotas(
+                  notas: demoDeLosDos ?? _service.watchShared(coupleId),
+                  vacio: 'Aún no hay notas de los dos.\n¡Pega la primera!',
+                  onAbrir: (n) => _abrirCompartida(context, n),
+                  onToggle: (n, i) => _marcar(n, i, privada: false),
                 ),
-                _NoteList(
-                  stream: service.watchPrivate(me.uid),
-                  empty: 'Tus notas privadas solo las ves tú.',
-                  itemBuilder: (note) => _NotaEnPapel(
-                    note: note,
-                    papel: Papel.renglones,
-                    autor: note.isShared ? 'Compartida 💞' : 'Solo tú',
-                    accion: PopupMenuButton<String>(
-                      onSelected: (v) {
-                        switch (v) {
-                          case 'share':
-                            service.share(coupleId, me.uid, note);
-                          case 'unshare':
-                            service.unshare(coupleId, me.uid, note);
-                          case 'delete':
-                            service
-                                .unshare(coupleId, me.uid, note)
-                                .then(
-                                  (_) => service.deletePrivate(me.uid, note.id),
-                                );
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        if (!note.isShared)
-                          const PopupMenuItem(
-                            value: 'share',
-                            child: Text('Compartir'),
-                          ),
-                        if (note.isShared)
-                          const PopupMenuItem(
-                            value: 'unshare',
-                            child: Text('Dejar de compartir'),
-                          ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Borrar'),
-                        ),
-                      ],
-                    ),
-                  ),
+                TableroDeNotas(
+                  notas: demoPrivadas ?? _service.watchPrivate(me.uid),
+                  vacio: 'Tus notas privadas solo las ves tú.',
+                  onAbrir: (n) => _abrirPrivada(context, n),
+                  onToggle: (n, i) => _marcar(n, i, privada: true),
+                  marca: (n) => n.isShared ? 'compartida ♡' : null,
                 ),
-                EscritorioDeCartas(uid: me.uid, coupleId: coupleId),
+                EscritorioDeCartas(
+                  uid: me.uid,
+                  coupleId: coupleId,
+                  cartas: demoCartas,
+                ),
               ],
             ),
           );
@@ -145,7 +243,26 @@ class NotesScreen extends StatelessWidget {
   }
 }
 
-/// Botón "+" que en la pestaña de cartas cambia a "Escribir carta".
+class _Pestana extends StatelessWidget {
+  const _Pestana(this.icono, this.texto);
+  final IconData icono;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) => Tab(
+    height: 44,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icono, size: 18),
+        const SizedBox(width: 6),
+        Flexible(child: Text(texto, overflow: TextOverflow.ellipsis)),
+      ],
+    ),
+  );
+}
+
+/// "Crear nota" en los tableros y "Escribir carta" en las cartas.
 class _Fab extends StatelessWidget {
   const _Fab({required this.onPressed});
   final VoidCallback onPressed;
@@ -156,132 +273,16 @@ class _Fab extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        if (controller.index == NotesScreen.tabCartas) {
-          return FloatingActionButton.extended(
-            onPressed: onPressed,
-            icon: const Icon(Icons.edit),
-            label: const Text('Escribir carta'),
-          );
-        }
-        return FloatingActionButton(
+        final cartas = controller.index == NotesScreen.tabCartas;
+        return FloatingActionButton.extended(
           onPressed: onPressed,
-          child: const Icon(Icons.add),
-        );
-      },
-    );
-  }
-}
-
-/// Nota como una hojita de papel. Al tocarla se lee completa.
-class _NotaEnPapel extends StatelessWidget {
-  const _NotaEnPapel({
-    required this.note,
-    required this.papel,
-    required this.autor,
-    this.accion,
-  });
-
-  final Note note;
-  final Papel papel;
-  final String autor;
-  final Widget? accion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: Text(autor)),
-              body: LecturaEnPapel(
-                texto: note.text,
-                papel: papel,
-                semilla: note.id.hashCode,
-              ),
-            ),
+          backgroundColor: NotasStyle.azul,
+          foregroundColor: Colors.white,
+          icon: Icon(
+            cartas ? Icons.edit : Icons.auto_awesome,
+            color: cartas ? Colors.white : NotasStyle.amarillo,
           ),
-        ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: CartasStyle.azul.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: HojaDePapel(
-            papel: papel,
-            semilla: note.id.hashCode,
-            conDibujos: false,
-            padding: const EdgeInsets.fromLTRB(28, 30, 8, 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        note.text,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: CartasStyle.letra,
-                      ),
-                      SizedBox(
-                        height: CartasStyle.renglon,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            autor,
-                            style: const TextStyle(
-                              color: CartasStyle.gris,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ?accion,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NoteList extends StatelessWidget {
-  const _NoteList({
-    required this.stream,
-    required this.empty,
-    required this.itemBuilder,
-  });
-
-  final Stream<List<Note>> stream;
-  final String empty;
-  final Widget Function(Note) itemBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<Note>>(
-      stream: stream,
-      builder: (context, snap) {
-        final notes = snap.data;
-        if (notes == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (notes.isEmpty) return Center(child: Text(empty));
-        return ListView(
-          padding: const EdgeInsets.only(top: 10, bottom: 90),
-          children: [for (final n in notes) itemBuilder(n)],
+          label: Text(cartas ? 'Escribir carta' : 'Crear nota'),
         );
       },
     );
