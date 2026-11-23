@@ -71,13 +71,13 @@ COMIDAS = {
         ".WWWRRRWWW.",
         "..WWWWWWW..",
     ], {"o": (226, 110, 56), "g": LECHUGA, "w": PLATO, "W": (240, 236, 226), "R": ROJO}),
-    "saltenas": ([
+    "empanadas": ([
         "...........",
-        "..d.d..d.d.",
-        ".dyyd.dyyd.",
-        "dyyyyddyyyyd"[:11],
-        ".dddd..dddd",
-    ], {"d": PAN_OSC, "y": (236, 180, 100)}),
+        ".yyy...yyy.",
+        "yyyyy.yyyyy",
+        "yYyyy.yYyyy",
+        "dydyd.dydyd",
+    ], {"d": PAN_OSC, "y": (232, 176, 96), "Y": (246, 206, 140)}),
     "sushi": ([
         "kkk.kkk.kkk",
         "kwk.kwk.kwk",

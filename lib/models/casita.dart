@@ -442,7 +442,7 @@ class Catalogo {
     Cosa('comida_hamburguesa', 'Hamburguesa', 25, lugar: Lugar.comida),
     Cosa('comida_pizza', 'Pizza', 25, lugar: Lugar.comida),
     Cosa('comida_pollo_agridulce', 'Pollo agridulce', 30, lugar: Lugar.comida),
-    Cosa('comida_saltenas', 'Salteñas', 25, lugar: Lugar.comida),
+    Cosa('comida_empanadas', 'Empanadas', 25, lugar: Lugar.comida),
     Cosa('comida_sushi', 'Sushi', 30, lugar: Lugar.comida),
     Cosa('comida_ramen', 'Ramen', 30, lugar: Lugar.comida),
     Cosa('comida_tacos', 'Tacos', 25, lugar: Lugar.comida),

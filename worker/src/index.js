@@ -156,7 +156,7 @@ const NOMBRES_CASITA = {
   comida_hamburguesa: "hamburguesa",
   comida_pizza: "pizza",
   comida_pollo_agridulce: "pollo agridulce",
-  comida_saltenas: "salteñas",
+  comida_empanadas: "empanadas",
   comida_sushi: "sushi",
   comida_ramen: "ramen",
   comida_tacos: "tacos",
