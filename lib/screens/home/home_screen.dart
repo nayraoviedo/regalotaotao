@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
@@ -25,6 +27,7 @@ import '../racha/racha_widgets.dart';
 import '../pomodoro/reward_sheets.dart' show pickReward;
 import '../together/together_screen.dart';
 import 'inicio_view.dart';
+import 'mimos.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -266,6 +269,48 @@ class _HomeBodyState extends State<_HomeBody> {
     }
   }
 
+  bool _mandandoMimo = false;
+
+  /// Manda un beso o un abrazo y muestra a los gatitos haciéndolo.
+  Future<void> _mandarMimo(Mimo mimo) async {
+    if (_mandandoMimo) return;
+    _mandandoMimo = true;
+    final me = widget.me;
+    final partnerName = widget.partner?.name ?? 'Tu pareja';
+    final (miGatito, _) = Gatito.dePareja(me, widget.partner);
+    try {
+      if (mimo == Mimo.beso) {
+        await TogetherService.instance.sendKiss(
+          widget.couple.id,
+          from: me.uid,
+          to: _partnerUid,
+        );
+      } else {
+        await TogetherService.instance.sendHug(
+          widget.couple.id,
+          from: me.uid,
+          to: _partnerUid,
+        );
+      }
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      await mostrarMimo(
+        context,
+        mimo: mimo,
+        manda: miGatito,
+        titulo: mimo.enviado(partnerName),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo mandar, intenta otra vez')),
+        );
+      }
+    } finally {
+      _mandandoMimo = false;
+    }
+  }
+
   Future<void> _abrazo(String partnerUid, MoodType suAnimo) async {
     try {
       await TogetherService.instance.sendHug(
@@ -313,6 +358,7 @@ class _HomeBodyState extends State<_HomeBody> {
                 ? null
                 : () => _abrazo(partnerUid, suyo.data!.mood),
             onTeExtrano: () => _teExtrano(partnerUid, partnerName),
+            onMimo: _mandarMimo,
             misTeExtrano: _misTeExtrano,
             susTeExtrano: _susTeExtrano,
             onDiasJuntos: () => setState(() => _tab = HomeTabs.tabNosotros),
@@ -333,13 +379,20 @@ class _HomeBodyState extends State<_HomeBody> {
       ),
     );
 
-    return HomeTabs(
-      index: _tab,
-      onChanged: (i) => setState(() => _tab = i),
-      inicio: inicio,
-      nosotros: TogetherScreen(couple: couple),
-      notas: NotesScreen(me: me, coupleId: couple.id, partnerUid: partnerUid),
-      perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+    return LlegadaDeMimos(
+      uid: me.uid,
+      coupleId: couple.id,
+      partnerName: partnerName,
+      suGatito: suGatito,
+      onDevolver: _mandarMimo,
+      child: HomeTabs(
+        index: _tab,
+        onChanged: (i) => setState(() => _tab = i),
+        inicio: inicio,
+        nosotros: TogetherScreen(couple: couple),
+        notas: NotesScreen(me: me, coupleId: couple.id, partnerUid: partnerUid),
+        perfil: ProfileScreen(me: me, partner: partner, couple: couple),
+      ),
     );
   }
 }

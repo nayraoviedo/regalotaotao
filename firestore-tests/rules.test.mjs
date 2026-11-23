@@ -48,6 +48,8 @@ await no('C no saca naipe', setDoc(doc(db('C'),'couples/c1/dailyAnswers/2026-11-
 await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'A',to:'B'}));
 await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
 await ok('A abraza a B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'A',to:'B',mood:'triste'}));
+await ok('A manda un beso a B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'A',to:'B'}));
+await no('A no manda besos en nombre de B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'B',to:'A'}));
 await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
 await ok('A agrega un premio', setDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo',createdBy:'A'}));
