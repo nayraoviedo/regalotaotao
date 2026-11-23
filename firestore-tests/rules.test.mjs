@@ -1,5 +1,5 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, getDocs, updateDoc, writeBatch, collection, addDoc, serverTimestamp, deleteDoc, query, where } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, updateDoc, writeBatch, collection, addDoc, serverTimestamp, deleteDoc, deleteField, query, where } from 'firebase/firestore';
 import fs from 'fs';
 const env = await initializeTestEnvironment({ projectId: 'demo-taotao', firestore: { rules: fs.readFileSync("../firestore.rules",'utf8'), host:'127.0.0.1', port:8080 } });
 const db = (u) => env.authenticatedContext(u).firestore();
@@ -49,6 +49,41 @@ await ok('A te extraño', addDoc(collection(db('A'),'couples/c1/missYou'),{from:
 await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missYou'),{from:'B',to:'A'}));
 await ok('A abraza a B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'A',to:'B',mood:'triste'}));
 await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
+// Recomendación del día.
+const rec = (u, dia, extra={}) => ({from:u, dia, categoria:'cancion', titulo:'Sutra', nota:null, link:'https://open.spotify.com/track/abc', gusto:false, ...extra});
+await ok('A recomienda una canción', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'), rec('A','2026-11-23')));
+await ok('A cambia su recomendación', updateDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'), {categoria:'pelicula',titulo:'Chihiro',link:null}));
+await ok('B ve la recomendación', getDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A')));
+await no('C no ve la recomendación', getDoc(doc(db('C'),'couples/c1/recomendaciones/2026-11-23_A')));
+await no('B no recomienda a nombre de A', setDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'), rec('A','2026-11-23')));
+await no('A no usa un id de otro día', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-24_A'), rec('A','2026-11-23')));
+await no('A no usa una categoría rara', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-22_A'), rec('A','2026-11-22',{categoria:'x'})));
+await no('A no pone un link que no es web', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-22_A'), rec('A','2026-11-22',{link:'javascript:alert(1)'})));
+await no('A no se pone corazón solita', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-22_A'), rec('A','2026-11-22',{gusto:true})));
+await no('A no crea una con reseñas ya puestas', setDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-22_A'), rec('A','2026-11-22',{resenas:{B:{estrellas:5,texto:''}}})));
+await ok('B deja su reseña', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.B':{estrellas:4,texto:'Lloré'}}));
+await ok('A deja su reseña', updateDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.A':{estrellas:5,texto:''}}));
+await no('B no cambia la reseña de A', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.A':{estrellas:1,texto:'feo'}}));
+await no('B no pone 6 estrellas', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.B':{estrellas:6,texto:''}}));
+await no('C no reseña', updateDoc(doc(db('C'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.C':{estrellas:3,texto:''}}));
+await no('A al editar no borra las reseñas', updateDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'),{resenas:{}}));
+await ok('A edita y las reseñas se quedan', updateDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A'),{titulo:'El viaje de Chihiro'}));
+await ok('B quita su reseña', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{'resenas.B':deleteField()}));
+await ok('B ve el historial', getDocs(query(collection(db('B'),'couples/c1/recomendaciones'))));
+await ok('B marca que le gustó', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{gusto:true}));
+await no('B no cambia el título', updateDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A'),{titulo:'otra'}));
+await no('B no la borra', deleteDoc(doc(db('B'),'couples/c1/recomendaciones/2026-11-23_A')));
+await ok('A la borra', deleteDoc(doc(db('A'),'couples/c1/recomendaciones/2026-11-23_A')));
+// Reseñas de lo que hicieron juntos.
+await ok('A agrega algo por hacer', setDoc(doc(db('A'),'couples/c1/bucketList/b1'),{title:'Picnic',category:'Cita',done:false,createdBy:'A'}));
+await ok('B lo marca hecho', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{done:true}));
+await ok('A reseña el picnic', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:5,texto:'Lo mejor'}}));
+await ok('B reseña el picnic', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:4,texto:''}}));
+await no('B no cambia la reseña de A', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:1,texto:''}}));
+await no('B no pone 0 estrellas', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:0,texto:''}}));
+await no('C no reseña', updateDoc(doc(db('C'),'couples/c1/bucketList/b1'),{'resenas.C':{estrellas:3,texto:''}}));
+await ok('A lo desmarca y las reseñas se quedan', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{done:false}));
+await no('no se crea con reseñas ajenas', setDoc(doc(db('A'),'couples/c1/bucketList/b2'),{title:'X',category:'Otro',done:true,resenas:{B:{estrellas:5,texto:''}}}));
 await no('A no cambia su código', updateDoc(doc(db('A'),'users','A'),{pairCode:'ZZZZZZ'}));
 await ok('A agrega un premio', setDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo',createdBy:'A'}));
 await ok('A cambia su premio', updateDoc(doc(db('A'),'couples/c1/rewards/r1'),{title:'Un abrazo largo'}));

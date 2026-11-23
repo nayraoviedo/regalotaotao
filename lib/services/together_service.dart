@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/bucket_item.dart';
+import '../models/recomendacion.dart' show Resena;
 import '../models/daily_card.dart';
 import 'db.dart';
 import 'notify_service.dart';
@@ -282,6 +283,22 @@ class TogetherService {
     coupleId,
     'bucketList',
   ).doc(item.id).update({'done': !item.done});
+
+  Stream<BucketItem?> watchBucketItem(String coupleId, String id) =>
+      Db.coupleSub(
+        coupleId,
+        'bucketList',
+      ).doc(id).snapshots().map((d) => d.exists ? BucketItem.fromDoc(d) : null);
+
+  /// Guarda (o quita, con `null`) mi reseña de algo que hicimos juntos.
+  Future<void> resenarBucket(
+    String coupleId,
+    String id,
+    String uid,
+    Resena? resena,
+  ) => Db.coupleSub(coupleId, 'bucketList').doc(id).update({
+    'resenas.$uid': resena == null ? FieldValue.delete() : resena.toMap(),
+  });
 
   Future<void> deleteBucket(String coupleId, String id) =>
       Db.coupleSub(coupleId, 'bucketList').doc(id).delete();

@@ -369,9 +369,28 @@ service cloud.firestore {
           && request.resource.data.hechos[me()] == true;
       }
 
-      // Cosas por hacer juntos.
+      // Cosas por hacer juntos. Los dos agregan, marcan y borran; cuando ya
+      // lo hicieron, cada uno deja solo su propia reseña.
       match /bucketList/{itemId} {
-        allow read, write: if isMember(coupleId);
+        function resenasBucketOk() {
+          let antes = resource.data.get('resenas', {});
+          let rs = request.resource.data.get('resenas', {});
+          return !request.resource.data.diff(resource.data).affectedKeys()
+                   .hasAny(['resenas'])
+            || (rs is map
+              && rs.diff(antes).affectedKeys().hasOnly([me()])
+              && (!(me() in rs)
+                || (rs[me()].keys().hasOnly(['estrellas', 'texto'])
+                  && rs[me()].estrellas is int
+                  && rs[me()].estrellas >= 1
+                  && rs[me()].estrellas <= 5
+                  && rs[me()].texto is string
+                  && rs[me()].texto.size() <= 500)));
+        }
+        allow read, delete: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.get('resenas', {}).size() == 0;
+        allow update: if isMember(coupleId) && resenasBucketOk();
       }
 
       // "Te extraño": la app le pide al Worker (worker/) que avise a la pareja.
@@ -379,6 +398,67 @@ service cloud.firestore {
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.from == me();
+      }
+
+      // Recomendación del día (canción, playlist, película, lugar…): cada uno
+      // deja una por día para su pareja, con id {yyyy-MM-dd}_{uid}. Quien la
+      // escribe la cambia o la borra; la pareja marca si le gustó, y los dos
+      // pueden dejar su reseña (estrellitas y comentario), cada uno la suya.
+      match /recomendaciones/{recId} {
+        function recValida() {
+          let r = request.resource.data;
+          return r.keys().hasOnly(['from', 'dia', 'categoria', 'titulo',
+                                   'nota', 'link', 'gusto', 'resenas',
+                                   'updatedAt'])
+            && r.from == me()
+            && r.dia is string
+            && r.dia.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+            && recId == r.dia + '_' + me()
+            && r.categoria in ['playlist', 'cancion', 'pelicula', 'serie',
+                               'libro', 'lugar', 'restaurante', 'podcast', 'otro']
+            && r.titulo is string
+            && r.titulo.size() > 0
+            && r.titulo.size() <= 120
+            && (r.get('nota', null) == null
+              || (r.nota is string && r.nota.size() <= 300))
+            && (r.get('link', null) == null
+              || (r.link is string && r.link.size() <= 500
+                  && r.link.matches('https?://.+')));
+        }
+        function previasResenas() {
+          return resource.data.get('resenas', {});
+        }
+        function miResenaValida() {
+          let rs = request.resource.data.get('resenas', {});
+          return rs is map
+            && rs.diff(previasResenas()).affectedKeys().hasOnly([me()])
+            && (!(me() in rs)
+              || (rs[me()].keys().hasOnly(['estrellas', 'texto'])
+                && rs[me()].estrellas is int
+                && rs[me()].estrellas >= 1
+                && rs[me()].estrellas <= 5
+                && rs[me()].texto is string
+                && rs[me()].texto.size() <= 500));
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId) && recValida()
+          && request.resource.data.get('gusto', false) == false
+          && request.resource.data.get('resenas', {}).size() == 0;
+        // Quien la escribió cambia lo suyo, sin tocar corazón ni reseñas.
+        allow update: if isMember(coupleId) && recValida()
+          && request.resource.data.get('gusto', false)
+               == resource.data.get('gusto', false)
+          && request.resource.data.get('resenas', {}) == previasResenas();
+        allow update: if isMember(coupleId)
+          && resource.data.from != me()
+          && request.resource.data.gusto is bool
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['gusto']);
+        allow update: if isMember(coupleId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['resenas'])
+          && miResenaValida();
+        allow delete: if isMember(coupleId) && resource.data.from == me();
       }
 
       // Abrazos que se mandan desde el inicio cuando la pareja no está bien.
