@@ -20,6 +20,11 @@ class TaotaoApp extends StatelessWidget {
       title: 'Taotao',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      // Calendarios, botones de "Atrás" y demás textos del sistema en
+      // español (si no, salen en inglés).
+      locale: const Locale('es'),
+      supportedLocales: const [Locale('es')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: const AuthGate(),
     );
   }

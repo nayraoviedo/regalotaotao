@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/dato_curioso.dart';
+import '../../widgets/doodle.dart';
 import '../../theme.dart';
 
 /// Tarjetita en "Nosotros" con el dato curioso de tu pareja de hoy.
@@ -41,11 +42,9 @@ class DatoDelDia extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.lightbulb_outline,
-                size: 18,
-                color: AppTheme.amarillo,
-              ),
+              // Sin color: el amarillo es claro y elegiría el doodle de
+              // contorno crema, que no se ve sobre la tarjeta blanca.
+              const Doodle(Icons.lightbulb_outline, size: 20),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
