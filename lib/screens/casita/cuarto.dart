@@ -30,7 +30,9 @@ class CuartoCasita extends StatelessWidget {
   /// Qué hay en un punto del dibujo (en píxeles de 80×104).
   static Object? queHay(double x, double y, [Cuarto cuarto = Cuarto.sala]) {
     if (zonaGatitos.contiene(x, y)) return zonaGatitos;
-    final lugares = [...cuarto.lugares]
+    // El adorno ocupa toda la parte de arriba: no tapa a la ventana ni al
+    // cuadro (se elige desde la tienda).
+    final lugares = [...cuarto.lugares.where((l) => l != Lugar.adorno)]
       ..sort((a, b) => (a.zona.w * a.zona.h).compareTo(b.zona.w * b.zona.h));
     for (final l in lugares) {
       if (l.zona.contiene(x, y)) return l;

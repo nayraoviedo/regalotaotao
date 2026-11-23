@@ -44,7 +44,7 @@ void main() {
           expect(Catalogo.porId(id)!.gratis, isTrue);
         }
       }
-      expect(Catalogo.cosas.where((c) => c.gratis).length, 3);
+      expect(Catalogo.cosas.where((c) => c.gratis).length, 8);
     });
   });
 
@@ -100,6 +100,30 @@ void main() {
       expect(CuartoCasita.queHay(66, 88, Cuarto.jardin), Lugar.estanque);
     });
 
+    test('las festividades caen en sus fechas', () {
+      bool activa(Festividad f, DateTime d) =>
+          f.activaEn(d, inicioPareja: DateTime(2024, 3, 9)) != null;
+      expect(Festividad.pascuaDe(2027), DateTime(2027, 3, 28));
+      expect(Festividad.pascuaDe(2026), DateTime(2026, 4, 5));
+      expect(activa(Festividad.navidad, DateTime(2026, 12, 24)), isTrue);
+      expect(activa(Festividad.navidad, DateTime(2026, 11, 23)), isFalse);
+      // Año Nuevo cruza de un año al otro.
+      expect(activa(Festividad.anioNuevo, DateTime(2026, 12, 31)), isTrue);
+      expect(activa(Festividad.anioNuevo, DateTime(2027, 1, 3)), isTrue);
+      expect(activa(Festividad.anioNuevoChino, DateTime(2027, 2, 6)), isTrue);
+      expect(activa(Festividad.anioNuevoChino, DateTime(2027, 2, 20)), isTrue);
+      expect(activa(Festividad.medioOtono, DateTime(2027, 9, 15)), isTrue);
+      expect(activa(Festividad.carnaval, DateTime(2027, 2, 6)), isTrue);
+      expect(activa(Festividad.aniversario, DateTime(2027, 3, 10)), isTrue);
+      expect(activa(Festividad.primavera, DateTime(2027, 9, 21)), isTrue);
+      final proximas = Festividad.proximas(DateTime(2026, 11, 23));
+      expect(proximas.first.$1, Festividad.navidad);
+      // Cada festividad tiene cosas a la venta.
+      for (final f in Festividad.values) {
+        expect(Catalogo.cosas.where((c) => c.fiesta == f), isNotEmpty);
+      }
+    });
+
     test('los cuartos nuevos se abren comprándolos', () {
       const cerrado = EstadoCasita.vacio;
       expect(cerrado.abierto(Cuarto.sala), isTrue);
@@ -110,6 +134,8 @@ void main() {
       });
       expect(e.abierto(Cuarto.cocina), isTrue);
       expect(e.capas(Cuarto.cocina), [
+        'assets/casita/pared_cocina_azulejos.png',
+        'assets/casita/piso_cocina_terracota.png',
         'assets/casita/cuarto_cocina.png',
         'assets/casita/refri_azul.png',
         'assets/casita/gatito_naranja.png',
@@ -144,7 +170,7 @@ void main() {
     setUp(() {
       final view =
           TestWidgetsFlutterBinding.instance.platformDispatcher.implicitView!;
-      view.physicalSize = const Size(390, 1600);
+      view.physicalSize = const Size(390, 2600);
       view.devicePixelRatio = 1;
     });
     tearDown(() {
@@ -161,6 +187,7 @@ void main() {
       List<(Cosa, String?)>? compras,
       List<(Lugar, Cosa?)>? puestos,
       Cuarto? cuarto,
+      DateTime? hoy,
     }) => MaterialApp(
       home: CasitaView(
         estado: estado,
@@ -178,6 +205,8 @@ void main() {
         onPoner: (l, c) async => puestos?.add((l, c)),
         onVestir: (_, _, _) async {},
         cuartoInicial: cuarto,
+        hoy: hoy ?? DateTime(2026, 11, 23),
+        inicioPareja: DateTime(2024, 3, 9),
       ),
     );
 
@@ -187,7 +216,6 @@ void main() {
         pantalla(const EstadoCasita(pescaditos: 130), compras: compras),
       );
       expect(find.text('130'), findsOneWidget);
-      expect(find.text('Xixi respondió la pregunta del día'), findsOneWidget);
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
       expect(find.text('¿Comprar Sofá azul?'), findsOneWidget);
@@ -250,12 +278,53 @@ void main() {
       expect(compras.single.$1.id, 'cuarto_cocina');
     });
 
+    testWidgets('los movimientos dicen quién hizo qué', (t) async {
+      await t.pumpWidget(pantalla(EstadoCasita.vacio));
+      await t.scrollUntilVisible(
+        find.text('Xixi respondió la pregunta del día'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Xixi respondió la pregunta del día'), findsOneWidget);
+      expect(find.text('Próximas festividades'), findsOneWidget);
+    });
+
+    testWidgets('en diciembre se venden cosas de Navidad', (t) async {
+      final compras = <(Cosa, String?)>[];
+      // En noviembre no aparece el arbolito.
+      await t.pumpWidget(pantalla(const EstadoCasita(pescaditos: 300)));
+      expect(find.textContaining('De temporada'), findsNothing);
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 300),
+          compras: compras,
+          hoy: DateTime(2026, 12, 10),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(
+        find.textContaining(
+          'Navidad: cosas especiales hasta el 26 de diciembre',
+        ),
+        findsOneWidget,
+      );
+      await t.tap(find.text('🎄 De temporada'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Arbolito de Navidad'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'temporada_arbolito');
+    });
+
     testWidgets('la ropita se compra para un gatito', (t) async {
       final compras = <(Cosa, String?)>[];
       await t.pumpWidget(
         pantalla(const EstadoCasita(pescaditos: 200), compras: compras),
       );
-      await t.tap(find.text('Ropita'));
+      await t.ensureVisible(find.text('Accesorios'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Accesorios'));
       await t.pumpAndSettle();
       await t.tap(find.text('Corbatín'));
       await t.pumpAndSettle();
