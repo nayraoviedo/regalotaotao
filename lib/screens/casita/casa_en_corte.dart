@@ -334,6 +334,11 @@ class CasaView extends StatelessWidget {
       Escena.medianoche =>
         'El gatito naranja se levantó a comer a medianoche y el blanco '
             'duerme en ${_el(estado.dondeDuermen ?? Cuarto.sala)}',
+      Escena.bano => 'Los gatitos se están dando un bañito',
+      Escena.siesta => 'Los gatitos duermen la siesta en ${_el(donde)}',
+      Escena.cocinando => _cocinando(estado, ahora),
+      final e? when e.comida != null =>
+        'Los gatitos están ${e.que} ${estado.nombrePlato(e.comida!, ahora)}',
       final e? => 'Los gatitos están ${e.que} en ${_el(donde)}',
       null
           when Momento.de(ahora) == Momento.noche &&
@@ -341,6 +346,19 @@ class CasaView extends StatelessWidget {
         'Los gatitos duermen en ${_el(donde)}',
       null => 'Los gatitos están en ${_el(donde)}',
     };
+  }
+
+  /// "El gatito naranja cocina sopa de tomate del huerto y el blanco le
+  /// ayuda picando tomates".
+  static String _cocinando(EstadoCasita estado, DateTime ahora) {
+    final quien = EstadoCasita.quienCocina(ahora);
+    final comida = EstadoCasita.queCocinan(ahora);
+    final receta = estado.platoDe(comida, ahora);
+    final ayuda = receta == null
+        ? 'le ayuda'
+        : 'le ayuda picando ${receta.principal.varios}';
+    return 'El gatito $quien cocina ${estado.nombrePlato(comida, ahora)} '
+        'y el ${EstadoCasita.otro(quien)} $ayuda';
   }
 
   static String _el(Cuarto c) => switch (c) {

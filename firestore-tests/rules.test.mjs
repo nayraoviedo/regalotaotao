@@ -249,6 +249,10 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('ni regalitos que no existen', especial('k7',{especial:'cumple',regalitos:['auto']}));
   await ok('se guarda cuándo sembraron', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:{tomatera:1764000000000}},{merge:true}));
   await no('lo sembrado es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:'hoy'},{merge:true}));
+  await ok('recogen lo del huerto a la despensa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:{tomate:3},sembrado:{tomatera:1764000000000}},{merge:true}));
+  await ok('cocinan con lo de la despensa', setDoc(doc(db('B'),'couples/c1/casita/estado'),{despensa:{tomate:1},cocinado:{receta:'sopaTomate',en:1764000000000}},{merge:true}));
+  await no('la despensa es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:'mucho'},{merge:true}));
+  await no('C no cocina en su casita', setDoc(doc(db('C'),'couples/c1/casita/estado'),{cocinado:{receta:'ensalada',en:1}},{merge:true}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
   // Respirar con los gatitos: 8 pescaditos, una vez al día por persona.
   const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data().pescaditos;

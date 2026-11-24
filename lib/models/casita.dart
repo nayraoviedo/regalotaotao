@@ -121,7 +121,9 @@ enum Cielo {
 
 /// Cosas de pareja que hacen los gatitos grandes en algún cuarto. Los
 /// dibujos son `escena_<nombre>_1.png` y `_2.png` (se van alternando),
-/// encima de los gatitos sentados; ver `generar_escenas.py`.
+/// encima de los gatitos sentados; ver `generar_escenas.py` y
+/// `generar_rutina.py`. Las de la rutina del día (bañarse, comer, cocinar,
+/// la siesta) tienen su hora fija; ver [EstadoCasita.escena].
 enum Escena {
   drama(Cuarto.sala, 'viendo un drama'),
   ovillo(Cuarto.sala, 'jugando con un ovillo'),
@@ -133,17 +135,157 @@ enum Escena {
   huerto(Cuarto.huerto, 'regando el huerto'),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
-  medianoche(Cuarto.cocina, 'comiendo a medianoche');
+  medianoche(Cuarto.cocina, 'comiendo a medianoche', libre: false),
 
-  const Escena(this.cuarto, this.que);
+  // ---- La rutina del día ----
+  /// En la tina, temprano.
+  bano(Cuarto.bano, 'dándose un bañito', libre: false),
+  desayuno(Cuarto.cocina, 'desayunando', libre: false),
+
+  /// Uno cocina y el otro le ayuda picando (antes del almuerzo y la cena).
+  cocinando(Cuarto.cocina, 'cocinando', libre: false),
+  almuerzo(Cuarto.cocina, 'almorzando', libre: false),
+  cena(Cuarto.cocina, 'cenando', libre: false),
+
+  /// Donde duermen de noche (la cama o la camita), no siempre el dormitorio.
+  siesta(Cuarto.dormitorio, 'durmiendo la siesta', libre: false);
+
+  const Escena(this.cuarto, this.que, {this.libre = true});
 
   final Cuarto cuarto;
 
   /// "Los gatitos están …".
   final String que;
 
-  String capa(int tick) =>
-      Casita.asset('escena_${name}_${tick % 4 < 2 ? 1 : 2}');
+  /// ¿Puede tocar en cualquier rato libre del día? (Las de la rutina y la
+  /// de medianoche tienen su hora.)
+  final bool libre;
+
+  /// La comida de esta escena (null si no es una comida).
+  Comida? get comida => switch (this) {
+    desayuno => Comida.desayuno,
+    almuerzo => Comida.almuerzo,
+    cena => Comida.cena,
+    _ => null,
+  };
+
+  String capa(int tick) {
+    final f = tick % 4 < 2 ? 1 : 2;
+    return Casita.asset(switch (this) {
+      bano => 'banando_$f',
+      desayuno || almuerzo || cena => 'escena_comer_$f',
+      cocinando => 'escena_cocinar_naranja_$f',
+      siesta => 'zzz_cama_$f',
+      _ => 'escena_${name}_$f',
+    });
+  }
+}
+
+/// Las tres comidas del día.
+enum Comida {
+  desayuno('pancito', 'pancito con leche', 'pescadito'),
+  almuerzo('pescadito', 'pescadito', 'pescadito'),
+  cena('fideos', 'fideos', 'tomate');
+
+  const Comida(this.dibujo, this.nombre, this.picando);
+
+  /// Lo que comen si no cocinaron nada del huerto: `plato_<dibujo>.png`.
+  final String dibujo;
+  final String nombre;
+
+  /// Qué pica el que ayuda cuando cocinan esto: `picando_<x>_<gatito>.png`.
+  final String picando;
+}
+
+/// Lo que se cosecha en el huerto (y se guarda en la despensa para
+/// cocinar). [semilla] es el id de la [Cosa] que lo da.
+enum Ingrediente {
+  tomate('tomatera', 'tomate', 'tomates', '🍅'),
+  choclo('maiz', 'choclo', 'choclos', '🌽'),
+  zanahoria('zanahorias', 'zanahoria', 'zanahorias', '🥕'),
+  fresa('fresas', 'fresa', 'fresas', '🍓'),
+  lechuga('lechugas', 'lechuga', 'lechugas', '🥬'),
+  calabaza('calabazas', 'calabaza', 'calabazas', '🎃');
+
+  const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
+
+  final String semilla;
+  final String uno;
+  final String varios;
+  final String emoji;
+
+  /// Cuántos dan al recogerlos.
+  static const porCosecha = 3;
+
+  static Ingrediente? deSemilla(String cosaId) {
+    for (final i in values) {
+      if (i.semilla == cosaId) return i;
+    }
+    return null;
+  }
+
+  /// "1 tomate", "3 tomates".
+  String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
+}
+
+/// Lo que cocinan con lo del huerto. El dibujo es `plato_<dibujo>.png`.
+enum Receta {
+  sopaTomate(
+    'sopa_tomate',
+    'sopa de tomate',
+    {Ingrediente.tomate: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ensalada(
+    'ensalada',
+    'ensalada',
+    {Ingrediente.lechuga: 1, Ingrediente.tomate: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  choclo(
+    'choclo',
+    'choclo con mantequilla',
+    {Ingrediente.choclo: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaCalabaza(
+    'sopa_calabaza',
+    'crema de calabaza',
+    {Ingrediente.calabaza: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pastelZanahoria(
+    'pastel_zanahoria',
+    'pastel de zanahoria',
+    {Ingrediente.zanahoria: 2},
+    {Comida.desayuno},
+  ),
+  batidoFresa(
+    'batido_fresa',
+    'batido de fresa',
+    {Ingrediente.fresa: 2},
+    {Comida.desayuno},
+  );
+
+  const Receta(this.dibujo, this.nombre, this.ingredientes, this.comidas);
+
+  final String dibujo;
+  final String nombre;
+  final Map<Ingrediente, int> ingredientes;
+
+  /// En qué comidas se lo comen.
+  final Set<Comida> comidas;
+
+  /// Lo que pica el que ayuda.
+  Ingrediente get principal => ingredientes.keys.first;
+
+  /// "2 🍅", "1 🥬 + 1 🍅".
+  String get cuesta =>
+      [for (final e in ingredientes.entries) '${e.value} ${e.key.emoji}']
+          .join(' + ');
+
+  /// Cuánto rato se lo siguen comiendo después de cocinarlo.
+  static const dura = Duration(hours: 24);
 }
 
 /// Los cuartos de la casita. La sala viene con la casita; los demás se
@@ -1239,6 +1381,9 @@ class EstadoCasita {
     this.propuesta,
     this.nombres = const {},
     this.sembrado = const {},
+    this.despensa = const {},
+    this.cocinado,
+    this.cocinadoEn,
   });
 
   static const vacio = EstadoCasita();
@@ -1274,6 +1419,62 @@ class EstadoCasita {
 
   /// Cuándo se sembró cada semilla (id de la [Cosa] → milisegundos).
   final Map<String, int> sembrado;
+
+  /// Lo que recogieron del huerto: `{tomate: 3}` (por [Ingrediente.name]).
+  final Map<String, int> despensa;
+
+  /// Lo último que cocinaron con lo del huerto, y cuándo (milisegundos).
+  final Receta? cocinado;
+  final int? cocinadoEn;
+
+  /// Cuánto hay de [i] en la despensa.
+  int hay(Ingrediente i) => despensa[i.name] ?? 0;
+
+  bool puedeCocinar(Receta r) =>
+      r.ingredientes.entries.every((e) => hay(e.key) >= e.value);
+
+  /// Lo del huerto que ya creció y se puede recoger.
+  List<Cosa> cosechables([DateTime? ahora]) => [
+    for (final l in Cuarto.huerto.lugares)
+      if (puesto(l) case final c?
+          when Ingrediente.deSemilla(c.id) != null && etapa(c, ahora) == 2)
+        c,
+  ];
+
+  /// Lo que comen en [comida]: lo que cocinaron con lo del huerto (si es
+  /// para esa comida y lo hicieron hace menos de [Receta.dura]) o null si
+  /// comen lo de siempre ([Comida.dibujo]).
+  Receta? platoDe(Comida comida, DateTime ahora) {
+    final r = cocinado;
+    final en = cocinadoEn;
+    if (r == null || en == null || !r.comidas.contains(comida)) return null;
+    final hace = ahora.millisecondsSinceEpoch - en;
+    return hace >= 0 && hace < Receta.dura.inMilliseconds ? r : null;
+  }
+
+  /// "sopa de tomate del huerto" o "pancito con leche".
+  String nombrePlato(Comida comida, DateTime ahora) =>
+      switch (platoDe(comida, ahora)) {
+        final r? => '${r.nombre} del huerto',
+        null => comida.nombre,
+      };
+
+  /// Quién cocina hoy: se turnan día por medio (el otro le ayuda).
+  static String quienCocina(DateTime ahora) =>
+      DateTime.utc(ahora.year, ahora.month, ahora.day).millisecondsSinceEpoch ~/
+              Duration.millisecondsPerDay %
+              2 ==
+          0
+      ? 'naranja'
+      : 'blanco';
+
+  static String otro(String gatito) =>
+      gatito == 'naranja' ? 'blanco' : 'naranja';
+
+  /// Para qué comida cocinan a esta hora (a las 12 el almuerzo, a las 18
+  /// la cena).
+  static Comida queCocinan(DateTime ahora) =>
+      ahora.hour < 15 ? Comida.almuerzo : Comida.cena;
 
   /// Cuánto tarda en crecer una semilla: brote, plantita y lista.
   static const diaDeCrecer = Duration(days: 1);
@@ -1368,6 +1569,19 @@ class EstadoCasita {
         for (final e in ((d['sembrado'] as Map?) ?? const {}).entries)
           if (e.value is num) e.key as String: (e.value as num).toInt(),
       },
+      despensa: {
+        for (final e in ((d['despensa'] as Map?) ?? const {}).entries)
+          if (e.value is num && (e.value as num) > 0)
+            e.key as String: (e.value as num).toInt(),
+      },
+      cocinado: switch (d['cocinado']) {
+        {'receta': final String r} => Receta.values.asNameMap()[r],
+        _ => null,
+      },
+      cocinadoEn: switch (d['cocinado']) {
+        {'en': final num en} => en.toInt(),
+        _ => null,
+      },
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -1457,13 +1671,41 @@ class EstadoCasita {
     return abiertos[_azar(99, rato) % abiertos.length];
   }
 
+  /// ¿Se puede hacer [e]? (Que esté abierto su cuarto y tengan lo que
+  /// hace falta: la tina para bañarse, dónde dormir para la siesta.)
+  bool sePuede(Escena e) => switch (e) {
+    Escena.bano => abierto(Cuarto.bano) && puesto(Lugar.tina) != null,
+    Escena.siesta => dondeDuermen != null,
+    _ => abierto(e.cuarto),
+  };
+
+  /// Dónde pasa [e]: la siesta, donde duermen; lo demás, en su cuarto.
+  Cuarto cuartoDe(Escena e) =>
+      e == Escena.siesta ? dondeDuermen ?? Cuarto.sala : e.cuarto;
+
+  /// La rutina del día, hora por hora (si se puede; si no, un rato libre).
+  static Escena? _rutina(int hora) => switch (hora) {
+    7 => Escena.bano,
+    8 => Escena.desayuno,
+    12 || 18 => Escena.cocinando,
+    13 => Escena.almuerzo,
+    14 || 15 => Escena.siesta,
+    16 || 17 => Escena.picnic,
+    19 => Escena.cena,
+    20 || 21 => Escena.drama,
+    _ => null,
+  };
+
   /// Qué están haciendo juntos los gatitos grandes (null si nada en
-  /// especial: sentaditos o durmiendo).
+  /// especial: sentaditos o durmiendo). Siguen una rutina:
   ///
-  /// - De 0 a 2 de la mañana el naranja se levanta a comer a la cocina
-  ///   mientras el blanco duerme (si hay cocina y dónde dormir).
-  /// - De 18 a 22 ven su drama en la sala, antes de dormir.
-  /// - De día, casi siempre hacen algo en el cuarto donde andan.
+  /// - De 0 a 2 el naranja se levanta a comer a la cocina mientras el
+  ///   blanco duerme (si hay cocina y dónde dormir). Hasta las 7 duermen.
+  /// - 7 bañito, 8 desayuno, 12 cocinan y 13 almuerzan, 14 y 15 siesta,
+  ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 y 21 ven su drama, y
+  ///   desde las 22 duermen.
+  /// - En los ratos libres (o si no tienen el cuarto de la rutina) hacen
+  ///   algo en el cuarto donde andan.
   Escena? escena([DateTime? ahora]) {
     final hora = ahora ?? DateTime.now();
     final h = hora.hour;
@@ -1472,15 +1714,16 @@ class EstadoCasita {
           ? Escena.medianoche
           : null;
     }
-    if (h >= 18 && h < 22) return Escena.drama;
-    if (Momento.de(hora) == Momento.noche) return null;
+    if (h < 7 || h >= 22) return null;
+    if (_rutina(h) case final e? when sePuede(e)) return e;
+    if (h >= 20) return null;
     final rato =
         hora.millisecondsSinceEpoch ~/
         const Duration(minutes: 30).inMilliseconds;
     final cuarto = _cuartoDelRato(rato);
     final opciones = [
       for (final e in Escena.values)
-        if (e.cuarto == cuarto && e != Escena.medianoche) e,
+        if (e.cuarto == cuarto && e.libre) e,
     ];
     if (opciones.isEmpty || _azar(98, rato) % 4 == 0) return null;
     return opciones[_azar(97, rato) % opciones.length];
@@ -1491,7 +1734,7 @@ class EstadoCasita {
   /// un cuarto abierto al azar que cambia cada media hora.
   Cuarto dondeEstan([DateTime? ahora]) {
     final hora = ahora ?? DateTime.now();
-    if (escena(hora) case final e?) return e.cuarto;
+    if (escena(hora) case final e?) return cuartoDe(e);
     if (Momento.de(hora) == Momento.noche) return dondeDuermen ?? Cuarto.sala;
     return _cuartoDelRato(
       hora.millisecondsSinceEpoch ~/ const Duration(minutes: 30).inMilliseconds,
@@ -1503,6 +1746,29 @@ class EstadoCasita {
     final hora = ahora ?? DateTime.now();
     return dondeEstan(hora) == cuarto ||
         (escena(hora) == Escena.medianoche && dondeDuermen == cuarto);
+  }
+
+  /// Lo que se dibuja de [e] encima de los gatitos (y lo que comen).
+  List<String> capasEscena(Escena e, int tick, DateTime ahora) {
+    final f = tick % 4 < 2 ? 1 : 2;
+    if (e.comida case final comida?) {
+      return [
+        e.capa(tick),
+        Casita.asset(
+          'plato_${platoDe(comida, ahora)?.dibujo ?? comida.dibujo}',
+        ),
+      ];
+    }
+    if (e == Escena.cocinando) {
+      final quien = quienCocina(ahora);
+      final comida = queCocinan(ahora);
+      final pica = platoDe(comida, ahora)?.principal.name ?? comida.picando;
+      return [
+        Casita.asset('escena_cocinar_${quien}_$f'),
+        Casita.asset('picando_${pica}_${otro(quien)}'),
+      ];
+    }
+    return [e.capa(tick)];
   }
 
   /// ¿Hay tina para bañar a los gatitos? (en el baño)
@@ -1533,12 +1799,15 @@ class EstadoCasita {
             ? Casita.asset('${c.id}_2')
             : c.asset,
     };
-    final enLaTina = banando && conMuebles && sePuedenBanar(cuarto);
     // Las escenas solo con la hora de verdad (sin [ahora] quedan quietos).
-    final escena = conMuebles && ahora != null && !enLaTina
-        ? this.escena(ahora)
-        : null;
-    final aqui = escena?.cuarto == cuarto ? escena : null;
+    final escena = conMuebles && ahora != null ? this.escena(ahora) : null;
+    final enEsta = escena != null && cuartoDe(escena) == cuarto ? escena : null;
+    // Con el botón de bañarlos, o en el bañito de la mañana.
+    final enLaTina =
+        (banando || enEsta == Escena.bano) &&
+        conMuebles &&
+        sePuedenBanar(cuarto);
+    final aqui = enLaTina || enEsta == Escena.siesta ? null : enEsta;
     // A medianoche el blanco duerme solito.
     final soloBlanco =
         escena == Escena.medianoche &&
@@ -1546,9 +1815,9 @@ class EstadoCasita {
         dondeDuermen == cuarto;
     final duermen =
         !enLaTina &&
-        aqui == null &&
         conMuebles &&
-        (soloBlanco || this.duermen(cuarto, momento));
+        (enEsta == Escena.siesta ||
+            (aqui == null && (soloBlanco || this.duermen(cuarto, momento))));
     final cama = cuarto == Cuarto.sala ? 'camita' : 'cama';
     return [
       for (final l in cuarto.lugares)
@@ -1588,7 +1857,7 @@ class EstadoCasita {
           for (final p in Parte.values)
             if (prenda(g, p) case final c?) c.assetRopa(g),
         ],
-        if (aqui != null) aqui.capa(tick),
+        if (aqui != null) ...capasEscena(aqui, tick, ahora!),
       ],
       // Los bebés pasean (o duermen) encima del piso: ver [PaseoBebe].
       if (conMuebles && bebes.isNotEmpty)
