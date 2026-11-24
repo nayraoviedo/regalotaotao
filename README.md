@@ -323,7 +323,9 @@ certificado SHA*).
 ### 2. Descargar el APK
 
 - **Lo último de `main`:** en el repo, pestaña **Releases** → *APK de prueba
-  (último main)* → toca `taotao.apk`. Es lo más fácil desde el celular.
+  (último main)* → toca `taotao.apk` (~30 MB, sirve para casi todos los
+  celulares; `taotao-32bits.apk` es solo para celulares muy viejos). Es lo
+  más fácil desde el celular.
 - **El de un PR o una corrida a mano:** pestaña **Actions** → elige la
   corrida *APK de prueba* (con ✅) → abajo, en **Artifacts**, descarga el
   archivo. Viene en un `.zip`: ábrelo con la app *Archivos* del celular y
@@ -335,9 +337,13 @@ certificado SHA*).
 
 1. Toca el `.apk` descargado. Si el celular pregunta, permite *Instalar apps
    desconocidas* para el navegador o *Archivos*.
-2. Si dice *"App no instalada"*, desinstala Taotao primero (pasa si antes la
-   instalaste con `flutter run` desde tu compu, porque la firma es otra) y
-   vuelve a tocar el `.apk`. Los siguientes APK de GitHub se instalan encima.
+2. Si dice *"App no instalada"*, *"el paquete no es válido"* o *"entra en
+   conflicto"*, desinstala 星月/Taotao primero y vuelve a tocar el `.apk`.
+   Pasa cuando la app que ya tienes se firmó con otra llave: si la
+   instalaste con `flutter run` desde tu compu, o con un APK de GitHub de
+   antes de crear el secret `ANDROID_DEBUG_KEYSTORE`. En los Xiaomi el aviso
+   dice "no es válido" aunque el APK esté bien. Los siguientes APK de GitHub
+   se instalan encima.
 3. Abre la app, entra con tu cuenta, y luego agrega los widgets: mantén
    apretado un espacio vacío de la pantalla de inicio → **Widgets** →
    **Taotao** (días juntos y ánimo) o **Casita**.

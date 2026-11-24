@@ -40,6 +40,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Sin achicar el código: así no hay que mantener reglas de
+            // ProGuard para Firebase, las notificaciones y los widgets.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
