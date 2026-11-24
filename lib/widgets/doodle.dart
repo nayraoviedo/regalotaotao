@@ -138,7 +138,7 @@ final Map<int, String> _doodles = {
     Icons.volunteer_activism: 'abrazo',
     Icons.spa: 'calma',
     Icons.sentiment_very_satisfied: 'risa',
-    // Por hacer juntos
+    // Nuestros planes
     Icons.flight_takeoff: 'avion',
     Icons.restaurant: 'comida',
     // Recomendación del día

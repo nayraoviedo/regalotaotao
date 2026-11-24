@@ -24,7 +24,7 @@ Cuando una de las dos ingresa el código de la otra, quedan vinculadas en un
 | Contador de días juntos y próximo aniversario | ✅ |
 | Notas compartidas + notas privadas que se pueden compartir | ✅ |
 | Pregunta del día (ves la respuesta de tu pareja después de responder) | ✅ |
-| Lista de cosas por hacer juntos | ✅ |
+| Nuestros planes (cosas por hacer juntos) | ✅ |
 | Botón "Te extraño" con notificación push | ✅ (necesita el Worker gratis de Cloudflare, ver abajo) |
 | Recomendación del día (canción, playlist, peli, lugar…) con reproductor de Spotify/YouTube, reseñas con estrellitas e historial | ✅ |
 | Versión web en https://taotao-bd5ee.web.app (Firebase Hosting gratis) | ✅ |

@@ -359,7 +359,7 @@ class _BucketListScreenState extends State<BucketListScreen>
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              'Por hacer juntos',
+                              'Nuestros planes',
                               style: TextStyle(
                                 fontFamily: AppTheme.manuscrita,
                                 fontSize: 32,
