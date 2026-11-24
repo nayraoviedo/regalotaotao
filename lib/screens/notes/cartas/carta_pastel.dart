@@ -8,6 +8,7 @@ import '../../../models/celebracion.dart';
 import '../../../theme.dart';
 import '../../../widgets/doodle.dart';
 import 'cartas_style.dart';
+import '../../../widgets/texto_doodle.dart';
 
 /// Cartas de cumpleaños y de aniversario: llegan con un pastel con
 /// velitas que se soplan antes de abrir la carta.
@@ -467,7 +468,7 @@ class _LlegadaPastelState extends State<LlegadaPastel>
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
+                      TextoDoodle(
                         subtitulo,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -537,7 +538,7 @@ class _LlegadaPastelState extends State<LlegadaPastel>
                         onPressed: _soplaron
                             ? () => Navigator.of(context).pop(true)
                             : () => setState(() => _soplaron = true),
-                        icon: Text(_soplaron ? '💌' : '🌬️'),
+                        icon: TextoDoodle(_soplaron ? '💌' : '🌬️'),
                         label: Text(
                           _soplaron ? 'Abrir la carta' : 'Soplar las velitas',
                           style: const TextStyle(

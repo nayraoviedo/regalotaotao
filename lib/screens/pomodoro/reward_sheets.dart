@@ -8,6 +8,7 @@ import 'pomodoro_style.dart';
 
 import 'reward_coupon.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 export 'reward_coupon.dart' show showRewardCoupon;
 
@@ -94,7 +95,7 @@ Future<Reward?> pickReward(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const _Grabber(),
-                const Text(
+                const TextoDoodle(
                   '🎉',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 40),

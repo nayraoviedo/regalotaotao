@@ -8,6 +8,7 @@ import '../../services/reward_service.dart';
 import '../../widgets/user_avatar.dart';
 import 'pomodoro_style.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Al terminar una sesión: un popup de celebración con el premio como
 /// cupón. En pareja muestra también el cupón que escogió la otra persona
@@ -321,7 +322,7 @@ class _Coupon extends StatelessWidget {
                                   ),
                                 ),
                               if (listo)
-                                Text(
+                                TextoDoodle(
                                   pie,
                                   style: const TextStyle(
                                     color: PomodoroStyle.azul,

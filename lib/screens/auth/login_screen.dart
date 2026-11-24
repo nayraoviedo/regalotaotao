@@ -4,6 +4,7 @@ import '../../branding.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -122,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
+        title: TextoDoodle(title),
         content: Text(text),
         actions: [
           FilledButton(

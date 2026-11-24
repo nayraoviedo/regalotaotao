@@ -15,6 +15,7 @@ import 'cartas_style.dart';
 import 'papel.dart';
 import 'sobre.dart';
 import '../../../widgets/doodle.dart';
+import '../../../widgets/texto_doodle.dart';
 
 /// Texto largo escrito sobre una hoja de papel, con título y pie.
 /// Se usa para leer cartas y notas.
@@ -54,7 +55,7 @@ class LecturaEnPapel extends StatelessWidget {
                     height: r * 2,
                     child: Align(
                       alignment: Alignment.bottomLeft,
-                      child: Text(
+                      child: TextoDoodle(
                         titulo!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -314,7 +315,7 @@ class _SobreAbriendose extends StatelessWidget {
                   left: 12,
                   right: 12,
                   bottom: 18,
-                  child: Text(
+                  child: TextoDoodle(
                     etiqueta,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -681,7 +682,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                   height: CartasStyle.renglon * 2,
                   child: Align(
                     alignment: Alignment.bottomLeft,
-                    child: Text(
+                    child: TextoDoodle(
                       _especial != null
                           ? _especial!.etiqueta
                           : _sorpresa

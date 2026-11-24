@@ -41,6 +41,7 @@ import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
 import '../casita/casa_en_corte.dart';
 import '../juegos/juegos_screen.dart';
+import '../../widgets/texto_doodle.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.me});
@@ -305,9 +306,9 @@ class _HomeBodyState extends State<_HomeBody> {
     );
     if (mounted) {
       setState(() => _misTeExtrano = (_misTeExtrano ?? 0) + 1);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Le avisamos a $partnerName 💌')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: TextoDoodle('Le avisamos a $partnerName 💌')),
+      );
     }
   }
 
