@@ -154,6 +154,9 @@ await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),
 await no('A no se escribe a sí misma', setDoc(doc(db('A'),'couples/c1/letters/k2'),{from:'A',to:'A',cuando:'x',text:'hola',openedAt:null}));
 await no('A no firma como B', setDoc(doc(db('A'),'couples/c1/letters/k3'),{from:'B',to:'A',cuando:'x',text:'hola',openedAt:null}));
 await no('A no manda cartas ya abiertas', setDoc(doc(db('A'),'couples/c1/letters/k4'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:serverTimestamp()}));
+await ok('A pega foto, enlace y stickers en su carta', setDoc(doc(db('A'),'couples/c1/letters/k5'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Mira',papel:'cuadricula',openedAt:null,foto:'abc',enlace:'https://youtube.com/x',stickers:['luna','beso']}));
+await no('A no pega un enlace raro', setDoc(doc(db('A'),'couples/c1/letters/k6'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:null,enlace:'javascript:alert(1)'}));
+await no('A no pega más de 5 stickers', setDoc(doc(db('A'),'couples/c1/letters/k7'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:null,stickers:['a','b','c','d','e','f']}));
 await no('C no lee las cartas', getDoc(doc(db('C'),'couples/c1/letters/k1')));
 await no('A no marca abierta la carta que escribió', updateDoc(doc(db('A'),'couples/c1/letters/k1'),{openedAt:serverTimestamp()}));
 await no('B no cambia el texto', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{text:'otro'}));

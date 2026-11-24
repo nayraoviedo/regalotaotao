@@ -92,6 +92,34 @@ class NotaVista extends StatelessWidget {
                   bottom: forma.clave == 'corazon' ? h * 0.1 : h * 0.01,
                   child: Sticker(note.sticker!, size: w * 0.19),
                 ),
+              // Más stickers: arriba a la derecha y a la izquierda.
+              if (note.stickers.length > 1)
+                Positioned(
+                  right: -w * 0.04,
+                  top: -h * 0.03,
+                  child: Transform.rotate(
+                    angle: 0.25,
+                    child: Sticker(note.stickers[1], size: w * 0.17),
+                  ),
+                ),
+              if (note.stickers.length > 2)
+                Positioned(
+                  left: -w * 0.05,
+                  top: h * 0.38,
+                  child: Transform.rotate(
+                    angle: -0.2,
+                    child: Sticker(note.stickers[2], size: w * 0.16),
+                  ),
+                ),
+              if (note.enlace != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: h * 0.015,
+                  child: Center(
+                    child: Doodle(Icons.link_rounded, size: w * 0.12),
+                  ),
+                ),
               if (marcaPrivada != null)
                 Positioned(
                   left: 0,

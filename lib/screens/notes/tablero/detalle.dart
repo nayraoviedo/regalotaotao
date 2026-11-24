@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../models/note.dart';
+import '../adornos.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
 import 'tablero.dart';
@@ -51,8 +52,9 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
     forma: widget.nota.forma,
     categoria: widget.nota.categoria,
     items: _items,
-    sticker: widget.nota.sticker,
+    stickers: widget.nota.stickers,
     foto: widget.nota.foto,
+    enlace: widget.nota.enlace,
   );
 
   void _marcar(int i) {
@@ -163,6 +165,10 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
                         ],
                       ),
               ),
+            ],
+            if (nota.enlace != null) ...[
+              const SizedBox(height: 18),
+              Center(child: EnlacePegado(url: nota.enlace!)),
             ],
             const SizedBox(height: 28),
             Wrap(

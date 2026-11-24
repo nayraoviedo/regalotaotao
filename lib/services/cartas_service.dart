@@ -33,6 +33,9 @@ class CartasService {
     Pastel? pastel,
     Ramo? ramo,
     List<Regalito> regalitos = const [],
+    String? foto,
+    String? enlace,
+    List<String> stickers = const [],
   }) async {
     final ref = await _col(coupleId).add({
       if (especial != null) ...{
@@ -48,6 +51,7 @@ class CartasService {
       'cuando': cuando,
       'text': text,
       'papel': papel.name,
+      ...Carta.adornos(foto: foto, enlace: enlace, stickers: stickers),
       'openedAt': null,
       'createdAt': FieldValue.serverTimestamp(),
     });
