@@ -108,9 +108,13 @@ jobs:
       # de depuración con "el paquete no es válido". Se firma con la misma
       # llave de arriba (ver android/app/build.gradle.kts), así Google sigue
       # funcionando. Un APK por tipo de celular (casi todos son arm64), y el
-      # número de compilación sube en cada corrida.
+      # número de compilación sube en cada corrida. Solo arm y arm64 (los
+      # celulares de verdad; x86_64 es para emuladores), así tarda menos.
       - name: Armar el APK
-        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+        run: >-
+          flutter build apk --release --split-per-abi
+          --target-platform android-arm,android-arm64
+          --build-number=${{ github.run_number }}
 
       # Revisa el APK con las herramientas oficiales de Android antes de
       # publicarlo: si la firma o el paquete están mal, la corrida falla aquí.
