@@ -273,6 +273,13 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('la despensa es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:'mucho'},{merge:true}));
   await no('C no cocina en su casita', setDoc(doc(db('C'),'couples/c1/casita/estado'),{cocinado:{receta:'ensalada',en:1}},{merge:true}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
+  // Foto de perfil (JPG en base64, o su gatito).
+  await ok('B se pone una foto de perfil', updateDoc(doc(db('B'),'users','B'),{foto:'/9j/'+'A'.repeat(60000)}));
+  await ok('A ve la foto de B', getDoc(doc(db('A'),'users','B')).then(s=>{ if(!s.data().foto) throw new Error('sin foto'); }));
+  await ok('B usa su gatito de foto', updateDoc(doc(db('B'),'users','B'),{foto:'gatito'}));
+  await no('la foto no puede ser enorme', updateDoc(doc(db('B'),'users','B'),{foto:'A'.repeat(300001)}));
+  await no('A no cambia la foto de B', updateDoc(doc(db('A'),'users','B'),{foto:'gatito'}));
+  await ok('B quita su foto', updateDoc(doc(db('B'),'users','B'),{foto:deleteField()}));
   // Respirar con los gatitos: 8 pescaditos, una vez al día por persona.
   const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data().pescaditos;
   await no('la respiración no da 50', ganar('A',`respira_${hoy}_A`,{tipo:'respira',cantidad:50,ref:hoy},hay+50));

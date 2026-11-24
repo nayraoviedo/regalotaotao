@@ -39,6 +39,10 @@ service cloud.firestore {
       // tiene que ser a null o a un espacio de pareja del que forma parte.
       allow update: if signedIn() && me() == uid
         && request.resource.data.pairCode == resource.data.pairCode
+        // Foto de perfil: JPG chiquito en base64 (o 'gatito').
+        && (!('foto' in request.resource.data)
+            || (request.resource.data.foto is string
+                && request.resource.data.foto.size() <= 300000))
         && (
           request.resource.data.coupleId == resource.data.coupleId
           || request.resource.data.coupleId == null
