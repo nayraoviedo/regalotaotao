@@ -37,11 +37,15 @@ class UserService {
   Future<void> updateName(String uid, String name) =>
       Db.user(uid).update({'name': name});
 
-  /// Qué gatito quiere ser (ver `Gatito.id`).
+  /// Cambia la foto de perfil (ver `AppUser.foto`). `null` la quita.
+  Future<void> updateFoto(String uid, String? foto) =>
+      Db.user(uid).update({'foto': foto ?? FieldValue.delete()});
+
   /// Guarda el cumpleaños ('MM-DD', ver `Cumple`).
   Future<void> updateCumple(String uid, String cumple) =>
       Db.user(uid).update({'cumple': cumple});
 
+  /// Qué gatito quiere ser (ver `Gatito.id`).
   Future<void> updateGatito(String uid, String gatito) =>
       Db.user(uid)
           .update({'gatito': gatito, 'gatitoEn': FieldValue.serverTimestamp()});

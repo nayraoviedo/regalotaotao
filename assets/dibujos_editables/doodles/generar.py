@@ -153,6 +153,9 @@ D['sticker'] = ambos('M48 12 L58 34 L82 36 L64 52 L70 76 L48 64 L26 76 L32 52 L1
 # recordatorio de las notas: relojito despertador con campanitas
 D['despertador'] = ambos('M22 20 C28 12 38 12 42 20 Z', TO, 4.4) + ambos('M54 20 C58 12 68 12 74 20 Z', TO, 4.4) + linea('M30 78 L22 88 M66 78 L74 88', 5) + ambos(CIRC(48, 52, 28), AM) + ambos(CIRC(48, 52, 19), CR, 3.4) + linea('M48 40 L48 53 L58 59', 4.6) + punto(48, 53, 3.4, TO) + linea('M10 40 L4 36 M10 52 L3 52 M86 40 L92 36 M86 52 L93 52', 3.6, CE)
 
+# foto de perfil: camarita con lente y flash
+D['camara'] = ambos('M12 32 L32 32 L38 22 L58 22 L64 32 L84 32 L84 78 L12 78 Z', CE) + ambos(CIRC(48, 54, 16), CR, 4.6) + punto(48, 54, 6) + punto(52, 50, 2.4, CR) + f'<circle cx="74" cy="42" r="4" fill="{AM}"/>'
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')
