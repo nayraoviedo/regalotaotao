@@ -15,10 +15,10 @@ class Branding {
   static const nombre = '星月';
 
   /// La frase de donde sale el nombre (星月 = estrella y luna).
-  static const frase = '你是我的星的月';
+  static const frase = '你是我的星与月';
 
   /// Lo que significa la frase, como subtítulo.
-  static const significado = 'tú eres la estrella de mi luna';
+  static const significado = 'tú eres mi estrella y mi luna';
 
   static const login = 'assets/images/login.png';
   static const onboarding = [

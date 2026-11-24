@@ -1,6 +1,6 @@
 # 星月 💞
 
-_你是我的星的月 · tú eres la estrella de mi luna_ (antes "Taotao")
+_你是我的星与月 · tú eres mi estrella y mi luna_ (antes "Taotao")
 
 App de pareja hecha en **Flutter** con **Firebase**.
 
@@ -440,7 +440,7 @@ cd worker && npm install && npm test           # pruebas del Worker de notificac
 
 ## Nombre e ícono
 
-El nombre visible es **星月** (xīngyuè, "estrella y luna", de "你是我的星的月"; en `lib/branding.dart`, `AndroidManifest.xml`,
+El nombre visible es **星月** (xīngyuè, "estrella y luna", de "你是我的星与月"; en `lib/branding.dart`, `AndroidManifest.xml`,
 `web/index.html`, `web/manifest.json` e `ios/Runner/Info.plist`). El paquete
 sigue siendo `com.taotao.taotao` para no romper Firebase ni el login con Google.
 
