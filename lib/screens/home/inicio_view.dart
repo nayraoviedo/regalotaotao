@@ -74,6 +74,7 @@ class InicioView extends StatelessWidget {
     this.onRacha,
     this.recomendacion,
     this.casita,
+    this.juegos,
     this.musica,
     this.invitacionPomodoro,
     this.celebracion,
@@ -85,6 +86,8 @@ class InicioView extends StatelessWidget {
   /// Tarjeta de "Nuestra casita", debajo de los accesos.
   final Widget? casita;
 
+  /// Tarjeta de los juegos de pareja (avisa si te toca jugar).
+  final Widget? juegos;
   /// Tarjeta de "Música juntos", debajo de los accesos.
   final Widget? musica;
 
@@ -222,6 +225,7 @@ class InicioView extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (juegos case final j?) ...[const SizedBox(height: 12), j],
                   if (musica case final m?) ...[const SizedBox(height: 12), m],
                   if (casita case final c?) ...[const SizedBox(height: 12), c],
                 ],

@@ -536,6 +536,72 @@ service cloud.firestore {
           && request.resource.data.from == me();
       }
 
+      // ---------- Juegos de pareja ----------
+      // juegos/{id}: una partida de "¿Quién es más probable?" o "Adivina mis
+      // respuestas". Quien empieza la crea con sus 5 respuestas; la pareja
+      // agrega las suyas una sola vez (y la partida termina). Después, cada
+      // uno marca en `cobros` el movimiento de pescaditos que cobró.
+      match /juegos/{partidaId} {
+        function cincoRespuestas(r) {
+          return r is list && r.size() == 5;
+        }
+        function cambia() {
+          return request.resource.data.diff(resource.data).affectedKeys();
+        }
+        function responde() {
+          return resource.data.terminada == false
+            && !(me() in resource.data.respuestas)
+            && cambia().hasOnly(['respuestas', 'terminada', 'terminadaEn'])
+            && request.resource.data.respuestas.diff(resource.data.respuestas)
+                 .affectedKeys().hasOnly([me()])
+            && cincoRespuestas(request.resource.data.respuestas[me()])
+            && request.resource.data.terminada == true
+            && request.resource.data.terminadaEn == request.time;
+        }
+        function propiaOk(q) {
+          return q is map
+            && q.keys().hasOnly(['texto', 'opciones'])
+            && q.texto is string && q.texto.size() > 0 && q.texto.size() <= 120
+            && (!('opciones' in q)
+                || (q.opciones is list && q.opciones.size() >= 2 && q.opciones.size() <= 4));
+        }
+        function propiasOk(p) {
+          return p is map
+            && p.keys().hasOnly(['0', '1', '2', '3', '4'])
+            && (!('0' in p) || propiaOk(p['0']))
+            && (!('1' in p) || propiaOk(p['1']))
+            && (!('2' in p) || propiaOk(p['2']))
+            && (!('3' in p) || propiaOk(p['3']))
+            && (!('4' in p) || propiaOk(p['4']));
+        }
+        function cobra() {
+          let antes = resource.data.get('cobros', {});
+          return resource.data.terminada == true
+            && me() in resource.data.respuestas
+            && !(me() in antes)
+            && cambia().hasOnly(['cobros'])
+            && request.resource.data.cobros.diff(antes).affectedKeys().hasOnly([me()])
+            && request.resource.data.cobros[me()] is string;
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['juego', 'preguntas', 'por', 'respuestas', 'terminada', 'creadaEn',
+                         'propias'])
+          // Preguntas que escribió quien empieza: {"posición": {texto, opciones}}.
+          && propiasOk(request.resource.data.get('propias', {}))
+          && request.resource.data.juego in ['probable', 'adivina']
+          && request.resource.data.preguntas is list
+          && request.resource.data.preguntas.size() == 5
+          && request.resource.data.por == me()
+          && request.resource.data.respuestas.keys().hasOnly([me()])
+          && cincoRespuestas(request.resource.data.respuestas[me()])
+          && request.resource.data.terminada == false
+          && request.resource.data.creadaEn == request.time;
+        allow update: if isMember(coupleId) && (responde() || cobra());
+        allow delete: if false;
+      }
+
       // ---------- Casita de los gatitos y pescaditos ----------
       // casita/estado: monedero compartido (pescaditos), lo que compraron
       // (tenemos), lo que está puesto (puestos) y la ropita (ropa).
@@ -625,6 +691,16 @@ service cloud.firestore {
               && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
               && movId == 'respira_' + d.ref + '_' + me()
               && diaReciente(d.ref))
+            // Juegos de pareja: 4 + 2 por coincidencia, en uno de los 3
+            // lugares del día de cada persona, por una partida terminada
+            // que todavía no había cobrado.
+            || (d.tipo == 'juego'
+              && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && d.slot is int && d.slot >= 1 && d.slot <= 3
+              && movId == 'juego_' + d.ref + '_' + me() + '_' + string(d.slot)
+              && diaReciente(d.ref)
+              && d.partida is string
+              && juegoCobrable(d))
             || (d.tipo == 'pomodoro'
               && d.ref is string
               && movId == 'pomodoro_' + d.ref
@@ -636,6 +712,27 @@ service cloud.firestore {
               && movId == 'racha' + string(d.meta) + '_' + d.inicio
               && exists(/databases/$(database)/documents/couples/$(coupleId)/achievements/$(movId + '_' + me()))
               && d.cantidad == (d.meta == 7 ? 50 : 150));
+        }
+        function partidaPath(id) {
+          return /databases/$(database)/documents/couples/$(coupleId)/juegos/$(id);
+        }
+        // 1 si la respuesta i de los dos es la misma.
+        function igual(a, b, i) {
+          return a[i] == b[i] ? 1 : 0;
+        }
+        function juegoCobrable(d) {
+          let antes = get(partidaPath(d.partida)).data;
+          let despues = getAfter(partidaPath(d.partida)).data;
+          let m = coupleDoc(coupleId).data.members;
+          let a = antes.respuestas.get(m[0], []);
+          let b = antes.respuestas.get(m[1], []);
+          return antes.terminada == true
+            && me() in antes.respuestas
+            && !(me() in antes.get('cobros', {}))
+            && despues.get('cobros', {}).get(me(), '') == movId
+            && a.size() == 5 && b.size() == 5
+            && d.cantidad == 4 + 2 * (igual(a, b, 0) + igual(a, b, 1) + igual(a, b, 2)
+                                      + igual(a, b, 3) + igual(a, b, 4));
         }
         // Una compra de más de 100 pescaditos la aprueba la pareja: tiene
         // que haber una propuesta de esa cosa hecha por el otro. Los
