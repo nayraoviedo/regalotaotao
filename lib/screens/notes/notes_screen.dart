@@ -43,8 +43,9 @@ class NotesScreen extends StatelessWidget {
   NotesService get _service => NotesService.instance;
 
   Future<void> _crear(BuildContext context, {required bool compartida}) async {
-    final nota = await Navigator.of(context)
-        .push<Note>(MaterialPageRoute(builder: (_) => const EditorDeNota()));
+    final nota = await Navigator.of(context).push<Note>(
+      MaterialPageRoute(builder: (_) => EditorDeNota(coupleId: coupleId)),
+    );
     if (nota == null) return;
     if (compartida) {
       await _service.addShared(coupleId, me.uid, nota.contenido());
@@ -58,9 +59,11 @@ class NotesScreen extends StatelessWidget {
     Note nota, {
     required bool privada,
   }) async {
-    final editada = await Navigator.of(
-      context,
-    ).push<Note>(MaterialPageRoute(builder: (_) => EditorDeNota(nota: nota)));
+    final editada = await Navigator.of(context).push<Note>(
+      MaterialPageRoute(
+        builder: (_) => EditorDeNota(nota: nota, coupleId: coupleId),
+      ),
+    );
     if (editada == null) return;
     if (privada) {
       await _service.updatePrivate(coupleId, me.uid, nota, editada.contenido());

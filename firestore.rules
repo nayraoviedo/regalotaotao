@@ -162,6 +162,16 @@ service cloud.firestore {
           && request.resource.data.get('regalitos', []).size() <= 5
           && request.resource.data.get('regalitos', [])
                .hasOnly(['peluche', 'chocolates', 'globos', 'cajita', 'taza'])
+          // Foto (JPG en base64, sin Storage), enlace y stickers pegados.
+          && (request.resource.data.get('foto', null) == null
+              || (request.resource.data.foto is string
+                  && request.resource.data.foto.size() <= 750000))
+          && (request.resource.data.get('enlace', null) == null
+              || (request.resource.data.enlace is string
+                  && request.resource.data.enlace.size() <= 500
+                  && request.resource.data.enlace.matches('https?://.+')))
+          && request.resource.data.get('stickers', []) is list
+          && request.resource.data.get('stickers', []).size() <= 5
           // Una carta sorpresa se paga con pescaditos en el mismo momento.
           && (request.resource.data.get('sorpresa', false) == false
               || (request.resource.data.sorpresa == true

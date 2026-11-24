@@ -16,6 +16,7 @@ import 'papel.dart';
 import 'sobre.dart';
 import '../../../widgets/doodle.dart';
 import '../../../widgets/texto_doodle.dart';
+import '../adornos.dart';
 
 /// Texto largo escrito sobre una hoja de papel, con título y pie.
 /// Se usa para leer cartas y notas.
@@ -27,8 +28,14 @@ class LecturaEnPapel extends StatelessWidget {
     this.pie,
     this.papel = Papel.cuadricula,
     this.semilla = 7,
+    this.foto,
+    this.enlace,
+    this.stickers = const [],
   });
 
+  final String? foto;
+  final String? enlace;
+  final List<String> stickers;
   final String texto;
   final String? titulo;
   final String? pie;
@@ -46,6 +53,7 @@ class LecturaEnPapel extends StatelessWidget {
           child: HojaDePapel(
             papel: papel,
             semilla: semilla,
+            encima: stickersEnLaHoja(stickers),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -69,6 +77,11 @@ class LecturaEnPapel extends StatelessWidget {
                     ),
                   ),
                 SelectableText(texto, style: CartasStyle.letra),
+                if (enlace != null) ...[
+                  const SizedBox(height: 8),
+                  EnlacePegado(url: enlace!),
+                ],
+                if (foto != null) FotoPegada(foto: foto!),
                 if (pie != null)
                   SizedBox(
                     height: r * 2,
@@ -214,6 +227,9 @@ class _CartaScreenState extends State<CartaScreen>
                       pie: _pie,
                       papel: carta.papel,
                       semilla: carta.id.hashCode,
+                      foto: carta.foto,
+                      enlace: carta.enlace,
+                      stickers: carta.stickers,
                     ),
                   ),
                 ),
@@ -414,6 +430,10 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
       ? Ramo.rojo
       : null;
   final _regalitos = <Regalito>{};
+  String? _foto;
+  String? _enlace;
+  List<String> _stickers = [];
+  bool _cargandoFoto = false;
   Celebracion? get _especial => widget.especial;
   int? _pescaditos;
   StreamSubscription<EstadoCasita>? _casita;
@@ -456,6 +476,32 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
 
   static const _precio = Casita.precioCartaSorpresa;
 
+  Future<void> _elegirFoto() async {
+    setState(() => _cargandoFoto = true);
+    final foto = await Adornos.elegirFoto(context);
+    if (!mounted) return;
+    setState(() {
+      _cargandoFoto = false;
+      if (foto != null) _foto = foto;
+    });
+  }
+
+  Future<void> _elegirEnlace() async {
+    final url = await Adornos.pedirEnlace(context, actual: _enlace);
+    if (url == null || !mounted) return;
+    setState(() => _enlace = url.isEmpty ? null : url);
+  }
+
+  Future<void> _elegirStickers() async {
+    final s = await Adornos.elegirStickers(
+      context,
+      elegidos: _stickers,
+      max: Carta.maxStickers,
+      coupleId: widget.coupleId,
+    );
+    if (s != null && mounted) setState(() => _stickers = s);
+  }
+
   Future<void> _enviar() async {
     final texto = _texto.text.trim();
     final cuando =
@@ -484,6 +530,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
               to: widget.partnerUid,
               text: texto,
               papel: _papel,
+              foto: _foto,
+              enlace: _enlace,
+              stickers: _stickers,
             ));
         if (!mounted) return;
         await mostrarEnvioSorpresa(context);
@@ -512,6 +561,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
               pastel: regalos.pastel,
               ramo: regalos.ramo,
               regalitos: regalos.regalitos,
+              foto: _foto,
+              enlace: _enlace,
+              stickers: _stickers,
             ));
       } else {
         await CartasService.instance.enviar(
@@ -522,6 +574,9 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
           cuando: cuando,
           text: texto,
           papel: _papel,
+          foto: _foto,
+          enlace: _enlace,
+          stickers: _stickers,
         );
       }
       if (!mounted) return;
@@ -672,9 +727,36 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: Text('Pegar', style: TextStyle(color: CartasStyle.gris)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: BotonesDeAdornos(
+                  hayFoto: _foto != null,
+                  hayEnlace: _enlace != null,
+                  cuantosStickers: _stickers.length,
+                  cargandoFoto: _cargandoFoto,
+                  onFoto: _elegirFoto,
+                  onEnlace: _elegirEnlace,
+                  onStickers: _elegirStickers,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           HojaDePapel(
             papel: _papel,
             semilla: 21,
+            // Tocar un sticker pegado lo despega.
+            encima: stickersEnLaHoja(
+              _stickers,
+              onTocar: (s) => setState(() => _stickers.remove(s)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -720,6 +802,18 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                     counterText: '',
                   ),
                 ),
+                if (_enlace != null) ...[
+                  const SizedBox(height: 8),
+                  EnlacePegado(
+                    url: _enlace!,
+                    onQuitar: () => setState(() => _enlace = null),
+                  ),
+                ],
+                if (_foto != null)
+                  FotoPegada(
+                    foto: _foto!,
+                    onQuitar: () => setState(() => _foto = null),
+                  ),
               ],
             ),
           ),

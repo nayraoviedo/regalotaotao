@@ -22,6 +22,9 @@ class Carta {
     this.pastel,
     this.ramo,
     this.regalitos = const [],
+    this.foto,
+    this.enlace,
+    this.stickers = const [],
   });
 
   final String id;
@@ -50,6 +53,18 @@ class Carta {
   /// Ramo de flores y regalitos que vienen con la carta especial.
   final Ramo? ramo;
   final List<Regalito> regalitos;
+
+  /// Foto pegada en la hoja: JPG en base64 dentro de la misma carta (el
+  /// plan gratis de Firebase no trae Storage).
+  final String? foto;
+
+  /// Enlace que se puede tocar (una canción, un video, un lugar…).
+  final String? enlace;
+
+  /// Stickers pegados en los bordes de la hoja (ver [maxStickers]).
+  final List<String> stickers;
+
+  static const maxStickers = 5;
 
   /// ¿Trae algo (pastel, ramo o regalitos)?
   bool get conRegalos => pastel != null || ramo != null || regalitos.isNotEmpty;
@@ -84,7 +99,25 @@ class Carta {
     pastel: d['pastel'] == null ? null : Pastel.deId(d['pastel'] as String?),
     ramo: Ramo.deId(d['ramo'] as String?),
     regalitos: Regalito.deIds(d['regalitos']),
+    foto: d['foto'] as String?,
+    enlace: d['enlace'] as String?,
+    stickers: [
+      if (d['stickers'] case final List l)
+        for (final s in l.take(maxStickers))
+          if (s is String) s,
+    ],
   );
+
+  /// Campos de foto, enlace y stickers para guardar (solo los que hay).
+  static Map<String, Object> adornos({
+    String? foto,
+    String? enlace,
+    List<String> stickers = const [],
+  }) => {
+    'foto': ?foto,
+    'enlace': ?enlace,
+    if (stickers.isNotEmpty) 'stickers': stickers.take(maxStickers).toList(),
+  };
 }
 
 /// Diseños de papel para las notas y las cartas.
