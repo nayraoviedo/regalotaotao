@@ -323,7 +323,7 @@ certificado SHA*).
 ### 2. Descargar el APK
 
 - **Lo último de `main`:** en el repo, pestaña **Releases** → *APK de prueba
-  (último main)* → toca `taotao.apk` (~115 MB, sirve para casi todos los
+  (último main)* → toca `taotao.apk` (~30 MB, sirve para casi todos los
   celulares; `taotao-32bits.apk` es solo para celulares muy viejos). Es lo
   más fácil desde el celular.
 - **El de un PR o una corrida a mano:** pestaña **Actions** → elige la

@@ -101,11 +101,26 @@ jobs:
 
       - run: flutter pub get
 
-      # Un APK por tipo de celular (casi todos son arm64) en vez de uno solo
-      # con todo: baja de ~187 MB a ~115 MB. El número de compilación sube en
-      # cada corrida, así Android siempre lo ve como una versión más nueva.
-      - name: Armar el APK (debug)
-        run: flutter build apk --debug --split-per-abi --build-number=${{ github.run_number }}
+      # APK "release" (el de verdad, no el de depuración): pesa ~30 MB en vez
+      # de 187 MB, abre más rápido, y algunos celulares (Xiaomi) rechazan el
+      # de depuración con "el paquete no es válido". Se firma con la misma
+      # llave de arriba (ver android/app/build.gradle.kts), así Google sigue
+      # funcionando. Un APK por tipo de celular (casi todos son arm64), y el
+      # número de compilación sube en cada corrida.
+      - name: Armar el APK
+        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+
+      # Revisa el APK con las herramientas oficiales de Android antes de
+      # publicarlo: si la firma o el paquete están mal, la corrida falla aquí.
+      - name: Revisar que el APK sea válido
+        run: |
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+                     build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk; do
+            echo "== $apk ($(du -h "$apk" | cut -f1))"
+            "$bt/apksigner" verify --verbose "$apk" | head -6
+            "$bt/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|native-code):"
+          done
 
       - name: Mostrar las huellas de la firma
         run: |
@@ -135,8 +150,8 @@ jobs:
           else
             nombre="taotao-${corto}.apk"
           fi
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk "$nombre"
-          cp build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk "${nombre%.apk}-32bits.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$nombre"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "${nombre%.apk}-32bits.apk"
           echo "archivo=$nombre" >> "$GITHUB_OUTPUT"
           echo "archivo32=${nombre%.apk}-32bits.apk" >> "$GITHUB_OUTPUT"
 
