@@ -2,7 +2,7 @@
 // Correr con: npm test
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import worker from "../src/index.js";
+import worker, { cronRecordatorios } from "../src/index.js";
 
 const PROJECT = "proyecto-prueba";
 const alg = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) };
@@ -87,6 +87,21 @@ globalThis.fetch = async (url, init = {}) => {
     return json(200, { name: "ok" });
   }
   const fsBase = `https://firestore.googleapis.com/v1/${prefix}`;
+  if (url.endsWith(":runQuery")) {
+    const q = JSON.parse(init.body).structuredQuery;
+    const col = q.from[0].collectionId;
+    const hasta = q.where.fieldFilter.value.timestampValue;
+    const rows = Object.entries(docs)
+      .filter(([p, d]) => p.split("/").at(-2) === col && d.data.avisarEn && d.data.avisarEn <= hasta)
+      .map(([p, d]) => ({
+        document: {
+          name: prefix + p,
+          fields: Object.fromEntries(Object.entries(d.data).map(([k, v]) => [k, k === "avisarEn" ? { timestampValue: v } : enc(v)])),
+          updateTime: d.updateTime,
+        },
+      }));
+    return json(200, rows.length ? rows : [{ readTime: hasta }]);
+  }
   if (url.endsWith(":commit")) {
     for (const w of JSON.parse(init.body).writes) {
       const path = (w.update?.name || w.transform.document).slice(prefix.length);
@@ -94,7 +109,7 @@ globalThis.fetch = async (url, init = {}) => {
       if (w.currentDocument && doc.updateTime !== w.currentDocument.updateTime) {
         return json(400, { error: { status: "FAILED_PRECONDITION" } });
       }
-      if (w.update) for (const [k, v] of Object.entries(w.update.fields)) doc.data[k] = v.stringValue;
+      if (w.update) for (const [k, v] of Object.entries(w.update.fields)) doc.data[k] = "nullValue" in v ? null : v.stringValue;
       if (w.transform) {
         const t = w.transform.fieldTransforms[0];
         const drop = t.removeAllFromArray.values.map((v) => v.stringValue);
@@ -246,4 +261,25 @@ test("documentos viejos no se envían", async () => {
   docs["couples/c1/missYou/m1"].updateTime = new Date(Date.now() - 3600_000).toISOString();
   const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("ana"));
   assert.equal(r.status, 410);
+});
+
+test("cron: manda los recordatorios de las notas a los dos", async () => {
+  const ahora = Date.now();
+  docs["couples/c1/notes/n1"] = { data: { authorId: "ana", title: "Pagar la luz", avisarEn: new Date(ahora - 30000).toISOString() }, updateTime: stamp() };
+  docs["couples/c1/notes/n2"] = { data: { authorId: "ana", title: "Luego", avisarEn: new Date(ahora + 3600000).toISOString() }, updateTime: stamp() };
+  docs["users/ana"].data.coupleId = "c1";
+  docs["users/ana"].data.fcmTokens = ["tok-ana"];
+  const r = await cronRecordatorios(env, ahora);
+  assert.deepEqual(r, { enviados: 2, revisados: 1 });
+  assert.deepEqual(
+    sent.map((m) => [m.token, m.notification.title, m.notification.body, m.android.notification.channel_id]).sort(),
+    [
+      ["tok-ana", "⏰ Recordatorio", "De los dos: Pagar la luz", "mimos_pareja"],
+      ["tok-bueno", "⏰ Recordatorio de tu pareja", "De los dos: Pagar la luz", "mimos_pareja"],
+    ],
+  );
+  assert.equal(docs["couples/c1/notes/n1"].data.avisarEn, null);
+  assert.deepEqual(docs["users/beto"].data.fcmTokens, ["tok-bueno"]);
+  sent = [];
+  assert.deepEqual(await cronRecordatorios(env, ahora), { enviados: 0, revisados: 0 });
 });

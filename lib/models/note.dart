@@ -38,6 +38,8 @@ class Note {
     this.enlace,
     this.createdAt,
     this.sharedNoteId,
+    this.recordatorio,
+    this.recordatorioPara = 'yo',
   });
 
   final String id;
@@ -72,6 +74,19 @@ class Note {
   /// Solo en notas privadas: id de la copia compartida, si se compartió.
   final String? sharedNoteId;
 
+  /// Fecha y hora del recordatorio (null si no tiene). A esa hora el
+  /// Worker de notificaciones (worker/src/recordatorios.js) manda el aviso.
+  final DateTime? recordatorio;
+
+  /// A quién le llega el recordatorio de una nota privada: 'yo', 'pareja'
+  /// o 'ambos'. En las notas de los dos siempre les llega a los dos.
+  final String recordatorioPara;
+  static const paraQuien = ['yo', 'pareja', 'ambos'];
+
+  /// Todavía no llega la hora del recordatorio.
+  bool get recordatorioPendiente =>
+      recordatorio != null && recordatorio!.isAfter(DateTime.now());
+
   bool get isShared => sharedNoteId != null;
   bool get esLista => items != null;
 
@@ -88,6 +103,15 @@ class Note {
     'stickers': stickers,
     'foto': foto,
     'enlace': enlace,
+    'recordatorio': recordatorio == null
+        ? null
+        : Timestamp.fromDate(recordatorio!),
+    'recordatorioPara': recordatorioPara,
+    // Lo que revisa el Worker cada minuto; lo borra cuando ya avisó.
+    // Al editar una nota cuyo recordatorio ya pasó no se vuelve a avisar.
+    'avisarEn': recordatorioPendiente
+        ? Timestamp.fromDate(recordatorio!)
+        : null,
   };
 
   factory Note.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
@@ -116,6 +140,11 @@ class Note {
       enlace: d['enlace'] as String?,
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
       sharedNoteId: d['sharedNoteId'] as String?,
+      recordatorio: (d['recordatorio'] as Timestamp?)?.toDate(),
+      recordatorioPara: switch (d['recordatorioPara']) {
+        final String p when paraQuien.contains(p) => p,
+        _ => 'yo',
+      },
     );
   }
 }

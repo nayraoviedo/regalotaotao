@@ -150,6 +150,9 @@ D['ojo_cerrado'] = linea('M8 42 C24 66 72 66 88 42') + linea('M20 54 L12 64 M36 
 D['enlace'] = ambos('M40 58 L30 68 C22 76 10 64 18 56 L32 42 C40 34 50 38 52 44', CE, 6) + linea('M56 38 L66 28 C74 20 86 32 78 40 L64 54 C56 62 46 58 44 52', 6)
 D['sticker'] = ambos('M48 12 L58 34 L82 36 L64 52 L70 76 L48 64 L26 76 L32 52 L14 36 L38 34 Z', AM) + ambos('M64 52 L70 76 L56 68 Z', CR, 3.6) + f'<circle cx="40" cy="44" r="2.8" fill="{AZ}"/><circle cx="54" cy="44" r="2.8" fill="{AZ}"/>' + linea('M43 51 Q47 55 51 51', 3.2) + f'<circle cx="35" cy="50" r="3" fill="{RO}"/><circle cx="59" cy="50" r="3" fill="{RO}"/>'
 
+# recordatorio de las notas: relojito despertador con campanitas
+D['despertador'] = ambos('M22 20 C28 12 38 12 42 20 Z', TO, 4.4) + ambos('M54 20 C58 12 68 12 74 20 Z', TO, 4.4) + linea('M30 78 L22 88 M66 78 L74 88', 5) + ambos(CIRC(48, 52, 28), AM) + ambos(CIRC(48, 52, 19), CR, 3.4) + linea('M48 40 L48 53 L58 59', 4.6) + punto(48, 53, 3.4, TO) + linea('M10 40 L4 36 M10 52 L3 52 M86 40 L92 36 M86 52 L93 52', 3.6, CE)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

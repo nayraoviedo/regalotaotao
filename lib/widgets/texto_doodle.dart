@@ -11,6 +11,7 @@ import '../models/casita.dart';
 /// ruta completa (el pescadito es la moneda de la casita).
 const Map<String, String> emojiDoodle = {
   '💌': 'sobre_lleno',
+  '⏰': 'despertador',
   '🐾': 'huellita',
   '🐟': Casita.iconoPescadito,
   '🎁': 'regalo',
