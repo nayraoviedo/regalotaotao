@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'db.dart';
+import 'push/aviso_web_stub.dart'
+    if (dart.library.js_interop) 'push/aviso_web.dart';
 
 @pragma('vm:entry-point')
 Future<void> _onBackgroundMessage(RemoteMessage message) async {
@@ -33,6 +35,7 @@ class PushService {
 
   final _notis = FlutterLocalNotificationsPlugin();
   bool _notisListas = false;
+  bool _escuchando = false;
 
   bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
@@ -50,9 +53,12 @@ class PushService {
       final fm = FirebaseMessaging.instance;
       await fm.requestPermission();
       await _prepararCanal();
-      // Con la app abierta Android no muestra la notificación solo: la
-      // mostramos nosotros para que igual se vea al instante.
-      FirebaseMessaging.onMessage.listen(_mostrarConAppAbierta);
+      // Con la app abierta ni Android ni el navegador muestran la
+      // notificación solos: la mostramos nosotros para que igual se vea.
+      if (!_escuchando) {
+        _escuchando = true;
+        FirebaseMessaging.onMessage.listen(_mostrarConAppAbierta);
+      }
       // getToken/onTokenRefresh siguen funcionando con FCM HTTP v1, que es
       // lo que usa el Worker. Migrar a register()/onRegistered cuando el
       // Worker envíe por FID.
@@ -87,7 +93,12 @@ class PushService {
 
   void _mostrarConAppAbierta(RemoteMessage m) {
     final n = m.notification;
-    if (!_notisListas || n == null) return;
+    if (n == null) return;
+    if (kIsWeb) {
+      mostrarAvisoWeb(n.title, n.body);
+      return;
+    }
+    if (!_notisListas) return;
     _notis
         .show(
           id: m.messageId.hashCode,
