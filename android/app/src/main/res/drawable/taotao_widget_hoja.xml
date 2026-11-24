@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La hojita del calendario de "días juntos". -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/taotao_widget_papel" />
+    <stroke android:width="1.5dp" android:color="@color/taotao_widget_azul" />
+    <corners android:radius="14dp" />
+</shape>

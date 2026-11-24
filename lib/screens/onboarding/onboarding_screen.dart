@@ -45,17 +45,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _pages = [
     _Page(
       'Un rincón solo\npara los dos',
-      'Vincúlense con un código y compartan su ánimo, notas y recuerdos.',
+      'Invita a tu pareja con tu código y tengan un rincón solo suyo para '
+          'su ánimo, sus notas y sus recuerdos.',
       true,
     ),
     _Page(
       'Concéntrense\njuntos',
-      'Inviten a su pareja a un pomodoro y respiren juntos cuando haga falta.',
+      'Invita a tu pareja a un pomodoro y concéntrense de la mano. Y si un '
+          'día pesa, respiren juntos un ratito.',
       false,
     ),
     _Page(
       'Siempre cerca',
-      'Un toque en "Te extraño" y a tu pareja le llega una notificación.',
+      'Cuando pienses en tu pareja, toca "Te extraño" y le llegará tu '
+          'cariño al instante.',
       true,
     ),
   ];

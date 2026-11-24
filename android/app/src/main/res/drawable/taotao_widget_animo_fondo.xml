@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Burbujita blanca detrás del dibujo del ánimo. -->
+<!-- Burbujita detrás del dibujo del ánimo. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#FFFFFFFF" />
-    <stroke android:width="1.5dp" android:color="#332B3A75" />
+    <stroke android:width="2dp" android:color="@color/taotao_widget_lila" />
 </shape>
