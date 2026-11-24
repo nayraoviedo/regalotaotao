@@ -1569,11 +1569,44 @@ class _AvisoRegalo extends StatelessWidget {
     return Card(
       color: const Color(0xFFFCE4EC),
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const EmojiDoodle('🎁', size: 28),
-        title: Text('$de te dejó un regalo sorpresa'),
-        subtitle: const Text('Está envuelto en la sala'),
-        trailing: FilledButton(onPressed: onAbrir, child: const Text('Abrir')),
+      // Fila propia (no ListTile): el FilledButton del tema ocupa todo el
+      // ancho y, como "trailing", aplastaba el texto a una letra por línea.
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          children: [
+            const EmojiDoodle('🎁', size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$de te dejó un regalo sorpresa',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Está envuelto en la sala',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.azul.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onAbrir,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+              ),
+              child: const Text('Abrir'),
+            ),
+          ],
+        ),
       ),
     );
   }
