@@ -27,7 +27,7 @@
         android:ellipsize="end"
         android:fontFamily="casual"
         android:maxLines="1"
-        android:text="Abre Taotao"
+        android:text="Abre la app"
         android:textColor="@color/taotao_widget_azul"
         android:textSize="12sp"
         android:textStyle="bold" />

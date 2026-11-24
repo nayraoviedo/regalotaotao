@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Ícono de las notificaciones de Android: solo silueta blanca
+       (Android la pinta de un color). Luna creciente y estrellita. -->
+  <defs>
+    <symbol id="brillo" viewBox="-10 -10 20 20">
+      <path d="M0 -10 Q1.2 -1.2 10 0 Q1.2 1.2 0 10 Q-1.2 1.2 -10 0 Q-1.2 -1.2 0 -10Z"/>
+    </symbol>
+    <mask id="creciente">
+      <rect width="1024" height="1024" fill="#000"/>
+      <circle cx="512" cy="470" r="420" fill="#fff"/>
+      <circle cx="512" cy="300" r="440" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#FFFFFF" mask="url(#creciente)"/>
+  <use href="#brillo" x="512" y="330" width="380" height="380" transform="translate(-190 -190)" fill="#FFFFFF"/>
+</svg>

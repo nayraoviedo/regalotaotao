@@ -10,6 +10,7 @@ import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
 import 'package:taotao/theme.dart';
+import 'package:taotao/widgets/texto_doodle.dart';
 
 void main() {
   group('Catálogo', () {
@@ -370,6 +371,171 @@ void main() {
       expect(cuenta[Cuarto.huerto], 0); // cerrado
     });
 
+    test('la rutina del día: bañito, comidas, cocinar, siesta y picnic', () {
+      final e = EstadoCasita.fromMap({
+        'tenemos': [
+          'cuarto_dormitorio',
+          'cama_estrellas',
+          'cuarto_cocina',
+          'cuarto_bano',
+          'tina_blanca',
+          'cuarto_jardin',
+        ],
+        'puestos': {'cama': 'cama_estrellas', 'tina': 'tina_blanca'},
+      });
+      String a(String n) => 'assets/casita/$n.png';
+      Escena? aLas(int h) => e.escena(DateTime(2026, 11, 24, h, 20));
+      expect(aLas(7), Escena.bano);
+      expect(aLas(8), Escena.desayuno);
+      expect(aLas(9), Escena.besitos);
+      expect(
+        CasaView.queHacen(e, DateTime(2026, 11, 24, 9, 20)),
+        'Los gatitos están dándose besitos en la sala',
+      );
+      expect(aLas(12), Escena.cocinando);
+      expect(aLas(13), Escena.almuerzo);
+      expect([aLas(14), aLas(15)], everyElement(Escena.siesta));
+      expect([aLas(16), aLas(17)], everyElement(Escena.picnic));
+      expect(aLas(18), Escena.cocinando);
+      expect(aLas(19), Escena.cena);
+      expect([aLas(20), aLas(21)], everyElement(Escena.drama));
+      expect([aLas(3), aLas(6), aLas(22)], everyElement(isNull));
+      // La siesta es en la cama, y se ve que duermen.
+      final tres = DateTime(2026, 11, 24, 14, 20);
+      expect(e.dondeEstan(tres), Cuarto.dormitorio);
+      expect(
+        e.capas(Cuarto.dormitorio, true, Momento.dia, 0, false, tres),
+        contains(a('dormidos_cama')),
+      );
+      // A las 7 están en la tina.
+      final siete = DateTime(2026, 11, 24, 7, 20);
+      expect(
+        e.capas(Cuarto.bano, true, Momento.dia, 0, false, siete),
+        contains(a('banando_1')),
+      );
+      // Uno cocina (se turnan cada día) y el otro pica.
+      final doce = DateTime(2026, 11, 24, 12, 20);
+      final quien = EstadoCasita.quienCocina(doce);
+      expect(
+        EstadoCasita.quienCocina(DateTime(2026, 11, 25, 12)),
+        isNot(quien),
+      );
+      expect(
+        e.capas(Cuarto.cocina, true, Momento.dia, 0, false, doce),
+        containsAll([
+          a('escena_cocinar_${quien}_1'),
+          a('picando_pescadito_${EstadoCasita.otro(quien)}'),
+        ]),
+      );
+      expect(
+        CasaView.queHacen(e, doce),
+        'El gatito $quien cocina pescadito y el '
+        '${EstadoCasita.otro(quien)} le ayuda',
+      );
+      // Sin cocina ni tina, esas horas son un rato libre.
+      final sala = EstadoCasita.fromMap({});
+      for (final h in [7, 8, 12, 13, 19]) {
+        final esc = sala.escena(DateTime(2026, 11, 24, h, 20));
+        expect(esc == null || esc.libre, isTrue, reason: '$h');
+      }
+      // Todos los dibujos de la rutina existen.
+      for (final c in Comida.values) {
+        expect(File(a('plato_${c.dibujo}')).existsSync(), isTrue);
+        for (final g in ['naranja', 'blanco']) {
+          expect(File(a('picando_${c.picando}_$g')).existsSync(), isTrue);
+          expect(File(a('escena_cocinar_${g}_2')).existsSync(), isTrue);
+        }
+      }
+      for (final r in Receta.values) {
+        expect(File(a('plato_${r.dibujo}')).existsSync(), isTrue);
+        for (final g in ['naranja', 'blanco']) {
+          expect(
+            File(a('picando_${r.principal.name}_$g')).existsSync(),
+            isTrue,
+          );
+        }
+      }
+    });
+
+    test('lo del huerto se recoge y se cocina', () {
+      final ahora = DateTime(2026, 11, 24, 10);
+      final huerto = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_huerto', 'tomatera', 'lechugas'],
+        'puestos': {'tomatera': 'tomatera', 'surco': 'lechugas'},
+        'sembrado': {
+          // El tomate ya creció; la lechuga recién se sembró.
+          'tomatera': ahora
+              .subtract(const Duration(days: 3))
+              .millisecondsSinceEpoch,
+          'lechugas': ahora.millisecondsSinceEpoch,
+        },
+      });
+      expect(huerto.cosechables(ahora).map((c) => c.id), ['tomatera']);
+      // Cada ingrediente sale de una semilla de la tienda, y cada uno se
+      // usa en alguna receta.
+      for (final i in Ingrediente.values) {
+        expect(Catalogo.porId(i.semilla)?.semilla, isTrue, reason: i.name);
+        expect(
+          Receta.values.any((r) => r.ingredientes.containsKey(i)),
+          isTrue,
+          reason: i.name,
+        );
+      }
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina'],
+        'despensa': {'tomate': 3, 'lechuga': 0},
+        'cocinado': {
+          'receta': 'sopaTomate',
+          'en': ahora.millisecondsSinceEpoch,
+        },
+      });
+      expect(e.hay(Ingrediente.tomate), 3);
+      expect(e.puedeCocinar(Receta.sopaTomate), isTrue);
+      expect(e.puedeCocinar(Receta.ensalada), isFalse);
+      // Lo cocinado se come en el almuerzo y la cena (no en el desayuno).
+      final una = DateTime(2026, 11, 24, 13, 10);
+      expect(e.platoDe(Comida.almuerzo, una), Receta.sopaTomate);
+      expect(e.platoDe(Comida.desayuno, una), isNull);
+      expect(
+        e.capas(Cuarto.cocina, true, Momento.dia, 0, false, una),
+        containsAll([
+          'assets/casita/escena_comer_1.png',
+          'assets/casita/plato_sopa_tomate.png',
+        ]),
+      );
+      expect(
+        CasaView.queHacen(e, una),
+        'Los gatitos están almorzando sopa de tomate del huerto',
+      );
+      final seis = DateTime(2026, 11, 24, 18, 10);
+      final quien = EstadoCasita.quienCocina(seis);
+      expect(
+        CasaView.queHacen(e, seis),
+        'El gatito $quien cocina sopa de tomate del huerto y el '
+        '${EstadoCasita.otro(quien)} le ayuda picando tomates',
+      );
+      // Al día siguiente ya se lo comieron: vuelve lo de siempre.
+      expect(
+        e.platoDe(Comida.almuerzo, una.add(const Duration(days: 1))),
+        isNull,
+      );
+      expect(
+        CasaView.queHacen(e, DateTime(2026, 11, 25, 8, 10)),
+        'Los gatitos están desayunando pancito con leche',
+      );
+    });
+
+    test('el cielo detrás de la casa sigue la hora real', () {
+      Cielo a(int h) => Cielo.de(DateTime(2026, 11, 24, h, 30));
+      expect(a(6), Cielo.amanecer);
+      expect([a(7), a(12), a(17)], everyElement(Cielo.dia));
+      expect([a(18), a(19)], everyElement(Cielo.atardecer));
+      expect([a(20), a(23), a(0), a(5)], everyElement(Cielo.noche));
+      for (final c in Cielo.values) {
+        expect(File(c.asset).existsSync(), isTrue, reason: c.asset);
+      }
+    });
+
     test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
       expect(CasaEnCorte.queCuarto(200, 190), Cuarto.dormitorio);
       expect(CasaEnCorte.queCuarto(280, 280), Cuarto.cocina);
@@ -724,7 +890,7 @@ void main() {
       );
       await t.tap(find.text('Sofá rosa'));
       await t.pumpAndSettle();
-      await t.tap(find.text('🐷 Ahorrar para esto'));
+      await t.tap(textoDoodle('🐷 Ahorrar para esto'));
       await t.pumpAndSettle();
       expect(metas.single?.id, 'sofa_rosa');
 
@@ -742,6 +908,32 @@ void main() {
       expect(metas.last, isNull);
     });
 
+    testWidgets('al comprar se elige: para los dos o regalar', (t) async {
+      final compras = <(Cosa, String?)>[];
+      final regalos = <(Cosa, String?, String)>[];
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 130),
+          compras: compras,
+          regalos: regalos,
+        ),
+      );
+      await t.tap(find.text('Sofá azul'));
+      await t.pumpAndSettle();
+      // Las dos opciones, y por defecto es para los dos (no se impone regalar).
+      expect(textoDoodle('🏠 Para los dos'), findsOneWidget);
+      expect(textoDoodle('🎁 Regalar'), findsOneWidget);
+      expect(
+        find.text('Va directo a la casita, para los dos.'),
+        findsOneWidget,
+      );
+      expect(find.byType(TextField), findsNothing);
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'sofa_azul');
+      expect(regalos, isEmpty);
+    });
+
     testWidgets('regalar una prenda con un mensajito', (t) async {
       final regalos = <(Cosa, String?, String)>[];
       await t.pumpWidget(
@@ -753,7 +945,7 @@ void main() {
       await t.ensureVisible(find.text('Camiseta a rayas'));
       await t.tap(find.text('Camiseta a rayas'));
       await t.pumpAndSettle();
-      await t.tap(find.text('🎁 Es un regalo sorpresa para Xixi'));
+      await t.tap(textoDoodle('🎁 Regalar'));
       await t.pumpAndSettle();
       await t.enterText(find.byType(TextField), 'Para nuestra cita');
       await t.tap(find.text('Regalar'));
@@ -776,7 +968,7 @@ void main() {
       // nayra (a) lo regaló: lo ve envuelto y no hay aviso para abrir.
       await t.pumpWidget(pantalla(estado, abiertos: abiertos));
       await t.pumpAndSettle();
-      expect(find.text('Envuelto 🎁'), findsOneWidget);
+      expect(textoDoodle('Envuelto 🎁'), findsOneWidget);
       expect(find.textContaining('te dejó un regalo sorpresa'), findsNothing);
 
       // Xixi (b) lo recibe.
@@ -791,7 +983,7 @@ void main() {
       expect(find.text('nayra te dejó un regalo sorpresa'), findsOneWidget);
       await t.tap(find.text('Abrir'));
       await t.pumpAndSettle();
-      await t.tap(find.text('Abrir 🎁'));
+      await t.tap(textoDoodle('Abrir 🎁'));
       await t.pumpAndSettle();
       expect(find.text('¡Sofá rosa!'), findsOneWidget);
       expect(find.textContaining('Te quiero'), findsOneWidget);
@@ -866,14 +1058,14 @@ void main() {
       await t.pumpWidget(
         pantalla(const EstadoCasita(tenemos: {'tema_lavanda'})),
       );
-      await t.ensureVisible(find.text('✨ Especiales'));
-      await t.tap(find.text('✨ Especiales'));
+      await t.ensureVisible(textoDoodle('✨ Especiales'));
+      await t.tap(textoDoodle('✨ Especiales'));
       await t.pumpAndSettle();
       expect(find.text('Stickers de gatitos'), findsOneWidget);
       await t.tap(find.text('Tema lavanda'));
       await t.pumpAndSettle();
       expect(AppTheme.tema.value.clave, 'lavanda');
-      expect(find.text('En uso ✓'), findsOneWidget);
+      expect(textoDoodle('En uso ✓'), findsOneWidget);
       // Tocarlo otra vez vuelve al clásico.
       await t.tap(find.text('Tema lavanda'));
       await t.pumpAndSettle();
@@ -891,7 +1083,7 @@ void main() {
           puestos: puestos,
         ),
       );
-      expect(find.text('Puesto ✓'), findsOneWidget);
+      expect(textoDoodle('Puesto ✓'), findsOneWidget);
       await t.tap(find.text('Sofá rosa'));
       await t.pump();
       await t.tap(find.text('Sofá azul'));
@@ -948,7 +1140,7 @@ void main() {
       await t.tap(find.text('Adoptar'));
       await t.pumpAndSettle();
       expect(compras.single.$1.id, 'bebe_calico');
-      expect(find.text('¡Bienvenido a casa! 🐾'), findsOneWidget);
+      expect(textoDoodle('¡Bienvenido a casa! 🐾'), findsOneWidget);
       await t.enterText(find.byType(TextFormField), 'Mochi');
       await t.tap(find.text('Listo'));
       await t.pumpAndSettle();
@@ -1023,7 +1215,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await t.tap(find.text('🎄 De temporada'));
+      await t.tap(textoDoodle('🎄 De temporada'));
       await t.pumpAndSettle();
       await t.tap(find.text('Arbolito de Navidad'));
       await t.pumpAndSettle();
@@ -1052,3 +1244,10 @@ void main() {
     });
   });
 }
+
+/// Busca un texto que tiene emojis (en pantalla salen como doodles).
+Finder textoDoodle(String texto, {bool skipOffstage = true}) =>
+    find.byWidgetPredicate(
+      (w) => w is TextoDoodle && w.texto == texto,
+      skipOffstage: skipOffstage,
+    );

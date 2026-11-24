@@ -108,10 +108,12 @@ class RewardService {
     Reward reward,
   ) async {
     final ref = _achievements(coupleId).doc(achievementId);
+    String? dueno;
     await Db.instance.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final d = snap.data();
       if (d == null) throw StateError('No existe ese logro');
+      dueno = d['uid'] as String?;
       if (d['rewardId'] != null) {
         throw RewardAlreadyChosen(d['rewardTitle'] as String? ?? '');
       }
@@ -122,6 +124,14 @@ class RewardService {
       });
     });
     NotifyService.instance.send(NotifyKind.reward, coupleId, achievementId);
+    // Si la lista de la pareja estaba vacía y se tocó una idea, ese premio
+    // se creó a nombre de quien lo ganó; se borra para que no aparezca en su
+    // propia lista "Mis premios para dar" (el logro ya guarda el título).
+    if (dueno != null && reward.createdBy == dueno) {
+      try {
+        await deleteReward(coupleId, reward.id);
+      } catch (_) {}
+    }
   }
 
   /// La pareja marca que ya entregó el premio.

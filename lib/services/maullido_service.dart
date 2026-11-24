@@ -34,7 +34,7 @@ class MaullidoService with WidgetsBindingObserver {
     playSound: true,
     sound: RawResourceAndroidNotificationSound('maullido'),
     category: AndroidNotificationCategory.alarm,
-    icon: '@mipmap/ic_launcher',
+    icon: '@drawable/ic_notificacion',
   );
 
   AudioPlayer? _player;
@@ -59,7 +59,7 @@ class MaullidoService with WidgetsBindingObserver {
       tzdata.initializeTimeZones();
       await _notis.initialize(
         settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          android: AndroidInitializationSettings('@drawable/ic_notificacion'),
         ),
       );
       await _notis

@@ -8,6 +8,18 @@
 /// - `assets/images/onboarding_2.png`  bienvenida, pantalla 2
 /// - `assets/images/onboarding_3.png`  bienvenida, pantalla 3
 class Branding {
+  /// Nombre de la app (debajo del ícono, en la pestaña del navegador y en
+  /// el inicio de sesión): 星月, "estrella y luna". Si lo cambias, cámbialo también en
+  /// android/app/src/main/AndroidManifest.xml, web/index.html,
+  /// web/manifest.json e ios/Runner/Info.plist.
+  static const nombre = '星月';
+
+  /// La frase de donde sale el nombre (星月 = estrella y luna).
+  static const frase = '你是我的星与月';
+
+  /// Lo que significa la frase, como subtítulo.
+  static const significado = 'tú eres mi estrella y mi luna';
+
   static const login = 'assets/images/login.png';
   static const onboarding = [
     'assets/images/onboarding_1.png',

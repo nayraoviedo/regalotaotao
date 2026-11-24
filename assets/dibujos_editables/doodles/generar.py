@@ -107,6 +107,40 @@ D['juegos'] = ('<g transform="rotate(-12 34 52)">' + ambos('M14 32 L54 32 L54 72
                + '<g transform="rotate(14 66 46)">' + ambos('M48 26 L84 26 L84 62 L48 62 Z', AM) + f'<circle cx="58" cy="36" r="3.6" fill="{AZ}"/><circle cx="74" cy="36" r="3.6" fill="{AZ}"/><circle cx="58" cy="52" r="3.6" fill="{AZ}"/><circle cx="74" cy="52" r="3.6" fill="{AZ}"/>' + '</g>'
                + linea('M60 84 C54 78 50 75 50 71 C50 68 52 66 55 66 C57 66 59 67 60 69 C61 67 63 66 65 66 C68 66 70 68 70 71 C70 75 66 78 60 84 Z', 3.6, TO))
 
+# --- en lugar de emojis dentro de los textos (ver lib/widgets/texto_doodle.dart) ---
+CIRC = lambda cx, cy, r: f'M{cx} {cy-r} C{cx+r*0.56} {cy-r} {cx+r} {cy-r*0.56} {cx+r} {cy} C{cx+r} {cy+r*0.56} {cx+r*0.56} {cy+r} {cx} {cy+r} C{cx-r*0.56} {cy+r} {cx-r} {cy+r*0.56} {cx-r} {cy} C{cx-r} {cy-r*0.56} {cx-r*0.56} {cy-r} {cx} {cy-r} Z'
+CARA = CIRC(48, 50, 36)
+def punto(x, y, r=3.4, c=AZ): return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{c}"/>'
+D['huellita'] = ambos('M48 50 C62 50 74 62 72 74 C70 84 58 82 48 82 C38 82 26 84 24 74 C22 62 34 50 48 50 Z', RO) + ''.join(ambos(CIRC(x, y, r), RO, 4.4) for x, y, r in [(22, 40, 8), (38, 24, 9), (58, 24, 9), (74, 40, 8)])
+D['alcancia'] = ambos('M48 26 C70 26 84 38 84 54 C84 66 76 72 70 74 L70 84 L60 84 L58 78 L38 78 L36 84 L26 84 L26 74 C18 70 12 62 12 52 C12 36 28 26 48 26 Z', RO) + ambos('M30 30 L26 16 L42 26', RO, 4.4) + ambos('M8 46 C8 40 16 40 16 46 C16 54 8 54 8 46 Z', RO, 4) + linea('M40 36 L56 36', 4.4) + punto(30, 46) + punto(68, 52, 2.4, RO)
+D['corazones'] = '<g transform="translate(-14 10) scale(0.72)">' + ambos(CORAZON, TO) + '</g><g transform="translate(36 -2) scale(0.62) rotate(12 48 48)">' + ambos(CORAZON, RO) + '</g>'
+D['corazon_roto'] = ambos(CORAZON, TO) + linea('M48 26 L42 40 L54 50 L44 62 L48 80', 4.6, CR) + linea('M48 26 L42 40 L54 50 L44 62 L48 80', 3)
+D['corazon_flecha'] = linea('M10 82 L86 14', 4.6) + ambos(CORAZON, RO) + linea('M10 82 L36 59 M60 38 L86 14', 4.6) + ambos('M86 14 L72 16 L84 28 Z', AM, 3.6) + linea('M10 82 L12 70 M10 82 L22 80', 4)
+D['pastel'] = ambos('M14 54 L82 54 L82 84 L14 84 Z', RO) + ambos('M22 34 L74 34 L74 54 L22 54 Z', CR) + linea('M14 66 Q26 72 38 66 Q50 60 62 66 Q74 72 82 66', 4, TO) + linea('M48 34 L48 20', 4.4) + ambos('M48 6 C54 12 54 18 48 20 C42 18 42 12 48 6 Z', AM, 3.6)
+D['audifonos'] = linea('M18 58 L18 46 C18 22 78 22 78 46 L78 58') + ambos('M12 52 L28 52 L28 82 L12 82 Z', TO) + ambos('M68 52 L84 52 L84 82 L68 82 Z', TO) + linea('M40 66 L40 56 L56 52 L56 62', 3.6) + punto(37, 67, 4.2) + punto(53, 63, 4.2)
+D['secreto'] = ambos(CARA, AM) + linea('M28 40 Q34 36 40 40 M56 40 Q62 36 68 40', 4.2) + linea('M36 64 L60 64', 4.4) + ambos('M44 82 L44 52 C44 46 52 46 52 52 L52 82', CR, 4)
+D['sudor'] = ambos(CARA, AM) + linea('M28 44 Q34 38 40 44 M56 44 Q62 38 68 44', 4.4) + linea('M32 60 Q48 74 64 60', 4.6) + ambos('M78 18 C82 26 88 30 88 36 C88 42 84 44 80 44 C76 44 72 42 72 36 C72 30 76 26 78 18 Z', CE, 3.6)
+D['saludo'] = ambos('M30 86 C22 76 20 64 22 52 L22 36 C22 30 30 30 30 36 L30 48 L30 22 C30 16 38 16 38 22 L38 44 L38 16 C38 10 46 10 46 16 L46 44 L46 22 C46 16 54 16 54 22 L54 54 L60 46 C64 40 72 44 68 50 L58 68 C54 78 48 86 40 86 Z', AM, 4.4) + linea('M66 18 Q76 18 78 28 M74 10 Q86 12 88 24', 4, CE)
+D['viento'] = linea('M10 36 L58 36 C68 36 72 28 68 22 C64 16 54 18 54 26', 5) + linea('M10 52 L74 52 C84 52 88 62 82 68 C76 74 66 70 68 62', 5) + linea('M20 68 L44 68 C52 68 54 76 50 80', 4.4, CE)
+D['hoja'] = ambos('M16 80 C12 46 38 16 82 14 C84 56 56 84 16 80 Z', VE) + linea('M16 80 Q44 54 66 32 M40 56 L36 40 M52 44 L64 46', 4)
+D['brote'] = linea('M48 84 L48 46', 5) + ambos('M48 52 C38 32 22 30 12 34 C14 50 30 58 48 52 Z', VE) + ambos('M48 46 C54 26 70 18 84 20 C84 38 66 50 48 46 Z', VE) + ambos('M26 84 L70 84 L64 74 L32 74 Z', TO, 4.4)
+D['fuerza'] = ambos('M16 82 L16 58 C16 46 30 44 38 50 L50 58 L52 36 C40 32 38 18 50 14 C60 12 66 20 62 30 L66 34 C82 40 86 62 76 74 C68 84 50 86 16 82 Z', AM, 4.6) + linea('M54 64 Q62 58 70 62', 4)
+D['ojos'] = ambos('M26 14 C40 14 44 30 44 48 C44 66 40 82 26 82 C12 82 8 66 8 48 C8 30 12 14 26 14 Z', CR) + ambos('M70 14 C84 14 88 30 88 48 C88 66 84 82 70 82 C56 82 52 66 52 48 C52 30 56 14 70 14 Z', CR) + punto(34, 46, 8) + punto(78, 46, 8) + punto(36, 43, 2.6, CR) + punto(80, 43, 2.6, CR)
+D['burbujas'] = ambos(CIRC(38, 56, 24), CE) + ambos(CIRC(72, 30, 14), CE, 4.4) + ambos(CIRC(74, 72, 9), CE, 4) + linea('M26 48 Q28 40 36 38 M66 24 Q68 20 72 20', 3.4, CR)
+# fiestas
+D['fuegos'] = linea('M48 48 L48 14 M48 48 L76 26 M48 48 L82 54 M48 48 L66 80 M48 48 L30 80 M48 48 L14 54 M48 48 L20 26', 4.4, TO) + ''.join(punto(x, y, 5, c) for x, y, c in [(48, 10, AM), (80, 22, CE), (86, 56, AM), (68, 84, RO), (28, 84, AM), (10, 56, CE), (16, 22, RO)]) + punto(48, 48, 6, AM)
+D['sobre_rojo'] = ambos('M22 12 L74 12 L74 86 L22 86 Z', TO) + linea('M22 12 L48 32 L74 12', 4.4) + ambos(CIRC(48, 54, 11), AM, 4) + linea('M48 48 L48 60 M42 54 L54 54', 3.4)
+D['mascaras'] = '<g transform="rotate(-12 34 46)">' + ambos('M12 22 L56 22 L56 48 C56 66 46 76 34 76 C22 76 12 66 12 48 Z', AM) + linea('M20 38 Q25 33 30 38 M38 38 Q43 33 48 38 M24 58 Q34 66 44 58', 4) + '</g><g transform="rotate(12 64 52)">' + ambos('M42 28 L86 28 L86 54 C86 72 76 82 64 82 C52 82 42 72 42 54 Z', CE) + linea('M50 46 Q55 41 60 46 M68 46 Q73 41 78 46 M54 70 Q64 62 74 70', 4) + '</g>'
+D['pollito'] = ambos(CIRC(48, 36, 22), AM) + punto(41, 32, 3.4) + punto(57, 32, 3.4) + ambos('M43 40 L53 40 L48 47 Z', TO, 3.4) + ambos('M16 54 L26 46 L34 56 L42 48 L50 58 L58 48 L66 56 L72 46 L80 54 C82 72 70 86 48 86 C26 86 14 72 16 54 Z', CR)
+D['dragon'] = ambos('M14 70 C14 56 26 54 34 60 C42 66 50 64 52 54 C54 40 44 34 46 24 C48 14 62 12 72 18 L84 22 L76 30 C80 38 76 44 68 42 C62 56 70 66 62 76 C52 88 30 86 14 70 Z', VE, 4.6) + punto(66, 24, 3.4) + linea('M30 62 L28 52 M42 66 L42 56 M56 50 L64 48', 3.6) + linea('M82 34 Q88 38 86 46', 3.4, TO)
+D['via_lactea'] = ambos('M14 14 L82 14 L82 82 L14 82 Z', '#34447F') + linea('M14 70 Q46 56 58 40 Q66 28 82 22', 10, CE) + ''.join(punto(x, y, r, c) for x, y, r, c in [(26, 28, 3.4, AM), (64, 66, 4, AM), (40, 46, 2.6, CR), (72, 46, 2.6, CR), (24, 56, 2.4, CR), (52, 26, 2.6, CR)])
+D['flor'] = ''.join(ambos(CIRC(48 + 22 * dx, 46 + 22 * dy, 14), RO, 4.4) for dx, dy in [(0, -1), (0.95, -0.31), (0.59, 0.81), (-0.59, 0.81), (-0.95, -0.31)]) + ambos(CIRC(48, 46, 10), AM, 4.4)
+D['pastel_luna'] = ambos(CIRC(48, 48, 34), AM) + linea(CIRC(48, 48, 22), 3.6, TO) + linea('M48 30 Q54 40 48 48 Q42 56 48 66 M30 48 Q40 42 48 48 Q56 54 66 48', 3.6, TO) + ''.join(linea(f'M{48+40*c:.1f} {48+40*s:.1f} L{48+34*c:.1f} {48+34*s:.1f}', 4.4) for c, s in [(1,0),(0.71,0.71),(0,1),(-0.71,0.71),(-1,0),(-0.71,-0.71),(0,-1),(0.71,-0.71)])
+D['calabaza'] = ambos('M48 26 C70 22 86 36 86 56 C86 76 70 84 48 84 C26 84 10 76 10 56 C10 36 26 22 48 26 Z', TO) + linea('M48 28 C38 40 38 72 48 84 M48 28 C58 40 58 72 48 84', 4) + ambos('M44 26 L44 12 L54 10 L54 26', VE, 4.4) + linea('M56 14 Q66 6 72 14', 3.6)
+D['vela'] = ambos('M30 42 L66 42 L66 84 L30 84 Z', CR) + relleno('M30 42 Q36 52 40 44 Q46 56 52 44 Q58 52 66 42 Z', CE, 0, 0) + linea('M30 42 L66 42', 4.4) + linea('M48 42 L48 32', 4) + ambos('M48 8 C56 16 58 24 48 30 C38 24 40 16 48 8 Z', AM, 4)
+D['arbolito'] = ambos('M48 8 L70 36 L60 36 L78 60 L64 60 L84 82 L12 82 L32 60 L18 60 L36 36 L26 36 Z', VE) + ambos('M42 82 L54 82 L54 92 L42 92 Z', TO, 4) + ''.join(punto(x, y, 4, c) for x, y, c in [(42, 32, TO), (56, 50, AM), (36, 58, RO), (62, 72, TO), (30, 76, AM)])
+D['anillo'] = linea(CIRC(48, 62, 24), 6) + ambos('M36 26 L42 14 L54 14 L60 26 L48 38 Z', CE, 4.4) + linea('M36 26 L60 26 M42 14 L48 26 L54 14', 3)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

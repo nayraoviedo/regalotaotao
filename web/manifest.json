@@ -1,11 +1,11 @@
 {
-    "name": "taotao",
-    "short_name": "taotao",
+    "name": "星月 · 你是我的星与月",
+    "short_name": "星月",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F2EC",
     "theme_color": "#2B3A75",
-    "description": "Nuestra app de pareja",
+    "description": "你是我的星与月 · tú eres mi estrella y mi luna",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

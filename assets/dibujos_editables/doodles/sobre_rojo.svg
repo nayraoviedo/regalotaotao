@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+<defs><filter id="mano" x="-10%" y="-10%" width="120%" height="120%">
+<feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="85"/>
+<feDisplacementMap in="SourceGraphic" scale="3.2"/></filter></defs>
+<g filter="url(#mano)" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12 L74 12 L74 86 L22 86 Z" fill="#E8735A" transform="translate(2.5 2.5)"/><path d="M22 12 L74 12 L74 86 L22 86 Z" fill="none" stroke="#2B3A75" stroke-width="5.2"/><path d="M22 12 L48 32 L74 12" fill="none" stroke="#2B3A75" stroke-width="4.4"/><path d="M48 43 C54.16 43 59 47.84 59 54 C59 60.16 54.16 65 48 65 C41.84 65 37 60.16 37 54 C37 47.84 41.84 43 48 43 Z" fill="#F6C84C" transform="translate(2.5 2.5)"/><path d="M48 43 C54.16 43 59 47.84 59 54 C59 60.16 54.16 65 48 65 C41.84 65 37 60.16 37 54 C37 47.84 41.84 43 48 43 Z" fill="none" stroke="#2B3A75" stroke-width="4"/><path d="M48 48 L48 60 M42 54 L54 54" fill="none" stroke="#2B3A75" stroke-width="3.4"/></g></svg>

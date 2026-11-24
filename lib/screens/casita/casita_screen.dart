@@ -15,6 +15,7 @@ import 'cuarto.dart';
 import '../../widgets/doodle.dart';
 import '../notes/cartas/carta_screen.dart';
 import '../notes/cartas/carta_sorpresa.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// "Nuestra casita": el cuarto de los gatitos, la tienda y cómo se ganan
 /// los pescaditos.
@@ -73,6 +74,8 @@ class CasitaScreen extends StatelessWidget {
           onDescartar: () => servicio.descartarPropuesta(coupleId),
           onNombrar: (bebe, nombre) =>
               servicio.nombrarBebe(coupleId, bebe, nombre),
+          onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
+          onCocinar: (receta) => servicio.cocinar(coupleId, receta),
           onCartaSorpresa: partner == null
               ? null
               : () => Navigator.of(context).push(
@@ -111,6 +114,8 @@ class CasitaView extends StatefulWidget {
     this.onDescartar,
     this.onCartaSorpresa,
     this.onNombrar,
+    this.onRecoger,
+    this.onCocinar,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -146,6 +151,12 @@ class CasitaView extends StatefulWidget {
 
   /// Ponerle nombre a un gatito bebé.
   final Future<void> Function(Cosa bebe, String nombre)? onNombrar;
+
+  /// Recoger lo que creció en el huerto (va a la despensa).
+  final Future<Ingrediente?> Function(Cosa semilla)? onRecoger;
+
+  /// Cocinar una receta con lo de la despensa.
+  final Future<bool> Function(Receta receta)? onCocinar;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -329,6 +340,44 @@ class _CasitaViewState extends State<CasitaView> {
     super.dispose();
   }
 
+  bool _ocupado = false;
+
+  Future<void> _recoger(Cosa semilla) async {
+    setState(() => _ocupado = true);
+    try {
+      final i = await widget.onRecoger!(semilla);
+      if (i != null) {
+        _aviso(
+          '${i.emoji} Recogieron ${i.cuantos(Ingrediente.porCosecha)}. '
+          'Ya están en la despensa de la cocina.',
+        );
+      }
+    } catch (_) {
+      _aviso('No se pudo recoger. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _cocinar(Receta r) async {
+    setState(() => _ocupado = true);
+    try {
+      final listo = await widget.onCocinar!(r);
+      final cuando = r.comidas.contains(Comida.desayuno)
+          ? 'en el desayuno'
+          : 'en el almuerzo y la cena';
+      _aviso(
+        listo
+            ? '¡Qué rico! Los gatitos comerán ${r.nombre} $cuando.'
+            : 'Ya no alcanza lo de la despensa para ${r.nombre}.',
+      );
+    } catch (_) {
+      _aviso('No se pudo cocinar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
   /// Lo sembrado en este cuarto que todavía no termina de crecer.
   List<String> get _creciendo => [
     for (final l in _cuarto.lugares)
@@ -379,7 +428,7 @@ class _CasitaViewState extends State<CasitaView> {
   void _aviso(String texto) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(texto)));
+      ..showSnackBar(SnackBar(content: TextoDoodle(texto)));
   }
 
   bool _subiendoFoto = false;
@@ -503,16 +552,37 @@ class _CasitaViewState extends State<CasitaView> {
                   ),
                 ],
                 if (sePuedeRegalar) ...[
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: regalo,
-                    title: Text('🎁 Es un regalo sorpresa para $pareja'),
-                    subtitle: const Text('Le aparece envuelto en la casita'),
-                    onChanged: (v) => setDialog(() {
-                      regalo = v ?? false;
-                      if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
-                    }),
+                  const SizedBox(height: 12),
+                  // Dos caminos, sin imponer el regalo: por defecto es
+                  // para los dos y regalar es solo si uno quiere.
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<bool>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: TextoDoodle('🏠 Para los dos'),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: TextoDoodle('🎁 Regalar'),
+                        ),
+                      ],
+                      selected: {regalo},
+                      onSelectionChanged: (s) => setDialog(() {
+                        regalo = s.first;
+                        if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    regalo
+                        ? 'Le llega envuelto a $pareja en la casita '
+                              'y lo abre cuando quiera.'
+                        : 'Va directo a la casita, para los dos.',
+                    style: const TextStyle(color: AppTheme.gris, fontSize: 13),
                   ),
                   if (regalo)
                     TextField(
@@ -606,7 +676,9 @@ class _CasitaViewState extends State<CasitaView> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(recien ? '¡Bienvenido a casa! 🐾' : '¿Cómo se llama?'),
+        title: TextoDoodle(
+          recien ? '¡Bienvenido a casa! 🐾' : '¿Cómo se llama?',
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -707,7 +779,7 @@ class _CasitaViewState extends State<CasitaView> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('🐷 Ahorrar para esto'),
+            child: const TextoDoodle('🐷 Ahorrar para esto'),
           ),
         ],
       ),
@@ -902,11 +974,47 @@ class _CasitaViewState extends State<CasitaView> {
           ),
           if (_estado.abierto(_cuarto) && _creciendo.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
+            TextoDoodle(
               '🌱 Están creciendo: ${_creciendo.join(', ')}. '
               'Cada semilla tarda dos días en crecer.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+          ],
+          if (_cuarto == Cuarto.huerto &&
+              _estado.abierto(_cuarto) &&
+              widget.onRecoger != null)
+            if (_estado.cosechables(_hoy) case final listas
+                when listas.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in listas)
+                    FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                      ),
+                      onPressed: _ocupado ? null : () => _recoger(c),
+                      icon: TextoDoodle(Ingrediente.deSemilla(c.id)!.emoji),
+                      label: Text(
+                        'Recoger ${Ingrediente.deSemilla(c.id)!.alRecoger}',
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          if (_cuarto == Cuarto.cocina &&
+              _estado.abierto(_cuarto) &&
+              widget.onCocinar != null) ...[
+            const SizedBox(height: 12),
+            _Despensa(
+              estado: _estado,
+              ahora: _hoy,
+              ocupado: _ocupado,
+              onCocinar: _cocinar,
             ),
           ],
           if (_estado.abierto(_cuarto) && _estado.sePuedenBanar(_cuarto)) ...[
@@ -914,7 +1022,7 @@ class _CasitaViewState extends State<CasitaView> {
             Center(
               child: FilledButton.tonalIcon(
                 onPressed: _banando ? null : _banar,
-                icon: const Text('🫧'),
+                icon: const TextoDoodle('🫧'),
                 label: Text(
                   _banando ? '¡Qué rico bañito!' : 'Bañar a los gatitos',
                 ),
@@ -1053,7 +1161,7 @@ class _Categorias extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
-                label: Text(nombre),
+                label: TextoDoodle(nombre),
                 selected: elegida == id,
                 showCheckmark: false,
                 onSelected: (_) => onElegir(id),
@@ -1110,7 +1218,7 @@ class _AvisoFiesta extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final f in fiestas)
-                Text(
+                TextoDoodle(
                   '${f.emoji} ${f.nombre}: cosas especiales hasta el '
                   '${_fecha(f.activaEn(hoy, inicioPareja: inicioPareja)!.$2)}',
                   style: TextStyle(
@@ -1147,7 +1255,7 @@ class _ProximasFiestas extends StatelessWidget {
           for (final (f, d) in proximas.take(5))
             ListTile(
               dense: true,
-              leading: Text(f.emoji, style: const TextStyle(fontSize: 20)),
+              leading: EmojiDoodle(f.emoji, size: 20),
               title: Text(f.nombre),
               trailing: Text(
                 'desde el ${_fecha(d)}',
@@ -1344,7 +1452,7 @@ class _Articulo extends StatelessWidget {
         child: Pescaditos(cosa.precio, tamano: 13, color: AppTheme.azul),
       );
     } else if (envuelto) {
-      pie = Text(
+      pie = TextoDoodle(
         'Envuelto 🎁',
         style: TextStyle(
           fontSize: 12,
@@ -1353,7 +1461,7 @@ class _Articulo extends StatelessWidget {
         ),
       );
     } else {
-      pie = Text(
+      pie = TextoDoodle(
         switch (cosa.especial) {
           Especial.stickers => 'En tus notas ✓',
           Especial.tema => enUso ? 'En uso ✓' : 'Usar',
@@ -1545,11 +1653,44 @@ class _AvisoRegalo extends StatelessWidget {
     return Card(
       color: const Color(0xFFFCE4EC),
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const Text('🎁', style: TextStyle(fontSize: 28)),
-        title: Text('$de te dejó un regalo sorpresa'),
-        subtitle: const Text('Está envuelto en la sala'),
-        trailing: FilledButton(onPressed: onAbrir, child: const Text('Abrir')),
+      // Fila propia (no ListTile): el FilledButton del tema ocupa todo el
+      // ancho y, como "trailing", aplastaba el texto a una letra por línea.
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          children: [
+            const EmojiDoodle('🎁', size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$de te dejó un regalo sorpresa',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Está envuelto en la sala',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.azul.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onAbrir,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+              ),
+              child: const Text('Abrir'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1583,7 +1724,7 @@ class Alcancia extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🐷', style: TextStyle(fontSize: 26)),
+          const EmojiDoodle('🐷', size: 26),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1751,7 +1892,7 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
         else
           FilledButton(
             onPressed: _anim.isAnimating ? null : _abrir,
-            child: const Text('Abrir 🎁'),
+            child: const TextoDoodle('Abrir 🎁'),
           ),
       ],
     );
@@ -1790,7 +1931,7 @@ class _AvisoPropuesta extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text('🐟', style: TextStyle(fontSize: 24)),
+                const EmojiDoodle('🐟', size: 24),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1989,6 +2130,93 @@ class _CartaSorpresaEnTienda extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// La despensa de la cocina (lo recogido del huerto) y lo que se puede
+/// cocinar con eso.
+class _Despensa extends StatelessWidget {
+  const _Despensa({
+    required this.estado,
+    required this.ahora,
+    required this.ocupado,
+    required this.onCocinar,
+  });
+
+  final EstadoCasita estado;
+  final DateTime ahora;
+  final bool ocupado;
+  final ValueChanged<Receta> onCocinar;
+
+  @override
+  Widget build(BuildContext context) {
+    final hay = [
+      for (final i in Ingrediente.values)
+        if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Despensa',
+            style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          TextoDoodle(
+            hay.isEmpty
+                ? 'Está vacía. Recojan lo que crece en el huerto para '
+                      'cocinar con eso.'
+                : hay.join(' · '),
+            style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+          ),
+          if (hay.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Cocinar',
+              style: TextStyle(
+                color: AppTheme.azul,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                // Primero lo que alcanza para cocinar.
+                for (final r in [
+                  ...Receta.values.where(estado.puedeCocinar),
+                  ...Receta.values.where((r) => !estado.puedeCocinar(r)),
+                ])
+                  ActionChip(
+                    label: TextoDoodle(
+                      '${r.nombre[0].toUpperCase()}${r.nombre.substring(1)} '
+                      '(${r.cuesta})',
+                    ),
+                    onPressed: ocupado || !estado.puedeCocinar(r)
+                        ? null
+                        : () => onCocinar(r),
+                  ),
+              ],
+            ),
+          ],
+          if (estado.cocinado case final r?
+              when estado.platoDe(r.comidas.first, ahora) != null) ...[
+            const SizedBox(height: 8),
+            TextoDoodle(
+              '🍲 Hoy comen ${r.nombre} del huerto.',
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -13,3 +13,16 @@ transparente, con el mismo nombre de archivo.
 
 Los dibujos de ahora salen de `assets/dibujos_editables/doodles/`:
 `python3 generar.py` escribe los SVG y `node exportar.js` los pasa a PNG.
+
+## Doodles en lugar de emojis
+
+Los textos de la app (avisos, botones, títulos) siguen escritos con emojis
+en el código, pero en pantalla cada emoji se dibuja con un doodle de esta
+carpeta. La lista de qué emoji va con qué dibujo está en `emojiDoodle`, en
+`lib/widgets/texto_doodle.dart` (por ejemplo 🐾 → `huellita.png`,
+🐷 → `alcancia.png`, 🎃 → `calabaza.png`). Para cambiar uno, reemplaza
+el PNG con el mismo nombre. El 🐟 usa la moneda de la casita
+(`assets/casita/pescadito.png`).
+
+Las notificaciones del celular sí siguen con emojis, porque ahí no se
+pueden poner dibujos.

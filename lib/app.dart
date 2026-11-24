@@ -1,7 +1,11 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 
+import 'branding.dart';
 import 'models/app_user.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/musica/musica_en_vivo.dart';
+import 'screens/musica/musica_flotante.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
@@ -47,8 +51,11 @@ class _TaotaoAppState extends State<TaotaoApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Taotao',
+      title: Branding.nombre,
       debugShowCheckedModeBanner: false,
+      // En la web con mouse o trackpad también se puede arrastrar para
+      // deslizar filas horizontales (categorías de la tienda, chips, etc.).
+      scrollBehavior: const ArrastreConMouse(),
       theme: AppTheme.light,
       // Calendarios, botones de "Atrás" y demás textos del sistema en
       // español (si no, salen en inglés).
@@ -57,8 +64,12 @@ class _TaotaoAppState extends State<TaotaoApp> {
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // En la web en una compu: la app en una columna del ancho de un
       // celular, centrada (ver MarcoPantallaAncha).
-      builder: (context, child) =>
-          MarcoPantallaAncha(child: child ?? const SizedBox.shrink()),
+      // La música juntos sigue sonando en toda la app (reproductor chiquito).
+      navigatorKey: navegadorApp,
+      navigatorObservers: [ObservadorMusica.instance],
+      builder: (context, child) => MusicaFlotante(
+        child: MarcoPantallaAncha(child: child ?? const SizedBox.shrink()),
+      ),
       home: const AuthGate(),
     );
   }
@@ -95,6 +106,7 @@ class _AuthGateState extends State<AuthGate> {
         }
         final firebaseUser = authSnap.data;
         if (firebaseUser == null) {
+          _apagarMusica();
           if (_onboardingSeen == null) return const _Loading();
           if (_onboardingSeen == false) {
             return OnboardingScreen(
@@ -113,7 +125,10 @@ class _AuthGateState extends State<AuthGate> {
             final user = userSnap.data;
             if (user == null) return const _Loading();
             if (user.gatito == null) return ElegirGatitoScreen(me: user);
-            if (user.coupleId == null) return PairingScreen(me: user);
+            if (user.coupleId == null) {
+              _apagarMusica();
+              return PairingScreen(me: user);
+            }
             return HomeScreen(me: user);
           },
         );
@@ -122,12 +137,37 @@ class _AuthGateState extends State<AuthGate> {
   }
 }
 
+/// Al cerrar sesión o desvincularse, la música juntos se apaga.
+void _apagarMusica() {
+  if (!MusicaEnVivo.instance.activa) return;
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) => MusicaEnVivo.instance.apagar(),
+  );
+}
+
 class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Deja deslizar con el mouse y el trackpad, no solo con el dedo: en la web,
+/// Flutter por defecto no deja arrastrar con el mouse y las filas
+/// horizontales (sin rueda de lado) quedaban cortadas.
+class ArrastreConMouse extends MaterialScrollBehavior {
+  const ArrastreConMouse();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
 }
 
 /// Se muestra si Firebase todavía no está configurado.

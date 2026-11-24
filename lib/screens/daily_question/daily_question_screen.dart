@@ -14,6 +14,7 @@ import 'carta_style.dart';
 import 'mis_preguntas.dart';
 import 'naipes.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Una pregunta al día para los dos, en forma de naipe.
 ///
@@ -311,7 +312,7 @@ class _Aviso extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: Text(
+    child: TextoDoodle(
       texto,
       textAlign: TextAlign.center,
       style: TextStyle(color: CartaStyle.azul, fontWeight: FontWeight.w600),

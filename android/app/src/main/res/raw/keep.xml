@@ -2,4 +2,4 @@
 <!-- Que el maullido del pomodoro (assets/sonidos/raw/maullido.mp3) y el
      ícono de la notificación no se borren al achicar el APK. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@raw/maullido,@mipmap/ic_launcher" />
+    tools:keep="@raw/maullido,@mipmap/ic_launcher,@drawable/ic_notificacion" />

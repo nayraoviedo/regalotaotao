@@ -4,6 +4,7 @@ import '../../branding.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -122,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title),
+        title: TextoDoodle(title),
         content: Text(text),
         actions: [
           FilledButton(
@@ -153,6 +154,36 @@ class _LoginScreenState extends State<LoginScreen> {
                     errorBuilder: (_, _, _) => const SizedBox(height: 170),
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    Branding.nombre,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 8,
+                      color: AppTheme.azul,
+                    ),
+                  ),
+                  Text(
+                    Branding.frase,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 3,
+                      color: AppTheme.azul,
+                    ),
+                  ),
+                  const Text(
+                    Branding.significado,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppTheme.manuscrita,
+                      fontSize: 20,
+                      color: AppTheme.gris,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
                     _isRegister ? '¡Hola!' : '¡Hola de nuevo!',
                     textAlign: TextAlign.center,

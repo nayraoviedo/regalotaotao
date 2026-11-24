@@ -4,6 +4,7 @@ import '../../services/preguntas_propias_service.dart';
 import '../../widgets/doodle.dart';
 import '../../widgets/editar_texto.dart';
 import 'carta_style.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Abre la hoja para escribir preguntas propias para el mazo.
 Future<void> abrirMisPreguntas(
@@ -157,7 +158,7 @@ class _MisPreguntasViewState extends State<MisPreguntasView> {
           ),
           if (deLaPareja > 0) ...[
             const SizedBox(height: 16),
-            Text(
+            TextoDoodle(
               deLaPareja == 1
                   ? 'Tu pareja tiene 1 pregunta esperando en el mazo 🤫'
                   : 'Tu pareja tiene $deLaPareja preguntas esperando en el '

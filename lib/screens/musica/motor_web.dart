@@ -19,50 +19,72 @@ void _ponerJs() {
   web.document.head!.appendChild(s);
 }
 
-/// En la web el reproductor de YouTube vive dentro de la misma página.
+/// En la web el reproductor de YouTube vive en la página, pero fuera de
+/// Flutter: un cuadro fijo encima de la app que [colocar] mueve a donde va
+/// el video (o esconde fuera de la pantalla). Así no se recarga al cambiar
+/// de pantalla y la música sigue sonando en toda la app.
 class _MotorWeb implements MotorYoutube {
-  final _avisos = StreamController<String>.broadcast();
-  JSObject? _o;
-  final _pendientes = <void Function(JSObject)>[];
-
-  void _hacer(void Function(JSObject o) f) {
-    final o = _o;
-    if (o == null) {
-      _pendientes.add(f);
-    } else {
-      f(o);
+  _MotorWeb() {
+    _ponerJs();
+    _caja = web.HTMLDivElement();
+    _caja.style
+      ..position = 'fixed'
+      ..zIndex = '5'
+      ..background = '#000'
+      ..overflow = 'hidden'
+      ..borderRadius = '14px'
+      // Nadie toca el reproductor (se maneja con los botones de la app).
+      // Sin esto, un toque encima (por ejemplo en "¡Lo lograste!" al
+      // escoger un premio) lo recibía el iframe y abría YouTube.
+      ..pointerEvents = 'none';
+    colocar(null, null);
+    web.document.body!.appendChild(_caja);
+    // YouTube reemplaza este div por su iframe.
+    final dentro = web.HTMLDivElement();
+    _caja.appendChild(dentro);
+    void avisar(JSString m) {
+      if (!_avisos.isClosed) _avisos.add(m.toDart);
     }
+
+    _o = globalContext.callMethod<JSObject>(
+      'ttCrear'.toJS,
+      dentro,
+      avisar.toJS,
+    );
   }
 
-  @override
-  late final Widget vista = HtmlElementView.fromTagName(
-    tagName: 'div',
-    onElementCreated: (e) {
-      _ponerJs();
-      final caja = e as web.HTMLDivElement;
-      caja.style
-        ..width = '100%'
-        ..height = '100%'
-        ..background = '#000';
-      // YouTube reemplaza este div por su iframe.
-      final dentro = web.HTMLDivElement();
-      caja.appendChild(dentro);
-      void avisar(JSString m) {
-        if (!_avisos.isClosed) _avisos.add(m.toDart);
-      }
+  final _avisos = StreamController<String>.broadcast();
+  late final web.HTMLDivElement _caja;
+  late final JSObject _o;
 
-      final o = globalContext.callMethod<JSObject>(
-        'ttCrear'.toJS,
-        dentro,
-        avisar.toJS,
-      );
-      _o = o;
-      for (final f in _pendientes) {
-        f(o);
-      }
-      _pendientes.clear();
-    },
-  );
+  void _hacer(void Function(JSObject o) f) => f(_o);
+
+  @override
+  Widget? get vista => null;
+
+  @override
+  void colocar(Rect? caja, Rect? recorte) {
+    final st = _caja.style;
+    if (caja == null) {
+      // Escondido pero del tamaño de siempre, para que YouTube siga sonando.
+      st
+        ..left = '-10000px'
+        ..top = '0px'
+        ..width = '320px'
+        ..height = '180px'
+        ..clipPath = 'none';
+      return;
+    }
+    final r = recorte ?? caja;
+    st
+      ..left = '${caja.left}px'
+      ..top = '${caja.top}px'
+      ..width = '${caja.width}px'
+      ..height = '${caja.height}px'
+      ..clipPath =
+          'inset(${r.top - caja.top}px ${caja.right - r.right}px '
+          '${caja.bottom - r.bottom}px ${r.left - caja.left}px)';
+  }
 
   @override
   Stream<String> get avisos => _avisos.stream;
@@ -90,7 +112,6 @@ class _MotorWeb implements MotorYoutube {
   @override
   Future<double> tiempo() async {
     final o = _o;
-    if (o == null) return -1;
     try {
       return o.callMethod<JSNumber>('tiempo'.toJS).toDartDouble;
     } catch (_) {
@@ -101,7 +122,6 @@ class _MotorWeb implements MotorYoutube {
   @override
   Future<int> estado() async {
     final o = _o;
-    if (o == null) return -2;
     try {
       return o.callMethod<JSNumber>('estado'.toJS).toDartInt;
     } catch (_) {
@@ -111,7 +131,8 @@ class _MotorWeb implements MotorYoutube {
 
   @override
   void dispose() {
-    _o?.callMethod<JSAny?>('cerrar'.toJS);
+    _o.callMethod<JSAny?>('cerrar'.toJS);
+    _caja.remove();
     _avisos.close();
   }
 }

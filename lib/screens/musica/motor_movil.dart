@@ -104,6 +104,10 @@ var tt = ttCrear(document.getElementById('p'), function (m) {
   @override
   late final Widget vista = WebViewWidget(controller: _c);
 
+  /// En Android lo coloca [MusicaFlotante], que pone [vista] encima de la app.
+  @override
+  void colocar(Rect? caja, Rect? recorte) {}
+
   @override
   void dispose() {
     _c.runJavaScript('tt.cerrar()').catchError((_) {});

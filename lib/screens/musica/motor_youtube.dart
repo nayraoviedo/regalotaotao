@@ -27,8 +27,14 @@ abstract class MotorYoutube {
   /// 3 cargando, 5 lista. -2 si el reproductor no está listo.
   Future<int> estado();
 
-  /// La vista del video. Siempre devuelve el mismo widget.
-  Widget get vista;
+  /// La vista del video para ponerla en la app (Android). En la web es
+  /// null: el reproductor vive fuera de Flutter (ver [colocar]).
+  Widget? get vista;
+
+  /// Dónde mostrar el video, en coordenadas de la pantalla: [caja] es el
+  /// lugar entero y [recorte] la parte visible. Con [caja] null el video
+  /// sigue sonando, pero escondido fuera de la pantalla.
+  void colocar(Rect? caja, Rect? recorte);
 
   void dispose();
 }

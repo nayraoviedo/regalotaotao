@@ -13,7 +13,8 @@ import 'cuarto.dart';
 ///
 /// El marco es `assets/casita/casa_corte.png` (con huecos transparentes
 /// donde van los cuartos); se dibuja con
-/// `assets/dibujos_editables/casita/generar_casa.py`.
+/// `assets/dibujos_editables/casita/generar_casa.py`. Detrás va el cielo
+/// de la hora real ([Cielo]: sol y nubes de día, luna y estrellas de noche).
 class CasaEnCorte extends StatefulWidget {
   const CasaEnCorte({
     super.key,
@@ -100,36 +101,48 @@ class _CasaEnCorteState extends State<CasaEnCorte> {
               );
               if (cuarto != null) widget.onCuarto(cuarto);
             },
-            child: Stack(
-              children: [
-                for (final MapEntry(key: cuarto, value: r)
-                    in CasaEnCorte.huecos.entries)
-                  Positioned(
-                    left: r.left * s,
-                    top: r.top * s,
-                    width: r.width * s,
-                    height: r.height * s,
-                    child: _CuartoEnLaCasa(
-                      estado: estado,
-                      cuarto: cuarto,
-                      escala: s,
-                      momento: momento,
-                      tick: tick,
-                      ahora: ahora,
-                      conGatitos: estado.hayGatitos(cuarto, ahora),
-                    ),
-                  ),
-                Positioned.fill(
-                  child: IgnorePointer(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16 * s),
+              child: Stack(
+                children: [
+                  Positioned.fill(
                     child: Image.asset(
-                      CasaEnCorte.marco,
+                      Cielo.de(ahora).asset,
                       fit: BoxFit.fill,
                       filterQuality: FilterQuality.none,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      errorBuilder: (_, _, _) =>
+                          const ColoredBox(color: Color(0xFFE3F1FA)),
                     ),
                   ),
-                ),
-              ],
+                  for (final MapEntry(key: cuarto, value: r)
+                      in CasaEnCorte.huecos.entries)
+                    Positioned(
+                      left: r.left * s,
+                      top: r.top * s,
+                      width: r.width * s,
+                      height: r.height * s,
+                      child: _CuartoEnLaCasa(
+                        estado: estado,
+                        cuarto: cuarto,
+                        escala: s,
+                        momento: momento,
+                        tick: tick,
+                        ahora: ahora,
+                        conGatitos: estado.hayGatitos(cuarto, ahora),
+                      ),
+                    ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Image.asset(
+                        CasaEnCorte.marco,
+                        fit: BoxFit.fill,
+                        filterQuality: FilterQuality.none,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -321,6 +334,11 @@ class CasaView extends StatelessWidget {
       Escena.medianoche =>
         'El gatito naranja se levantó a comer a medianoche y el blanco '
             'duerme en ${_el(estado.dondeDuermen ?? Cuarto.sala)}',
+      Escena.bano => 'Los gatitos se están dando un bañito',
+      Escena.siesta => 'Los gatitos duermen la siesta en ${_el(donde)}',
+      Escena.cocinando => _cocinando(estado, ahora),
+      final e? when e.comida != null =>
+        'Los gatitos están ${e.que} ${estado.nombrePlato(e.comida!, ahora)}',
       final e? => 'Los gatitos están ${e.que} en ${_el(donde)}',
       null
           when Momento.de(ahora) == Momento.noche &&
@@ -328,6 +346,19 @@ class CasaView extends StatelessWidget {
         'Los gatitos duermen en ${_el(donde)}',
       null => 'Los gatitos están en ${_el(donde)}',
     };
+  }
+
+  /// "El gatito naranja cocina sopa de tomate del huerto y el blanco le
+  /// ayuda picando tomates".
+  static String _cocinando(EstadoCasita estado, DateTime ahora) {
+    final quien = EstadoCasita.quienCocina(ahora);
+    final comida = EstadoCasita.queCocinan(ahora);
+    final receta = estado.platoDe(comida, ahora);
+    final ayuda = receta == null
+        ? 'le ayuda'
+        : 'le ayuda picando ${receta.principal.varios}';
+    return 'El gatito $quien cocina ${estado.nombrePlato(comida, ahora)} '
+        'y el ${EstadoCasita.otro(quien)} $ayuda';
   }
 
   static String _el(Cuarto c) => switch (c) {

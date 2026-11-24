@@ -1,4 +1,6 @@
-# Taotao 💞
+# 星月 💞
+
+_你是我的星与月 · tú eres mi estrella y mi luna_ (antes "Taotao")
 
 App de pareja hecha en **Flutter** con **Firebase**.
 
@@ -435,3 +437,15 @@ flutter test                                # pruebas de la app
 cd firestore-tests && npm install && npm test   # pruebas de las reglas (necesita Java)
 cd worker && npm install && npm test           # pruebas del Worker de notificaciones
 ```
+
+## Nombre e ícono
+
+El nombre visible es **星月** (xīngyuè, "estrella y luna", de "你是我的星与月"; en `lib/branding.dart`, `AndroidManifest.xml`,
+`web/index.html`, `web/manifest.json` e `ios/Runner/Info.plist`). El paquete
+sigue siendo `com.taotao.taotao` para no romper Firebase ni el login con Google.
+
+Para cambiar el ícono por tu dibujo, reemplaza los PNG de
+`assets/dibujos_editables/icono/` (`icono_app.png` con fondo,
+`icono_app_frente.png` sin fondo, `icono_notificacion.png` silueta) y corre:
+
+    python3 assets/dibujos_editables/icono/generar_iconos.py

@@ -10,6 +10,7 @@ import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
 import '../../services/maullido_service.dart';
+import '../musica/musica_en_vivo.dart';
 import '../musica/musica_pomodoro.dart';
 import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
@@ -21,6 +22,7 @@ import '../together/gatitos.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Pomodoro solo o en pareja. Al completar un pomodoro o una tarea se elige
 /// un premio de la lista de la pareja, y la otra persona lo ve.
@@ -215,7 +217,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     if (sessionId != null && !_counted.add(sessionId)) return;
     _mostrarUnRato(MomentoPomodoro.terminado);
     // Que se escuche el maullido (y descansen los oídos).
-    if (_musica.value) pausarMusicaAlTerminar(_coupleId, widget.me.uid);
+    if (_musica.value || MusicaEnVivo.instance.activa) {
+      pausarMusicaAlTerminar(_coupleId, widget.me.uid);
+    }
     final task = _task;
     final id = await _rewards.logAchievement(
       _coupleId,
@@ -490,7 +494,7 @@ class _LockedBanner extends StatelessWidget {
           const Doodle(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
           const SizedBox(width: 8),
           const Expanded(
-            child: Text(
+            child: TextoDoodle(
               'Pantalla bloqueada: a concentrarse 🍅',
               style: TextStyle(
                 color: Colors.white,
@@ -647,7 +651,7 @@ class _PlaceholderDrawing extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: const Text('🍅', style: TextStyle(fontSize: 72)),
+        child: const EmojiDoodle('🍅', size: 72),
       ),
     );
   }
@@ -729,7 +733,9 @@ class _SoloTimerState extends State<_SoloTimer> {
     _reset(rest: !wasRest);
     if (wasRest) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Se acabó el descanso! A seguir 💪')),
+        const SnackBar(
+          content: TextoDoodle('¡Se acabó el descanso! A seguir 💪'),
+        ),
       );
     } else {
       widget.onFocusDone();
@@ -1006,7 +1012,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     widget.onPartnerLeft();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
+        content: TextoDoodle(
           '${widget.partnerName} salió de la sesión. '
           'Ya no cuenta como sesión juntos 💔',
         ),
@@ -1042,7 +1048,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
 
   Widget _message(String text) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Text(
+    child: TextoDoodle(
       text,
       textAlign: TextAlign.center,
       style: const TextStyle(
@@ -1508,7 +1514,7 @@ class _TaskList extends StatelessWidget {
                         ),
                       ),
                       if (t.pomodoros > 0)
-                        Text(
+                        TextoDoodle(
                           '🍅 ${t.pomodoros}',
                           style: const TextStyle(color: PomodoroStyle.gris),
                         ),
@@ -1643,9 +1649,10 @@ class _RewardFeed extends StatelessWidget {
                 ),
               ],
             ),
-            const Text(
-              'Un premio por cada sesión completada.',
-              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            Text(
+              'Cada sesión completada gana un premio de la lista del otro. '
+              'Lo que pones en "Mi lista" es para que $partnerName escoja.',
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
             ),
             const SizedBox(height: 12),
             Row(
@@ -1654,7 +1661,10 @@ class _RewardFeed extends StatelessWidget {
                 Expanded(
                   child: _WhoChose(
                     user: me,
-                    label: 'Tú escogiste',
+                    label: 'Premios que ganaste',
+                    empty:
+                        'Ninguno todavía. Termina un pomodoro o una tarea '
+                        'y escoge uno de la lista de $partnerName.',
                     picks: mios,
                   ),
                 ),
@@ -1662,7 +1672,10 @@ class _RewardFeed extends StatelessWidget {
                 Expanded(
                   child: _WhoChose(
                     user: partner,
-                    label: '$partnerName escogió',
+                    label: 'Premios que ganó $partnerName',
+                    empty:
+                        'Ninguno todavía. Cuando termine algo, escoge de '
+                        'tu lista.',
                     picks: suyos,
                   ),
                 ),
@@ -1701,11 +1714,15 @@ class _WhoChose extends StatelessWidget {
   const _WhoChose({
     required this.user,
     required this.label,
+    required this.empty,
     required this.picks,
   });
 
   final AppUser? user;
   final String label;
+
+  /// Qué decir cuando todavía no ganó ningún premio.
+  final String empty;
   final List<Achievement> picks;
 
   @override
@@ -1737,9 +1754,9 @@ class _WhoChose extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           if (ultimos.isEmpty)
-            const Text(
-              'Nada todavía',
-              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            Text(
+              empty,
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
             ),
           for (final a in ultimos)
             Padding(
@@ -1868,7 +1885,7 @@ class _RewardTile extends StatelessWidget {
                       fontSize: 16,
                     ),
                   ),
-                Text(
+                TextoDoodle(
                   status,
                   style: const TextStyle(
                     color: PomodoroStyle.azul,
