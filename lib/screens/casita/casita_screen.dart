@@ -15,6 +15,7 @@ import 'cuarto.dart';
 import '../../widgets/doodle.dart';
 import '../notes/cartas/carta_screen.dart';
 import '../notes/cartas/carta_sorpresa.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// "Nuestra casita": el cuarto de los gatitos, la tienda y cómo se ganan
 /// los pescaditos.
@@ -379,7 +380,7 @@ class _CasitaViewState extends State<CasitaView> {
   void _aviso(String texto) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(texto)));
+      ..showSnackBar(SnackBar(content: TextoDoodle(texto)));
   }
 
   bool _subiendoFoto = false;
@@ -513,9 +514,12 @@ class _CasitaViewState extends State<CasitaView> {
                       segments: const [
                         ButtonSegment(
                           value: false,
-                          label: Text('🏠 Para los dos'),
+                          label: TextoDoodle('🏠 Para los dos'),
                         ),
-                        ButtonSegment(value: true, label: Text('🎁 Regalar')),
+                        ButtonSegment(
+                          value: true,
+                          label: TextoDoodle('🎁 Regalar'),
+                        ),
                       ],
                       selected: {regalo},
                       onSelectionChanged: (s) => setDialog(() {
@@ -624,7 +628,9 @@ class _CasitaViewState extends State<CasitaView> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(recien ? '¡Bienvenido a casa! 🐾' : '¿Cómo se llama?'),
+        title: TextoDoodle(
+          recien ? '¡Bienvenido a casa! 🐾' : '¿Cómo se llama?',
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -725,7 +731,7 @@ class _CasitaViewState extends State<CasitaView> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('🐷 Ahorrar para esto'),
+            child: const TextoDoodle('🐷 Ahorrar para esto'),
           ),
         ],
       ),
@@ -920,7 +926,7 @@ class _CasitaViewState extends State<CasitaView> {
           ),
           if (_estado.abierto(_cuarto) && _creciendo.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
+            TextoDoodle(
               '🌱 Están creciendo: ${_creciendo.join(', ')}. '
               'Cada semilla tarda dos días en crecer.',
               textAlign: TextAlign.center,
@@ -932,7 +938,7 @@ class _CasitaViewState extends State<CasitaView> {
             Center(
               child: FilledButton.tonalIcon(
                 onPressed: _banando ? null : _banar,
-                icon: const Text('🫧'),
+                icon: const TextoDoodle('🫧'),
                 label: Text(
                   _banando ? '¡Qué rico bañito!' : 'Bañar a los gatitos',
                 ),
@@ -1071,7 +1077,7 @@ class _Categorias extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
-                label: Text(nombre),
+                label: TextoDoodle(nombre),
                 selected: elegida == id,
                 showCheckmark: false,
                 onSelected: (_) => onElegir(id),
@@ -1128,7 +1134,7 @@ class _AvisoFiesta extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final f in fiestas)
-                Text(
+                TextoDoodle(
                   '${f.emoji} ${f.nombre}: cosas especiales hasta el '
                   '${_fecha(f.activaEn(hoy, inicioPareja: inicioPareja)!.$2)}',
                   style: TextStyle(
@@ -1165,7 +1171,7 @@ class _ProximasFiestas extends StatelessWidget {
           for (final (f, d) in proximas.take(5))
             ListTile(
               dense: true,
-              leading: Text(f.emoji, style: const TextStyle(fontSize: 20)),
+              leading: EmojiDoodle(f.emoji, size: 20),
               title: Text(f.nombre),
               trailing: Text(
                 'desde el ${_fecha(d)}',
@@ -1362,7 +1368,7 @@ class _Articulo extends StatelessWidget {
         child: Pescaditos(cosa.precio, tamano: 13, color: AppTheme.azul),
       );
     } else if (envuelto) {
-      pie = Text(
+      pie = TextoDoodle(
         'Envuelto 🎁',
         style: TextStyle(
           fontSize: 12,
@@ -1371,7 +1377,7 @@ class _Articulo extends StatelessWidget {
         ),
       );
     } else {
-      pie = Text(
+      pie = TextoDoodle(
         switch (cosa.especial) {
           Especial.stickers => 'En tus notas ✓',
           Especial.tema => enUso ? 'En uso ✓' : 'Usar',
@@ -1563,11 +1569,44 @@ class _AvisoRegalo extends StatelessWidget {
     return Card(
       color: const Color(0xFFFCE4EC),
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const Text('🎁', style: TextStyle(fontSize: 28)),
-        title: Text('$de te dejó un regalo sorpresa'),
-        subtitle: const Text('Está envuelto en la sala'),
-        trailing: FilledButton(onPressed: onAbrir, child: const Text('Abrir')),
+      // Fila propia (no ListTile): el FilledButton del tema ocupa todo el
+      // ancho y, como "trailing", aplastaba el texto a una letra por línea.
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          children: [
+            const EmojiDoodle('🎁', size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$de te dejó un regalo sorpresa',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Está envuelto en la sala',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.azul.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onAbrir,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+              ),
+              child: const Text('Abrir'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1601,7 +1640,7 @@ class Alcancia extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🐷', style: TextStyle(fontSize: 26)),
+          const EmojiDoodle('🐷', size: 26),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1769,7 +1808,7 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
         else
           FilledButton(
             onPressed: _anim.isAnimating ? null : _abrir,
-            child: const Text('Abrir 🎁'),
+            child: const TextoDoodle('Abrir 🎁'),
           ),
       ],
     );
@@ -1808,7 +1847,7 @@ class _AvisoPropuesta extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text('🐟', style: TextStyle(fontSize: 24)),
+                const EmojiDoodle('🐟', size: 24),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

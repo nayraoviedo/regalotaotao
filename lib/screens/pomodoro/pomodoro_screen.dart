@@ -22,6 +22,7 @@ import '../together/gatitos.dart';
 import 'pomodoro_style.dart';
 import 'reward_sheets.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Pomodoro solo o en pareja. Al completar un pomodoro o una tarea se elige
 /// un premio de la lista de la pareja, y la otra persona lo ve.
@@ -493,7 +494,7 @@ class _LockedBanner extends StatelessWidget {
           const Doodle(Icons.lock, color: PomodoroStyle.amarillo, size: 18),
           const SizedBox(width: 8),
           const Expanded(
-            child: Text(
+            child: TextoDoodle(
               'Pantalla bloqueada: a concentrarse 🍅',
               style: TextStyle(
                 color: Colors.white,
@@ -650,7 +651,7 @@ class _PlaceholderDrawing extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: const Text('🍅', style: TextStyle(fontSize: 72)),
+        child: const EmojiDoodle('🍅', size: 72),
       ),
     );
   }
@@ -732,7 +733,9 @@ class _SoloTimerState extends State<_SoloTimer> {
     _reset(rest: !wasRest);
     if (wasRest) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Se acabó el descanso! A seguir 💪')),
+        const SnackBar(
+          content: TextoDoodle('¡Se acabó el descanso! A seguir 💪'),
+        ),
       );
     } else {
       widget.onFocusDone();
@@ -1009,7 +1012,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
     widget.onPartnerLeft();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
+        content: TextoDoodle(
           '${widget.partnerName} salió de la sesión. '
           'Ya no cuenta como sesión juntos 💔',
         ),
@@ -1045,7 +1048,7 @@ class _CoupleTimerState extends State<_CoupleTimer> {
 
   Widget _message(String text) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Text(
+    child: TextoDoodle(
       text,
       textAlign: TextAlign.center,
       style: const TextStyle(
@@ -1511,7 +1514,7 @@ class _TaskList extends StatelessWidget {
                         ),
                       ),
                       if (t.pomodoros > 0)
-                        Text(
+                        TextoDoodle(
                           '🍅 ${t.pomodoros}',
                           style: const TextStyle(color: PomodoroStyle.gris),
                         ),
@@ -1882,7 +1885,7 @@ class _RewardTile extends StatelessWidget {
                       fontSize: 16,
                     ),
                   ),
-                Text(
+                TextoDoodle(
                   status,
                   style: const TextStyle(
                     color: PomodoroStyle.azul,

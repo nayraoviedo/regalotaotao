@@ -6,6 +6,7 @@ import '../../services/mood_service.dart';
 import '../../theme.dart';
 import '../../widgets/mood_image.dart';
 import '../mindfulness/mindfulness_screen.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Elige tu ánimo del día. Tu pareja lo ve en su pantalla de inicio.
 class MoodScreen extends StatefulWidget {
@@ -56,7 +57,7 @@ class _MoodScreenState extends State<MoodScreen> {
       final go = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('¿Un respiro? 🌿'),
+          title: const TextoDoodle('¿Un respiro? 🌿'),
           content: const Text(
             'Parece que no es un día fácil. ¿Quieres hacer un ejercicio '
             'corto de respiración?',

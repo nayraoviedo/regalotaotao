@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'carta_style.dart';
 import 'criatura.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Tamaño de un naipe del mazo.
 final _ancho = 110.0;
@@ -370,7 +371,7 @@ class _Tarjeta extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Text(
+          TextoDoodle(
             widget.etiqueta ??
                 'Pregunta de hoy · naipe ${widget.carta + 1} de ${widget.total}',
             style: const TextStyle(

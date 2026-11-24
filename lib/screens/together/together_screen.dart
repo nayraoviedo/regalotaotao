@@ -13,6 +13,7 @@ import 'fondo_flotante.dart';
 import 'gatitos.dart';
 import 'hitos.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 const _meses = [
   'enero',
@@ -406,7 +407,7 @@ class _BarraHito extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
+                child: TextoDoodle(
                   hito.esHoy
                       ? '¡Hoy cumplimos ${hito.nombre}! 🎉'
                       : 'Faltan ${hito.faltan} '
