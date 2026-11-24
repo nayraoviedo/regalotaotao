@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Ícono de 你是我的星的月: luna creciente crema con los dos gatitos
+  <!-- Ícono de Xingyue (你是我的星的月): luna creciente crema con los dos gatitos
        acurrucados y una estrellita amarilla. Los gatitos vienen de
        ../inicio_cielo.svg. Para cambiarlo por tu dibujo, mira LEEME.md. -->
   <defs>
@@ -34,7 +34,10 @@
   <use href="#brillo" x="300" y="300" width="40" height="40" transform="translate(-20 -20)" fill="#FFFFFF" opacity=".8"/>
 
   <!-- Gatitos acurrucados (quedan dentro de la luna) -->
-  <g clip-path="url(#dentro-luna)"><g transform="translate(512 560) scale(1.22) translate(-822 -672)">
+  <g clip-path="url(#dentro-luna)">
+  <!-- pelito naranja que rellena el fondo de la cunita (sin huecos azules) -->
+  <ellipse cx="470" cy="715" rx="300" ry="75" fill="#F2A65A"/>
+  <g transform="translate(512 560) scale(1.22) translate(-822 -672)">
 <g id="gatitos">
 <g id="gatito-blanco">
     <!-- colita esponjosa -->

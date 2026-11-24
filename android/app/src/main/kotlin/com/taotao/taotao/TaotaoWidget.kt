@@ -45,7 +45,7 @@ class TaotaoWidget : HomeWidgetProvider() {
 
         if (!datos.getBoolean("vinculados", false)) {
             v.setTextViewText(R.id.widget_dias, "♡")
-            v.setTextViewText(R.id.widget_dias_texto, "你是我的星的月")
+            v.setTextViewText(R.id.widget_dias_texto, "Xingyue")
             v.setViewVisibility(R.id.widget_animo, View.GONE)
             v.setTextViewText(R.id.widget_pareja, "")
             v.setTextViewText(R.id.widget_animo_texto, "Abre la app y vincúlate")

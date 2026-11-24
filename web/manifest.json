@@ -1,11 +1,11 @@
 {
-    "name": "你是我的星的月 · tú eres la estrella de mi luna",
-    "short_name": "你是我的星的月",
+    "name": "Xingyue · 你是我的星的月",
+    "short_name": "Xingyue",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F2EC",
     "theme_color": "#2B3A75",
-    "description": "Nuestra app de pareja",
+    "description": "你是我的星的月 · tú eres la estrella de mi luna",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
