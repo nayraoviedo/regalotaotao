@@ -371,6 +371,17 @@ void main() {
       expect(cuenta[Cuarto.huerto], 0); // cerrado
     });
 
+    test('el cielo detrás de la casa sigue la hora real', () {
+      Cielo a(int h) => Cielo.de(DateTime(2026, 11, 24, h, 30));
+      expect(a(6), Cielo.amanecer);
+      expect([a(7), a(12), a(17)], everyElement(Cielo.dia));
+      expect([a(18), a(19)], everyElement(Cielo.atardecer));
+      expect([a(20), a(23), a(0), a(5)], everyElement(Cielo.noche));
+      for (final c in Cielo.values) {
+        expect(File(c.asset).existsSync(), isTrue, reason: c.asset);
+      }
+    });
+
     test('la casa en corte: cada cuarto en su lugar y los gatitos en uno', () {
       expect(CasaEnCorte.queCuarto(200, 190), Cuarto.dormitorio);
       expect(CasaEnCorte.queCuarto(280, 280), Cuarto.cocina);

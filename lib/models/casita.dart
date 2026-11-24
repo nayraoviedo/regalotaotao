@@ -97,6 +97,28 @@ enum Momento {
       : dia;
 }
 
+/// El cielo detrás de la casa en corte, según la hora real. Son PNG
+/// reemplazables (`assets/casita/casa_cielo_<nombre>.png`, de 1376×1376
+/// como el marco); ver `generar_cielo.py`.
+enum Cielo {
+  amanecer,
+  dia,
+  atardecer,
+  noche;
+
+  /// A las 6 amanece, de 7 a 17 es de día, a las 18 y 19 atardece y de 20
+  /// a 5 es de noche (igual que [Momento], pero con amanecer).
+  static Cielo de(DateTime t) => t.hour == 6
+      ? amanecer
+      : switch (Momento.de(t)) {
+          Momento.dia => dia,
+          Momento.tarde => atardecer,
+          Momento.noche => noche,
+        };
+
+  String get asset => Casita.asset('casa_cielo_$name');
+}
+
 /// Cosas de pareja que hacen los gatitos grandes en algún cuarto. Los
 /// dibujos son `escena_<nombre>_1.png` y `_2.png` (se van alternando),
 /// encima de los gatitos sentados; ver `generar_escenas.py`.
