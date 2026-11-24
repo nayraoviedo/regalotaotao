@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/recomendacion.dart';
 import '../models/sala_musica.dart';
 import '../push_config.dart';
 import 'db.dart';
@@ -253,6 +254,44 @@ class MusicaService {
           .timeout(const Duration(seconds: 8));
       if (r.statusCode != 200) return null;
       return InfoBilibili.deWorker(r.body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Nombre y miniatura de un link de YouTube o Spotify (oEmbed, sin clave)
+  /// o de Bilibili.
+  /// `null` si no es de esas apps o no se pudo (sin internet, bloqueado…).
+  Future<({String titulo, String? miniatura})?> infoDeLink(String link) async {
+    final t = link.trim();
+    if (LinkBilibili.parse(t) case final b?) {
+      final info = await infoBilibili(b);
+      if (info == null || info.titulo.isEmpty) return null;
+      return (titulo: info.titulo, miniatura: info.portada);
+    }
+    final id = Cancion.idDe(t);
+    final Uri uri;
+    if (id != null) {
+      uri = Uri.https('www.youtube.com', '/oembed', {
+        'url': 'https://www.youtube.com/watch?v=$id',
+        'format': 'json',
+      });
+    } else if (LinkMedia.parse(t) case final m?
+        when m.plataforma == Plataforma.spotify) {
+      uri = Uri.https('open.spotify.com', '/oembed', {'url': m.url});
+    } else {
+      return null;
+    }
+    try {
+      final r = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(r.body);
+      if (j is! Map || j['title'] is! String) return null;
+      final mini = j['thumbnail_url'];
+      return (
+        titulo: _corto(j['title'] as String),
+        miniatura: mini is String ? mini : null,
+      );
     } catch (_) {
       return null;
     }

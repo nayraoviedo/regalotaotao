@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +9,7 @@ import '../../services/musica_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import 'agregar_cancion.dart';
+import 'cuenta_regresiva.dart';
 import 'reproductor_juntos.dart';
 
 final _servicio = MusicaService.instance;
@@ -76,7 +76,7 @@ class MusicaScreen extends StatelessWidget {
                 ),
               ),
               if (sala.cuenta case final c?)
-                _CuentaRegresiva(
+                CuentaRegresiva(
                   // Una vista nueva por cada cuenta.
                   key: ValueKey(c.inicio),
                   cuenta: c,
@@ -270,7 +270,7 @@ class _FilaCola extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Cada uno en su app: abrir la canción y darle play a la vez.
 
-const _claveApp = 'musica_mi_app';
+const _claveApp = claveAppMusica;
 
 class _EnSuApp extends StatefulWidget {
   const _EnSuApp({
@@ -424,151 +424,6 @@ class _EnSuAppState extends State<_EnSuApp> {
           style: const TextStyle(color: AppTheme.gris, fontSize: 12.5),
         ),
       ],
-    );
-  }
-}
-
-/// La cuenta regresiva, encima de todo, para los dos.
-class _CuentaRegresiva extends StatefulWidget {
-  const _CuentaRegresiva({
-    super.key,
-    required this.cuenta,
-    required this.coupleId,
-    required this.uid,
-    required this.partnerName,
-  });
-
-  final CuentaJuntos cuenta;
-  final String coupleId;
-  final String uid;
-  final String partnerName;
-
-  @override
-  State<_CuentaRegresiva> createState() => _CuentaRegresivaState();
-}
-
-class _CuentaRegresivaState extends State<_CuentaRegresiva> {
-  Timer? _t;
-  int? _ultimo;
-  bool _abierta = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _t = Timer.periodic(const Duration(milliseconds: 100), (_) => _tic());
-  }
-
-  @override
-  void dispose() {
-    _t?.cancel();
-    super.dispose();
-  }
-
-  void _tic() {
-    if (!mounted) return;
-    final c = widget.cuenta;
-    if (c.inicio == null) return setState(() {});
-    final falta = c.ya(DateTime.now()).difference(DateTime.now());
-    final n = (falta.inMilliseconds / 1000).ceil();
-    if (n != _ultimo) {
-      _ultimo = n;
-      if (n > 0) {
-        HapticFeedback.selectionClick();
-      } else if (!_abierta) {
-        _abierta = true;
-        HapticFeedback.heavyImpact();
-        _abrirMiApp();
-      }
-    }
-    setState(() {});
-  }
-
-  /// Al "¡Ya!", abre la canción en la app que eligió cada uno.
-  Future<void> _abrirMiApp() async {
-    if (widget.cuenta.cancion.trim().isEmpty) return;
-    try {
-      final p = await SharedPreferences.getInstance();
-      final app = AppMusica.byName(p.getString(_claveApp)) ?? AppMusica.spotify;
-      await launchUrl(
-        app.enlace(widget.cuenta.cancion),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {}
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.cuenta;
-    final ahora = DateTime.now();
-    if (c.vieja(ahora)) return const SizedBox.shrink();
-    final falta = c.inicio == null
-        ? null
-        : (c.ya(ahora).difference(ahora).inMilliseconds / 1000).ceil();
-    final azul = AppTheme.azul;
-    final quien = c.por == widget.uid
-        ? 'Tú quieres'
-        : '${widget.partnerName} quiere';
-    return Positioned.fill(
-      child: Material(
-        color: azul.withValues(alpha: 0.92),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$quien darle play juntos a',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  c.cancion.isEmpty ? 'la canción' : c.cancion,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Text(
-                  falta == null
-                      ? '…'
-                      : falta > 0
-                      ? '$falta'
-                      : '¡Ya! ▶',
-                  style: TextStyle(
-                    color: AppTheme.amarillo,
-                    fontSize: falta != null && falta > 0 ? 120 : 72,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Text(
-                  falta != null && falta <= 0
-                      ? 'Dale play en tu app'
-                      : 'Ten tu app lista, en pausa',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                TextButton(
-                  onPressed: () => _servicio
-                      .cancelarCuenta(widget.coupleId)
-                      .catchError((_) {}),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  child: Text(
-                    falta != null && falta <= 0 ? 'Cerrar' : 'Cancelar',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
