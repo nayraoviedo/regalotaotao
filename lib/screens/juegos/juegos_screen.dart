@@ -11,6 +11,7 @@ import '../together/gatitos.dart';
 import 'armar_partida.dart';
 import 'partida_screen.dart';
 import 'resultado_screen.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Juegos de pareja cortitos que dan pescaditos: "¿Quién es más
 /// probable?" y "Adivina mis respuestas".
@@ -275,8 +276,7 @@ class _PartidasDeHoy extends StatelessWidget {
             width: 26,
             height: 26,
             filterQuality: FilterQuality.none,
-            errorBuilder: (_, _, _) =>
-                const Text('🐟', style: TextStyle(fontSize: 20)),
+            errorBuilder: (_, _, _) => const EmojiDoodle('🐟', size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(

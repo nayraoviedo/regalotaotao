@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/casita.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Lo que se tocó en el cuarto: un lugar o (con `null`) a los gatitos.
 typedef ToqueCasita = void Function(Lugar? lugar);
@@ -384,8 +385,7 @@ class Pescaditos extends StatelessWidget {
           width: tamano * 1.3,
           height: tamano * 1.3,
           filterQuality: FilterQuality.none,
-          errorBuilder: (_, _, _) =>
-              Text('🐟', style: TextStyle(fontSize: tamano)),
+          errorBuilder: (_, _, _) => EmojiDoodle('🐟', size: tamano),
         ),
         const SizedBox(width: 3),
         Text(

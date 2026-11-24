@@ -4,6 +4,7 @@ import '../../models/sala_musica.dart';
 import '../../services/musica_service.dart';
 import '../../theme.dart';
 import 'musica_screen.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Tarjeta "Música juntos" del inicio. Si tu pareja está escuchando algo,
 /// te invita a unirte.
@@ -108,7 +109,7 @@ class MusicaInicioCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
+                    TextoDoodle(
                       subtitulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

@@ -8,6 +8,7 @@ import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import 'agregar_cancion.dart';
 import 'motor_youtube.dart';
+import '../../widgets/texto_doodle.dart';
 
 final _servicio = MusicaService.instance;
 
@@ -401,7 +402,7 @@ class _Oyentes extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
+          child: TextoDoodle(
             pareja
                 ? '$partnerName también está escuchando 🎧'
                 : '$partnerName no está escuchando ahora',

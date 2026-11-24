@@ -6,6 +6,7 @@ import '../../models/sala_musica.dart';
 import '../../services/musica_service.dart';
 import '../../theme.dart';
 import 'buscar_youtube.dart';
+import '../../widgets/texto_doodle.dart';
 
 final _servicio = MusicaService.instance;
 
@@ -35,8 +36,9 @@ Future<void> agregarCancion(
     } else {
       await _servicio.agregarACola(coupleId, cancion);
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Quedó en la cola 🎶')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: TextoDoodle('Quedó en la cola 🎶')),
+        );
       }
     }
   } catch (e) {

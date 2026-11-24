@@ -6,6 +6,7 @@ import 'package:taotao/models/carta.dart';
 import 'package:taotao/models/celebracion.dart';
 import 'package:taotao/screens/notes/cartas/carta_pastel.dart';
 import 'package:taotao/screens/notes/cartas/carta_screen.dart';
+import 'package:taotao/widgets/texto_doodle.dart';
 
 void main() {
   test('el cumple de la pareja y el aniversario caen en su día', () {
@@ -84,7 +85,7 @@ void main() {
     await t.pump();
     expect(find.text('Feliz cumpleaños'), findsOneWidget);
     expect(
-      find.text('Feliz cumpleaños 🎂', skipOffstage: false),
+      textoDoodle('Feliz cumpleaños 🎂', skipOffstage: false),
       findsOneWidget,
     );
     // Sin "Ábrelo cuando…" ni carta sorpresa.
@@ -252,3 +253,10 @@ void main() {
     expect(find.textContaining('Ya le mandaste sus regalos'), findsOneWidget);
   });
 }
+
+/// Busca un texto que tiene emojis (en pantalla salen como doodles).
+Finder textoDoodle(String texto, {bool skipOffstage = true}) =>
+    find.byWidgetPredicate(
+      (w) => w is TextoDoodle && w.texto == texto,
+      skipOffstage: skipOffstage,
+    );

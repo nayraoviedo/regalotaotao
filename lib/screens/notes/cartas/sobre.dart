@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../theme.dart';
 import 'cartas_style.dart';
 import '../../../widgets/doodle.dart';
+import '../../../widgets/texto_doodle.dart';
 
 /// Sobre con solapa, sello redondo y la etiqueta "Ábrelo cuando…".
 class Sobre extends StatelessWidget {
@@ -69,7 +70,7 @@ class Sobre extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Flexible(
-                          child: Text(
+                          child: TextoDoodle(
                             etiqueta,
                             textAlign: TextAlign.center,
                             maxLines: 2,
