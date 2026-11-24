@@ -1646,9 +1646,10 @@ class _RewardFeed extends StatelessWidget {
                 ),
               ],
             ),
-            const Text(
-              'Un premio por cada sesión completada.',
-              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            Text(
+              'Cada sesión completada gana un premio de la lista del otro. '
+              'Lo que pones en "Mi lista" es para que $partnerName escoja.',
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
             ),
             const SizedBox(height: 12),
             Row(
@@ -1657,7 +1658,10 @@ class _RewardFeed extends StatelessWidget {
                 Expanded(
                   child: _WhoChose(
                     user: me,
-                    label: 'Tú escogiste',
+                    label: 'Premios que ganaste',
+                    empty:
+                        'Ninguno todavía. Termina un pomodoro o una tarea '
+                        'y escoge uno de la lista de $partnerName.',
                     picks: mios,
                   ),
                 ),
@@ -1665,7 +1669,10 @@ class _RewardFeed extends StatelessWidget {
                 Expanded(
                   child: _WhoChose(
                     user: partner,
-                    label: '$partnerName escogió',
+                    label: 'Premios que ganó $partnerName',
+                    empty:
+                        'Ninguno todavía. Cuando termine algo, escoge de '
+                        'tu lista.',
                     picks: suyos,
                   ),
                 ),
@@ -1704,11 +1711,15 @@ class _WhoChose extends StatelessWidget {
   const _WhoChose({
     required this.user,
     required this.label,
+    required this.empty,
     required this.picks,
   });
 
   final AppUser? user;
   final String label;
+
+  /// Qué decir cuando todavía no ganó ningún premio.
+  final String empty;
   final List<Achievement> picks;
 
   @override
@@ -1740,9 +1751,9 @@ class _WhoChose extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           if (ultimos.isEmpty)
-            const Text(
-              'Nada todavía',
-              style: TextStyle(color: PomodoroStyle.gris, fontSize: 13),
+            Text(
+              empty,
+              style: const TextStyle(color: PomodoroStyle.gris, fontSize: 13),
             ),
           for (final a in ultimos)
             Padding(

@@ -43,7 +43,12 @@ class _MotorWeb implements MotorYoutube {
       caja.style
         ..width = '100%'
         ..height = '100%'
-        ..background = '#000';
+        ..background = '#000'
+        // Nadie toca el reproductor (se maneja con los botones de la app).
+        // En la web IgnorePointer no alcanza al iframe de YouTube: sin esto,
+        // un toque encima (por ejemplo en "¡Lo lograste!" al escoger un
+        // premio) lo recibía el iframe y abría YouTube en vez del premio.
+        ..pointerEvents = 'none';
       // YouTube reemplaza este div por su iframe.
       final dentro = web.HTMLDivElement();
       caja.appendChild(dentro);
