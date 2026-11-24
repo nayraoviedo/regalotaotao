@@ -5,6 +5,7 @@ import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../../services/couple_service.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Muestra tu código y permite ingresar el de tu pareja.
 class PairingScreen extends StatefulWidget {
@@ -66,7 +67,10 @@ class _PairingScreenState extends State<PairingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text('Hola, ${widget.me.name} 👋', style: theme.textTheme.titleLarge),
+          TextoDoodle(
+            'Hola, ${widget.me.name} 👋',
+            style: theme.textTheme.titleLarge,
+          ),
           const SizedBox(height: 16),
           const Text('Tu código de pareja es:'),
           const SizedBox(height: 8),
@@ -103,7 +107,10 @@ class _PairingScreenState extends State<PairingScreen> {
             decoration: const InputDecoration(labelText: 'Código de tu pareja'),
           ),
           if (_error != null)
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+            TextoDoodle(
+              _error!,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _loading ? null : _link,

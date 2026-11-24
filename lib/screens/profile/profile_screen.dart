@@ -14,6 +14,7 @@ import '../together/elegir_gatito.dart';
 import 'datos_curiosos_screen.dart';
 import '../together/together_screen.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Perfil: foto (la de Google), nombre, código y fecha de aniversario.
 class ProfileScreen extends StatelessWidget {
@@ -224,7 +225,7 @@ class ProfileScreen extends StatelessWidget {
                             ? 'Elige tu cumpleaños'
                             : 'Mi cumpleaños',
                       ),
-                      subtitle: Text(
+                      subtitle: TextoDoodle(
                         user.cumple == null
                             ? 'Ese día tu pareja te puede mandar un pastel 🎂'
                             : Cumple.texto(user.cumple),
@@ -237,7 +238,7 @@ class ProfileScreen extends StatelessWidget {
                     child: ListTile(
                       leading: UserAvatar(partner, size: 40, border: false),
                       title: Text(partner?.name ?? 'Tu pareja'),
-                      subtitle: Text(
+                      subtitle: TextoDoodle(
                         partner?.cumple == null
                             ? 'Tu pareja 💞'
                             : 'Tu pareja 💞 · cumple el '

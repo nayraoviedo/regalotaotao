@@ -6,6 +6,7 @@ import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import 'casa_en_corte.dart';
 import 'cuarto.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Tarjeta del inicio con la casita en chiquito y los pescaditos.
 class CasitaInicio extends StatelessWidget {
@@ -108,7 +109,7 @@ class TarjetaCasita extends StatelessWidget {
                       color: AppTheme.azul,
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    TextoDoodle(
                       _texto,
                       style: const TextStyle(
                         color: AppTheme.gris,

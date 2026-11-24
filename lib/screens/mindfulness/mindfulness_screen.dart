@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/texto_doodle.dart';
 
 /// Las fases de cada respiración (4 segundos cada una).
 enum _Fase {
@@ -490,8 +491,7 @@ class _Pescaditos extends StatelessWidget {
                   width: 26,
                   height: 26,
                   filterQuality: FilterQuality.none,
-                  errorBuilder: (_, _, _) =>
-                      const Text('🐟', style: TextStyle(fontSize: 20)),
+                  errorBuilder: (_, _, _) => const EmojiDoodle('🐟', size: 20),
                 ),
               ),
             ),

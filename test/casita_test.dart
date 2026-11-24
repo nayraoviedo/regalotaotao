@@ -10,6 +10,7 @@ import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
 import 'package:taotao/theme.dart';
+import 'package:taotao/widgets/texto_doodle.dart';
 
 void main() {
   group('Catálogo', () {
@@ -724,7 +725,7 @@ void main() {
       );
       await t.tap(find.text('Sofá rosa'));
       await t.pumpAndSettle();
-      await t.tap(find.text('🐷 Ahorrar para esto'));
+      await t.tap(textoDoodle('🐷 Ahorrar para esto'));
       await t.pumpAndSettle();
       expect(metas.single?.id, 'sofa_rosa');
 
@@ -755,8 +756,8 @@ void main() {
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
       // Las dos opciones, y por defecto es para los dos (no se impone regalar).
-      expect(find.text('🏠 Para los dos'), findsOneWidget);
-      expect(find.text('🎁 Regalar'), findsOneWidget);
+      expect(textoDoodle('🏠 Para los dos'), findsOneWidget);
+      expect(textoDoodle('🎁 Regalar'), findsOneWidget);
       expect(
         find.text('Va directo a la casita, para los dos.'),
         findsOneWidget,
@@ -779,7 +780,7 @@ void main() {
       await t.ensureVisible(find.text('Camiseta a rayas'));
       await t.tap(find.text('Camiseta a rayas'));
       await t.pumpAndSettle();
-      await t.tap(find.text('🎁 Regalar'));
+      await t.tap(textoDoodle('🎁 Regalar'));
       await t.pumpAndSettle();
       await t.enterText(find.byType(TextField), 'Para nuestra cita');
       await t.tap(find.text('Regalar'));
@@ -802,7 +803,7 @@ void main() {
       // nayra (a) lo regaló: lo ve envuelto y no hay aviso para abrir.
       await t.pumpWidget(pantalla(estado, abiertos: abiertos));
       await t.pumpAndSettle();
-      expect(find.text('Envuelto 🎁'), findsOneWidget);
+      expect(textoDoodle('Envuelto 🎁'), findsOneWidget);
       expect(find.textContaining('te dejó un regalo sorpresa'), findsNothing);
 
       // Xixi (b) lo recibe.
@@ -817,7 +818,7 @@ void main() {
       expect(find.text('nayra te dejó un regalo sorpresa'), findsOneWidget);
       await t.tap(find.text('Abrir'));
       await t.pumpAndSettle();
-      await t.tap(find.text('Abrir 🎁'));
+      await t.tap(textoDoodle('Abrir 🎁'));
       await t.pumpAndSettle();
       expect(find.text('¡Sofá rosa!'), findsOneWidget);
       expect(find.textContaining('Te quiero'), findsOneWidget);
@@ -892,14 +893,14 @@ void main() {
       await t.pumpWidget(
         pantalla(const EstadoCasita(tenemos: {'tema_lavanda'})),
       );
-      await t.ensureVisible(find.text('✨ Especiales'));
-      await t.tap(find.text('✨ Especiales'));
+      await t.ensureVisible(textoDoodle('✨ Especiales'));
+      await t.tap(textoDoodle('✨ Especiales'));
       await t.pumpAndSettle();
       expect(find.text('Stickers de gatitos'), findsOneWidget);
       await t.tap(find.text('Tema lavanda'));
       await t.pumpAndSettle();
       expect(AppTheme.tema.value.clave, 'lavanda');
-      expect(find.text('En uso ✓'), findsOneWidget);
+      expect(textoDoodle('En uso ✓'), findsOneWidget);
       // Tocarlo otra vez vuelve al clásico.
       await t.tap(find.text('Tema lavanda'));
       await t.pumpAndSettle();
@@ -917,7 +918,7 @@ void main() {
           puestos: puestos,
         ),
       );
-      expect(find.text('Puesto ✓'), findsOneWidget);
+      expect(textoDoodle('Puesto ✓'), findsOneWidget);
       await t.tap(find.text('Sofá rosa'));
       await t.pump();
       await t.tap(find.text('Sofá azul'));
@@ -974,7 +975,7 @@ void main() {
       await t.tap(find.text('Adoptar'));
       await t.pumpAndSettle();
       expect(compras.single.$1.id, 'bebe_calico');
-      expect(find.text('¡Bienvenido a casa! 🐾'), findsOneWidget);
+      expect(textoDoodle('¡Bienvenido a casa! 🐾'), findsOneWidget);
       await t.enterText(find.byType(TextFormField), 'Mochi');
       await t.tap(find.text('Listo'));
       await t.pumpAndSettle();
@@ -1049,7 +1050,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      await t.tap(find.text('🎄 De temporada'));
+      await t.tap(textoDoodle('🎄 De temporada'));
       await t.pumpAndSettle();
       await t.tap(find.text('Arbolito de Navidad'));
       await t.pumpAndSettle();
@@ -1078,3 +1079,10 @@ void main() {
     });
   });
 }
+
+/// Busca un texto que tiene emojis (en pantalla salen como doodles).
+Finder textoDoodle(String texto, {bool skipOffstage = true}) =>
+    find.byWidgetPredicate(
+      (w) => w is TextoDoodle && w.texto == texto,
+      skipOffstage: skipOffstage,
+    );
