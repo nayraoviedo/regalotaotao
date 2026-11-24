@@ -57,7 +57,7 @@ class CasitaWidget : HomeWidgetProvider() {
         }
 
         if (ruta == null) {
-            v.setTextViewText(R.id.casita_texto, "Abre Taotao")
+            v.setTextViewText(R.id.casita_texto, "Abre la app")
             v.setViewVisibility(R.id.casita_alcancia, View.GONE)
             return
         }

@@ -50,7 +50,7 @@ class MusicaScreen extends StatelessWidget {
                     indicatorColor: azul,
                     unselectedLabelColor: AppTheme.gris,
                     tabs: const [
-                      Tab(text: 'Aquí en Taotao'),
+                      Tab(text: 'En nuestra app'),
                       Tab(text: 'Cada uno en su app'),
                     ],
                   ),

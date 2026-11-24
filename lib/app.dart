@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 
+import 'branding.dart';
 import 'models/app_user.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/musica/musica_en_vivo.dart';
@@ -50,7 +51,7 @@ class _TaotaoAppState extends State<TaotaoApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Taotao',
+      title: Branding.nombre,
       debugShowCheckedModeBanner: false,
       // En la web con mouse o trackpad también se puede arrastrar para
       // deslizar filas horizontales (categorías de la tienda, chips, etc.).
