@@ -57,6 +57,8 @@ beforeEach(() => {
     "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
     "couples/c1/letters/l3": { from: "ana", to: "beto", cuando: "sea tu cumpleaños", especial: "cumple", pastel: "fresa", ramo: "rosa", regalitos: ["peluche", "globos"], openedAt: null },
     "couples/c1/letters/l2": { from: "ana", to: "beto", cuando: "te llegue esta sorpresa", sorpresa: true, openedAt: null },
+    "couples/c1/letters/l4": { from: "ana", to: "beto", cuando: "sea Navidad", fiesta: "navidad", avisarEn: "2026-12-25T04:00:00Z", openedAt: null },
+    "couples/c1/letters/l5": { from: "ana", to: "beto", cuando: "sea Qixi", fiesta: "qixi", avisarEn: null, openedAt: null },
     "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
     "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
     "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
@@ -232,6 +234,18 @@ test("la carta de cumpleaños llega con pastel", async () => {
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te mandó un pastel, un ramo de flores, 2 regalitos y una carta de cumpleaños",
   ]);
+});
+
+test("la carta de fiesta: guardada para ese día o para hoy", async () => {
+  await call({ kind: "letter", coupleId: "c1", docId: "l4" }, await idToken("ana"));
+  await call({ kind: "letter", coupleId: "c1", docId: "l5" }, await idToken("ana"));
+  assert.deepEqual(
+    sent.map((m) => [m.notification.title, m.notification.body]),
+    [
+      ["🎄 Una carta para Navidad", "Ana te guardó una carta para Navidad. Se abre ese día 💌"],
+      ["🌌 ¡Feliz Qixi 七夕!", "Ana te mandó una carta de Qixi 七夕 💌"],
+    ],
+  );
 });
 
 test("sin token o con token falso: 401", async () => {

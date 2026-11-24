@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../../models/carta_fiesta.dart';
 import '../../../theme.dart';
 import 'cartas_style.dart';
 import '../../../widgets/doodle.dart';
@@ -248,11 +249,17 @@ class Sello extends StatelessWidget {
           ),
         ],
       ),
-      child: Doodle(
-        CartasStyle.iconoDe(motivo),
-        color: CartasStyle.amarillo,
-        size: size * 0.48,
-      ),
+      child: switch (CartaFiesta.deId(motivo)) {
+        // Las cartas de fiesta llevan el doodle de su fiesta.
+        final f? => Center(
+          child: EmojiDoodle(f.emoji, size: size * 0.56, claro: true),
+        ),
+        null => Doodle(
+          CartasStyle.iconoDe(motivo),
+          color: CartasStyle.amarillo,
+          size: size * 0.48,
+        ),
+      },
     );
     return SizedBox(
       width: size,

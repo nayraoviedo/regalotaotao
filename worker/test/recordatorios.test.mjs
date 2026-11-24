@@ -98,3 +98,21 @@ test("de qué trata la nota", () => {
   assert.equal(deQueTrata({}), "tu nota");
   assert.equal(deQueTrata({ text: "a".repeat(200) }).length, 90);
 });
+
+test("carta de Navidad: ese día avisa a quien la recibe, una sola vez", async () => {
+  const m = mundo({
+    "couples/c1/letters/k1": { from: "ana", to: "beto", fiesta: "navidad", openedAt: null, avisarEn: hace(0) },
+    "couples/c1/letters/k2": { from: "ana", to: "beto", fiesta: "qixi", openedAt: null, avisarEn: hace(-60) },
+    "couples/c1/letters/k3": { from: "beto", to: "ana", fiesta: "sanValentin", openedAt: "2026-02-14T03:00:00Z", avisarEn: hace(0) },
+  });
+  await revisarRecordatorios(m.deps, AHORA);
+  assert.deepEqual(m.sent, [
+    ["beto", "🎄 ¡Feliz Navidad!", "Ya puedes abrir la carta que te guardó Ana 💌"],
+  ]);
+  assert.equal(m.docs["couples/c1/letters/k1"].avisarEn, null);
+  assert.equal(m.docs["couples/c1/letters/k3"].avisarEn, null);
+  assert.ok(m.docs["couples/c1/letters/k2"].avisarEn);
+  m.sent.length = 0;
+  await revisarRecordatorios(m.deps, AHORA);
+  assert.deepEqual(m.sent, []);
+});
