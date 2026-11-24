@@ -2,11 +2,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'recomendacion.dart';
 
-/// Una canción de YouTube (sirve igual un link de YouTube Music: usan los
-/// mismos ids).
-class Cancion {
-  const Cancion({required this.videoId, this.titulo = '', this.por});
+/// De dónde suena una canción de la sala.
+enum FuenteMusica { youtube, bilibili }
 
+/// Una canción de la sala: de YouTube (sirve igual un link de YouTube
+/// Music: usan los mismos ids) o un video de Bilibili.
+class Cancion {
+  const Cancion({
+    required this.videoId,
+    this.titulo = '',
+    this.por,
+    this.fuente = FuenteMusica.youtube,
+    this.parte = 1,
+    this.duracion,
+    this.portada,
+  });
+
+  /// Id de YouTube (11 letras) o BV de Bilibili (BV1…).
   final String videoId;
 
   /// Puede venir vacío si todavía no se sabe; se completa cuando suena.
@@ -15,10 +27,36 @@ class Cancion {
   /// Quién la puso.
   final String? por;
 
-  String get tituloVisible => titulo.trim().isEmpty ? 'Canción' : titulo;
+  final FuenteMusica fuente;
 
-  /// Miniatura de YouTube.
-  String get miniatura => 'https://i.ytimg.com/vi/$videoId/mqdefault.jpg';
+  /// Bilibili: qué parte del video (los videos pueden tener varias, 分P).
+  final int parte;
+
+  /// Segundos que dura. Con Bilibili hace falta para pasar sola a la
+  /// siguiente (su reproductor no avisa cuándo termina).
+  final double? duracion;
+
+  /// Portada de Bilibili (YouTube la arma con el id).
+  final String? portada;
+
+  bool get esBilibili => fuente == FuenteMusica.bilibili;
+
+  /// Identifica la canción exacta (misma fuente, id y parte).
+  String get clave => esBilibili ? 'bili:$videoId:$parte' : videoId;
+
+  String get tituloVisible => titulo.trim().isEmpty
+      ? (esBilibili ? 'Video de Bilibili' : 'Canción')
+      : titulo;
+
+  /// Miniatura para las listas ('' si no hay: se ve un dibujito).
+  String get miniatura => esBilibili
+      ? (portada ?? '')
+      : 'https://i.ytimg.com/vi/$videoId/mqdefault.jpg';
+
+  /// Link para abrirla afuera, en su propia app.
+  String get enlace => esBilibili
+      ? 'https://www.bilibili.com/video/$videoId${parte > 1 ? '?p=$parte' : ''}'
+      : 'https://www.youtube.com/watch?v=$videoId';
 
   static final _id = RegExp(r'^[A-Za-z0-9_-]{11}$');
 
@@ -36,17 +74,84 @@ class Cancion {
     return v != null && _id.hasMatch(v) ? v : null;
   }
 
+  /// Id de una lista de YouTube ("…&list=PL…"), para agregarla entera a la
+  /// cola. Las mezclas automáticas (RD…) no sirven: cambian cada vez.
+  static String? listaDe(String? texto) {
+    final t = texto?.trim() ?? '';
+    final uri = Uri.tryParse(t.startsWith('http') ? t : 'https://$t');
+    if (uri == null) return null;
+    final host = uri.host.replaceFirst(RegExp(r'^(www\.|m\.|music\.)'), '');
+    if (host != 'youtube.com' && host != 'youtu.be') return null;
+    final l = uri.queryParameters['list'];
+    if (l == null || !RegExp(r'^[A-Za-z0-9_-]{10,64}$').hasMatch(l)) {
+      return null;
+    }
+    return l.startsWith('RD') ? null : l;
+  }
+
   factory Cancion.fromMap(Map m) => Cancion(
     videoId: m['videoId'] as String? ?? '',
     titulo: m['titulo'] as String? ?? '',
     por: m['por'] as String?,
+    fuente: m['fuente'] == 'bilibili'
+        ? FuenteMusica.bilibili
+        : FuenteMusica.youtube,
+    parte: (m['parte'] as num?)?.toInt() ?? 1,
+    duracion: (m['duracion'] as num?)?.toDouble(),
+    portada: m['portada'] as String?,
   );
 
+  /// Siempre con todos los campos: la sala se guarda "mezclando" (merge),
+  /// y si faltara uno quedaría el de la canción anterior.
   Map<String, dynamic> toMap() => {
     'videoId': videoId,
     'titulo': titulo,
     'por': por,
+    'fuente': fuente.name,
+    'parte': parte,
+    'duracion': duracion,
+    'portada': portada,
   };
+}
+
+/// Un link de Bilibili ya entendido: el BV del video y la parte.
+class LinkBilibili {
+  const LinkBilibili({this.bvid, this.parte, this.corto});
+
+  /// BV1… (null si es un link corto b23.tv que hay que abrir primero).
+  final String? bvid;
+
+  /// La parte que venía en el link (?p=2); null si no decía.
+  final int? parte;
+
+  /// Link corto (b23.tv/…) que todavía no se sabe a qué video lleva.
+  final String? corto;
+
+  static final _bv = RegExp(r'(BV1[0-9A-Za-z]{9})');
+
+  /// Entiende www.bilibili.com/video/BV…, m.bilibili.com, b23.tv/… y el BV
+  /// solo. Devuelve null si no es de Bilibili.
+  static LinkBilibili? parse(String? texto) {
+    final t = texto?.trim() ?? '';
+    if (t.isEmpty) return null;
+    // Lo que copia la app de Bilibili trae texto antes del link:
+    // "【título】 https://b23.tv/abc".
+    final enlace = RegExp(r'https?://\S+').firstMatch(t)?.group(0) ?? t;
+    final uri = Uri.tryParse(
+      enlace.startsWith('http') ? enlace : 'https://$enlace',
+    );
+    final host = uri?.host.toLowerCase() ?? '';
+    if (host == 'b23.tv' || host.endsWith('.b23.tv')) {
+      return LinkBilibili(corto: uri.toString());
+    }
+    final bv = _bv.firstMatch(t)?.group(1);
+    if (bv == null) return null;
+    if (uri != null && host.isNotEmpty && !host.endsWith('bilibili.com')) {
+      if (t != bv) return null;
+    }
+    final p = int.tryParse(uri?.queryParameters['p'] ?? '');
+    return LinkBilibili(bvid: bv, parte: p != null && p > 0 ? p : null);
+  }
 }
 
 /// Cuenta regresiva para darle play a la vez, cada uno en su propia app.
@@ -104,7 +209,7 @@ class SalaMusica {
   static const vacia = SalaMusica();
 
   /// Canciones como máximo en la cola.
-  static const maxCola = 40;
+  static const maxCola = 100;
 
   final Cancion? actual;
   final bool sonando;
@@ -177,7 +282,8 @@ enum AppMusica {
   youtube('YouTube'),
   appleMusic('Apple Music'),
   deezer('Deezer'),
-  qqMusic('QQ Music');
+  qqMusic('QQ Music'),
+  bilibili('Bilibili');
 
   const AppMusica(this.nombre);
   final String nombre;
@@ -193,6 +299,17 @@ enum AppMusica {
   Uri enlace(String cancion) {
     final t = cancion.trim();
     final media = LinkMedia.parse(t);
+    // Un link de Bilibili se abre tal cual (en su app, si la tienen).
+    final bili = LinkBilibili.parse(t);
+    if (bili != null) {
+      final bv = bili.bvid;
+      return Uri.parse(
+        bv == null
+            ? bili.corto!
+            : 'https://www.bilibili.com/video/$bv'
+                  '${bili.parte != null ? '?p=${bili.parte}' : ''}',
+      );
+    }
     if (media != null) {
       // Link de YouTube y la app es YouTube Music: misma canción allá.
       final id = Cancion.idDe(t);
@@ -214,6 +331,7 @@ enum AppMusica {
         'https://www.deezer.com/search/${Uri.encodeComponent(t)}',
       ),
       qqMusic => Uri.parse('https://y.qq.com/n/ryqq/search?w=$q'),
+      bilibili => Uri.parse('https://search.bilibili.com/all?keyword=$q'),
     };
   }
 }

@@ -48,6 +48,9 @@ export default {
     if (url.pathname === "/" && request.method === "GET") {
       return reply(200, { ok: true, app: "taotao-notificaciones" });
     }
+    if (url.pathname === "/bilibili" && request.method === "GET") {
+      return infoBilibili(url);
+    }
     if (url.pathname !== "/notify" || request.method !== "POST") {
       return reply(404, { error: "no_encontrado" });
     }
@@ -870,6 +873,72 @@ export async function verifyIdToken(token, projectId, getKey = publicKey) {
   return p.sub;
 }
 
+// ---------- Bilibili (Música juntos) ----------
+// En la web el navegador no deja que Taotao le pregunte a Bilibili el
+// nombre y la duración de un video (CORS), así que se pregunta aquí.
+// También abre los links cortos b23.tv. Solo lee datos públicos.
+const BV_RE = /^BV1[0-9A-Za-z]{9}$/;
+const UA_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+export async function infoBilibili(url, hacerFetch = fetch) {
+  let bvid = url.searchParams.get("bvid") || "";
+  const corto = url.searchParams.get("u") || "";
+  try {
+    if (!BV_RE.test(bvid) && corto) {
+      let u;
+      try {
+        u = new URL(corto);
+      } catch {
+        return reply(400, { error: "link_invalido" });
+      }
+      if (u.protocol !== "https:" && u.protocol !== "http:") {
+        return reply(400, { error: "link_invalido" });
+      }
+      if (u.hostname !== "b23.tv" && !u.hostname.endsWith(".b23.tv")) {
+        return reply(400, { error: "link_invalido" });
+      }
+      const r = await hacerFetch(`https://b23.tv${u.pathname}`, {
+        redirect: "manual",
+        headers: { "User-Agent": UA_NAVEGADOR },
+      });
+      const destino = r.headers.get("Location") || "";
+      const m = destino.match(/BV1[0-9A-Za-z]{9}/);
+      if (!m) return reply(404, { error: "no_encontrado" });
+      bvid = m[0];
+    }
+    if (!BV_RE.test(bvid)) return reply(400, { error: "pedido_invalido" });
+    const r = await hacerFetch(
+      `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`,
+      { headers: { "User-Agent": UA_NAVEGADOR, Referer: "https://www.bilibili.com/" } },
+    );
+    const j = await r.json().catch(() => null);
+    if (!j || j.code !== 0 || !j.data) return reply(404, { error: "no_encontrado" });
+    const d = j.data;
+    return cacheable(
+      reply(200, {
+        bvid: d.bvid || bvid,
+        title: String(d.title || "").slice(0, 200),
+        pic: typeof d.pic === "string" ? d.pic : null,
+        duration: Number(d.duration) || 0,
+        pages: (Array.isArray(d.pages) ? d.pages : []).slice(0, 200).map((p) => ({
+          page: Number(p.page) || 1,
+          part: String(p.part || "").slice(0, 120),
+          duration: Number(p.duration) || 0,
+        })),
+      }),
+    );
+  } catch (e) {
+    console.error(e.message);
+    return reply(502, { error: "bilibili_no_responde" });
+  }
+}
+
+function cacheable(res) {
+  res.headers.set("Cache-Control", "public, max-age=3600");
+  return res;
+}
+
 // ---------- Utilidades ----------
 function reply(status, body) {
   return withCors(
@@ -882,7 +951,7 @@ function reply(status, body) {
 
 function withCors(res) {
   res.headers.set("Access-Control-Allow-Origin", "*");
-  res.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   return res;
 }

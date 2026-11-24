@@ -535,7 +535,7 @@ service cloud.firestore {
             && s.get('sonando', false) is bool
             && s.get('posicion', 0) is number
             && s.get('cola', []) is list
-            && s.get('cola', []).size() <= 40
+            && s.get('cola', []).size() <= 100
             && s.get('oyentes', {}) is map
             // Cada uno solo dice si él está escuchando.
             && s.get('oyentes', {}).diff(previo('oyentes', {})).affectedKeys()

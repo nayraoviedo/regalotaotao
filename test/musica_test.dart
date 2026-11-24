@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/sala_musica.dart';
 import 'package:taotao/screens/musica/musica_inicio.dart';
+import 'package:taotao/services/musica_service.dart';
 
 void main() {
   group('Cancion.idDe', () {
@@ -29,6 +30,95 @@ void main() {
       ]) {
         expect(Cancion.idDe(l), isNull, reason: l);
       }
+    });
+  });
+
+  group('Bilibili', () {
+    test('entiende links de Bilibili', () {
+      final l = LinkBilibili.parse(
+        'https://www.bilibili.com/video/BV1GJ411x7h7/?p=2&spm=abc',
+      );
+      expect(l?.bvid, 'BV1GJ411x7h7');
+      expect(l?.parte, 2);
+      expect(
+        LinkBilibili.parse('https://m.bilibili.com/video/BV1GJ411x7h7')?.parte,
+        isNull,
+      );
+      expect(LinkBilibili.parse('BV1GJ411x7h7')?.bvid, 'BV1GJ411x7h7');
+      // Lo que copia la app de Bilibili al compartir.
+      final c = LinkBilibili.parse('【好听的歌】 https://b23.tv/AbC123');
+      expect(c?.bvid, isNull);
+      expect(c?.corto, 'https://b23.tv/AbC123');
+      expect(
+        LinkBilibili.parse('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+        isNull,
+      );
+      expect(LinkBilibili.parse('https://otro.com/BV1GJ411x7h7'), isNull);
+    });
+
+    test('se guarda y se lee igual', () {
+      const c = Cancion(
+        videoId: 'BV1GJ411x7h7',
+        fuente: FuenteMusica.bilibili,
+        parte: 2,
+        duracion: 213,
+        titulo: 'Canción',
+      );
+      final d = Cancion.fromMap(c.toMap());
+      expect(d.esBilibili, isTrue);
+      expect(d.parte, 2);
+      expect(d.duracion, 213);
+      expect(d.clave, 'bili:BV1GJ411x7h7:2');
+      expect(d.enlace, 'https://www.bilibili.com/video/BV1GJ411x7h7?p=2');
+      // Las de YouTube no cambian.
+      const y = Cancion(videoId: 'dQw4w9WgXcQ');
+      // Todos los campos, para que no quede nada de la anterior al mezclar.
+      expect(y.toMap()['fuente'], 'youtube');
+      expect(y.toMap().containsKey('duracion'), isTrue);
+      expect(Cancion.fromMap(y.toMap()).clave, 'dQw4w9WgXcQ');
+    });
+
+    test('un video con varias partes son varias canciones', () {
+      final info = InfoBilibili.deApi('''
+{"code":0,"data":{"bvid":"BV1GJ411x7h7","title":"Concierto",
+"pic":"http://i0.hdslb.com/a.jpg","duration":400,
+"pages":[{"page":1,"part":"Inicio","duration":100},
+{"page":2,"part":"Final","duration":300}]}}''')!;
+      expect(info.portada, 'https://i0.hdslb.com/a.jpg');
+      final todas = info.canciones('yo');
+      expect(todas.map((c) => c.titulo), [
+        'Concierto · Inicio',
+        'Concierto · Final',
+      ]);
+      expect(todas.last.duracion, 300);
+      expect(info.canciones('yo', soloParte: 2).single.parte, 2);
+    });
+  });
+
+  group('Cancion.listaDe', () {
+    test('entiende listas de YouTube, no mezclas', () {
+      expect(
+        Cancion.listaDe(
+          'https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG',
+        ),
+        'PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG',
+      );
+      expect(
+        Cancion.listaDe(
+          'https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=OLAK5uy_abcdefghij',
+        ),
+        'OLAK5uy_abcdefghij',
+      );
+      expect(
+        Cancion.listaDe(
+          'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ',
+        ),
+        isNull,
+      );
+      expect(
+        Cancion.listaDe('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+        isNull,
+      );
     });
   });
 
@@ -67,6 +157,23 @@ void main() {
   });
 
   group('AppMusica', () {
+    test('Bilibili: busca o abre el link tal cual', () {
+      expect(
+        AppMusica.bilibili.enlace('晴天').toString(),
+        'https://search.bilibili.com/all?keyword=%E6%99%B4%E5%A4%A9',
+      );
+      expect(
+        AppMusica.spotify.enlace('https://b23.tv/AbC123').toString(),
+        'https://b23.tv/AbC123',
+      );
+      expect(
+        AppMusica.youtube
+            .enlace('https://www.bilibili.com/video/BV1GJ411x7h7?p=3')
+            .toString(),
+        'https://www.bilibili.com/video/BV1GJ411x7h7?p=3',
+      );
+    });
+
     test('busca por nombre en cada app', () {
       expect(
         AppMusica.spotify.enlace('Sutra').toString(),
