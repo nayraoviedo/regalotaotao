@@ -24,6 +24,7 @@ void main() {
       'pareja_nombre': 'Tao',
       'pareja_animo_id': 'triste',
       'pareja_animo_label': 'Triste',
+      'pareja_animo_frase': 'Un abrazo tuyo le haría bien',
     });
   });
 
@@ -34,6 +35,7 @@ void main() {
       'pareja_nombre': null,
       'pareja_animo_id': null,
       'pareja_animo_label': null,
+      'pareja_animo_frase': null,
     });
   });
 

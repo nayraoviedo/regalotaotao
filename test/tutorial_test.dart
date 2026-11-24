@@ -55,7 +55,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Mimos al instante'), findsOneWidget);
-    expect(find.textContaining('a Xixi'), findsOneWidget);
+    expect(find.textContaining('pienses en Xixi'), findsOneWidget);
     expect(find.text('Gatito naranja'), findsOneWidget);
 
     // Hasta la última página (las pruebas corren como Android).
