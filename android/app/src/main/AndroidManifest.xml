@@ -6,7 +6,7 @@
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <application
-        android:label="Xingyue"
+        android:label="星月"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -35,7 +35,7 @@
         <receiver
             android:name=".TaotaoWidget"
             android:exported="false"
-            android:label="Xingyue">
+            android:label="星月">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

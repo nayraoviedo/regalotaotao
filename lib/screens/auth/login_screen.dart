@@ -158,8 +158,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Branding.nombre,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: AppTheme.manuscrita,
-                      fontSize: 52,
+                      fontSize: 48,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 8,
                       color: AppTheme.azul,
                     ),
                   ),
@@ -167,8 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     Branding.frase,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
                       letterSpacing: 3,
                       color: AppTheme.azul,
                     ),

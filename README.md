@@ -1,4 +1,4 @@
-# Xingyue 💞
+# 星月 💞
 
 _你是我的星的月 · tú eres la estrella de mi luna_ (antes "Taotao")
 
@@ -440,7 +440,7 @@ cd worker && npm install && npm test           # pruebas del Worker de notificac
 
 ## Nombre e ícono
 
-El nombre visible es **Xingyue** (星月, de "你是我的星的月"; en `lib/branding.dart`, `AndroidManifest.xml`,
+El nombre visible es **星月** (xīngyuè, "estrella y luna", de "你是我的星的月"; en `lib/branding.dart`, `AndroidManifest.xml`,
 `web/index.html`, `web/manifest.json` e `ios/Runner/Info.plist`). El paquete
 sigue siendo `com.taotao.taotao` para no romper Firebase ni el login con Google.
 
