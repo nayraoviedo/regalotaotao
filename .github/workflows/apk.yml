@@ -56,10 +56,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Java 21: el lint del APK release (lintVitalAnalyzeRelease) usa
+      # List.removeLast(), que no existe en Java 17 y hace fallar la compilación.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
 
       - uses: subosito/flutter-action@v2
