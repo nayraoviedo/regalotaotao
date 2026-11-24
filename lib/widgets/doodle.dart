@@ -123,6 +123,8 @@ final Map<int, String> _doodles = {
     Icons.image_outlined: 'foto',
     Icons.hide_image_outlined: 'quitar_foto',
     Icons.link_rounded: 'enlace',
+    Icons.alarm: 'despertador',
+    Icons.alarm_off: 'despertador',
     Icons.emoji_emotions_outlined: 'sticker',
     Icons.auto_awesome: 'brillos',
     Icons.auto_awesome_outlined: 'brillos',

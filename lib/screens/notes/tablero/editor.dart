@@ -4,6 +4,7 @@ import '../../../models/note.dart';
 import 'formas.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
+import 'recordatorio.dart';
 import 'tablero.dart';
 import '../../../widgets/doodle.dart';
 import '../adornos.dart';
@@ -17,7 +18,15 @@ class EditorDeNota extends StatefulWidget {
     this.nota,
     this.categoriaInicial,
     this.coupleId = '',
+    this.compartida = false,
+    this.tienePareja = false,
   });
+
+  /// Nota de los dos: el recordatorio les llega a los dos.
+  final bool compartida;
+
+  /// Si ya se vincularon (para poder avisarle a la pareja).
+  final bool tienePareja;
 
   /// Para saber qué paquetes de stickers compraron en la casita.
   final String coupleId;
@@ -41,6 +50,8 @@ class _EditorDeNotaState extends State<EditorDeNota> {
   late String? _foto = widget.nota?.foto;
   late String? _enlace = widget.nota?.enlace;
   late bool _esLista = widget.nota?.esLista ?? false;
+  late DateTime? _recordatorio = widget.nota?.recordatorio;
+  late String _para = widget.nota?.recordatorioPara ?? 'yo';
   late final List<_Fila> _filas = [
     for (final i in widget.nota?.items ?? const <ItemDeLista>[])
       _Fila(i.texto, i.hecho),
@@ -86,6 +97,8 @@ class _EditorDeNotaState extends State<EditorDeNota> {
     foto: _foto,
     enlace: _enlace,
     sharedNoteId: widget.nota?.sharedNoteId,
+    recordatorio: _recordatorio,
+    recordatorioPara: _para,
   );
 
   bool get _sePuedeGuardar {
@@ -324,6 +337,17 @@ class _EditorDeNotaState extends State<EditorDeNota> {
                 onQuitar: () => setState(() => _enlace = null),
               ),
           ],
+          const SizedBox(height: 18),
+          const _Etiqueta('Recordatorio'),
+          const SizedBox(height: 4),
+          SeccionDeRecordatorio(
+            cuando: _recordatorio,
+            para: _para,
+            compartida: widget.compartida,
+            tienePareja: widget.tienePareja,
+            onCuando: (c) => setState(() => _recordatorio = c),
+            onPara: (p) => setState(() => _para = p),
+          ),
           const SizedBox(height: 18),
           const _Etiqueta('Categoría'),
           const SizedBox(height: 8),

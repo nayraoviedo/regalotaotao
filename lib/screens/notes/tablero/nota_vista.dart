@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../models/note.dart';
 import 'formas.dart';
 import 'notas_style.dart';
+import 'recordatorio.dart';
 import '../../../widgets/doodle.dart';
 
 /// Una nota dibujada con su forma, color, texto o lista, sticker y foto.
@@ -118,6 +119,19 @@ class NotaVista extends StatelessWidget {
                   bottom: h * 0.015,
                   child: Center(
                     child: Doodle(Icons.link_rounded, size: w * 0.12),
+                  ),
+                ),
+              // Relojito mientras falta para el recordatorio.
+              if (note.recordatorioPendiente)
+                Positioned(
+                  left: w * 0.02,
+                  top: -h * 0.035,
+                  child: Transform.rotate(
+                    angle: -0.06,
+                    child: EtiquetaDeRecordatorio(
+                      cuando: note.recordatorio!,
+                      size: grande ? 1.3 : (w / 170).clamp(0.85, 1.15),
+                    ),
                   ),
                 ),
               if (marcaPrivada != null)

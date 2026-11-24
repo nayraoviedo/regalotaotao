@@ -4,6 +4,7 @@ import '../../../models/note.dart';
 import '../adornos.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
+import 'recordatorio.dart';
 import 'tablero.dart';
 import '../../../widgets/doodle.dart';
 
@@ -29,7 +30,11 @@ class DetalleDeNota extends StatefulWidget {
     required this.autor,
     this.onToggle,
     this.acciones = const [],
+    this.compartida = false,
   });
+
+  /// Nota de los dos (para decir a quién le llega el recordatorio).
+  final bool compartida;
 
   final Note nota;
   final String autor;
@@ -55,6 +60,8 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
     stickers: widget.nota.stickers,
     foto: widget.nota.foto,
     enlace: widget.nota.enlace,
+    recordatorio: widget.nota.recordatorio,
+    recordatorioPara: widget.nota.recordatorioPara,
   );
 
   void _marcar(int i) {
@@ -166,6 +173,15 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
                       ),
               ),
             ],
+            if (nota.recordatorio != null) ...[
+              const SizedBox(height: 18),
+              Center(
+                child: _LineaDeRecordatorio(
+                  nota: nota,
+                  compartida: widget.compartida,
+                ),
+              ),
+            ],
             if (nota.enlace != null) ...[
               const SizedBox(height: 18),
               Center(child: EnlacePegado(url: nota.enlace!)),
@@ -196,6 +212,55 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// "Te aviso mañana, 18:30 · a los dos" debajo de la nota.
+class _LineaDeRecordatorio extends StatelessWidget {
+  const _LineaDeRecordatorio({required this.nota, required this.compartida});
+  final Note nota;
+  final bool compartida;
+
+  @override
+  Widget build(BuildContext context) {
+    final cuando = nota.recordatorio!;
+    final pendiente = nota.recordatorioPendiente;
+    final aviso = compartida
+        ? 'Les aviso a los dos'
+        : switch (nota.recordatorioPara) {
+            'pareja' => 'Le aviso a tu pareja',
+            'ambos' => 'Les aviso a los dos',
+            _ => 'Te aviso',
+          };
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: NotasStyle.celeste.withValues(alpha: 0.8)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Opacity(
+            opacity: pendiente ? 1 : 0.5,
+            child: const Doodle(Icons.alarm, size: 26),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              pendiente
+                  ? '$aviso ${textoDelRecordatorio(cuando)}'
+                  : 'Ya sonó: ${textoDelRecordatorio(cuando)}',
+              style: TextStyle(
+                color: pendiente ? NotasStyle.azul : NotasStyle.gris,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
