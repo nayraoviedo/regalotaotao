@@ -6,7 +6,7 @@ import '../../services/together_service.dart';
 import '../../theme.dart';
 import '../recomendacion/resenas.dart';
 
-/// Hoja para reseñar algo que hicieron juntos (de "Por hacer juntos").
+/// Hoja para reseñar algo que hicieron juntos (de "Nuestros planes").
 ///
 /// Con [onGuardar] no usa Firebase (para pruebas y capturas).
 Future<void> showResenaJuntos(
@@ -109,7 +109,7 @@ class ResenaJuntos extends StatelessWidget {
           Text(
             item.done
                 ? 'Lo hicieron juntos · ${item.category.toLowerCase()}'
-                : 'Por hacer juntos · ${item.category.toLowerCase()}',
+                : 'Nuestros planes · ${item.category.toLowerCase()}',
             style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
           const SizedBox(height: 4),

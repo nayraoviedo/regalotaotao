@@ -140,8 +140,8 @@ const _todas = [
     guia: Guia.suyo,
     titulo: 'Pregunta del día',
     texto:
-        'Cada día sale un naipe con una pregunta para los dos. En Por hacer '
-        'juntos anotan citas y viajes, y nosotros subimos la escalera '
+        'Cada día sale un naipe con una pregunta para los dos. En Nuestros '
+        'planes anotan citas y viajes, y nosotros subimos la escalera '
         'cuando los cumplen.',
     doodles: ['pregunta', 'por_hacer', 'fuego'],
     donde: 'Inicio',

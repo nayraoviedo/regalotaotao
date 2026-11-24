@@ -12,7 +12,7 @@ import 'recomendacion_inicio.dart';
 import 'resenas.dart';
 
 /// Historial con reseñas: lo que se han recomendado y lo que ya hicieron
-/// juntos (de "Por hacer juntos").
+/// juntos (de "Nuestros planes").
 class RecomendacionesScreen extends StatefulWidget {
   const RecomendacionesScreen({
     super.key,
@@ -132,7 +132,7 @@ class ListaHechasJuntos extends StatelessWidget {
       return const Padding(
         padding: EdgeInsets.fromLTRB(32, 64, 32, 0),
         child: Text(
-          'Cuando cumplan algo de "Por hacer juntos", aquí le ponen '
+          'Cuando cumplan algo de "Nuestros planes", aquí le ponen '
           'estrellitas y un comentario.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppTheme.gris),

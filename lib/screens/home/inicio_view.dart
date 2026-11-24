@@ -218,7 +218,7 @@ class InicioView extends StatelessWidget {
                         Expanded(
                           child: _Acceso(
                             icono: Icons.checklist_rounded,
-                            titulo: 'Por hacer\njuntos',
+                            titulo: 'Nuestros\nplanes',
                             onTap: () => onAbrir(SeccionInicio.porHacer),
                           ),
                         ),
