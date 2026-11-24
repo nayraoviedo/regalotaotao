@@ -357,11 +357,13 @@ class _Portada extends StatelessWidget {
       child: SizedBox(
         width: 64,
         height: 44,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => nota(),
-        ),
+        child: url.isEmpty
+            ? nota()
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => nota(),
+              ),
       ),
     );
   }

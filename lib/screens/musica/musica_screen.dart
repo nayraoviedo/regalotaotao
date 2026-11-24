@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/sala_musica.dart';
 import '../../services/musica_service.dart';
 import '../../theme.dart';
+import '../../widgets/doodle.dart';
 import 'agregar_cancion.dart';
 import 'cuenta_regresiva.dart';
 import 'reproductor_juntos.dart';
@@ -181,7 +182,8 @@ class _AquiEnTaotao extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
               'Todavía no hay canciones en la cola. Agreguen las que '
-              'quieran escuchar después.',
+              'quieran escuchar después (de YouTube o Bilibili, o una '
+              'lista entera): pasan solitas, una tras otra.',
               style: TextStyle(color: AppTheme.gris),
             ),
           )
@@ -189,9 +191,14 @@ class _AquiEnTaotao extends StatelessWidget {
           for (final (i, c) in sala.cola.indexed)
             _FilaCola(
               cancion: c,
-              deQuien: c.por == uid ? 'Tú' : partnerName,
+              deQuien: c.por == uid
+                  ? 'La agregaste tú'
+                  : 'La agregó $partnerName',
               onTocar: () =>
                   _servicio.tocarDeCola(coupleId, uid, i).catchError((_) {}),
+              onSubir: i == 0
+                  ? null
+                  : () => _servicio.subirEnCola(coupleId, i).catchError((_) {}),
               onQuitar: () =>
                   _servicio.quitarDeCola(coupleId, i).catchError((_) {}),
             ),
@@ -205,12 +212,16 @@ class _FilaCola extends StatelessWidget {
     required this.cancion,
     required this.deQuien,
     required this.onTocar,
+    required this.onSubir,
     required this.onQuitar,
   });
 
   final Cancion cancion;
   final String deQuien;
   final VoidCallback onTocar;
+
+  /// Que suene justo después (null si ya es la siguiente).
+  final VoidCallback? onSubir;
   final VoidCallback onQuitar;
 
   @override
@@ -221,32 +232,35 @@ class _FilaCola extends StatelessWidget {
       child: ListTile(
         onTap: onTocar,
         contentPadding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            cancion.miniatura,
-            width: 64,
-            height: 36,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              width: 64,
-              height: 36,
-              color: azul.withValues(alpha: 0.1),
-              child: Icon(Icons.music_note_rounded, color: azul, size: 20),
-            ),
-          ),
-        ),
+        leading: Portada(cancion: cancion),
         title: Text(
           cancion.tituloVisible,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: azul, fontWeight: FontWeight.w600),
         ),
-        subtitle: Text('La agregó $deQuien · toca para escucharla ya'),
-        trailing: IconButton(
-          tooltip: 'Quitar de la cola',
-          onPressed: onQuitar,
-          icon: const Icon(Icons.close_rounded, color: AppTheme.gris),
+        subtitle: Text(
+          '${cancion.esBilibili ? 'Bilibili · ' : ''}$deQuien · '
+          'toca para escucharla ya',
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onSubir != null)
+              IconButton(
+                tooltip: 'Que suene justo después',
+                onPressed: onSubir,
+                icon: const Icon(
+                  Icons.vertical_align_top_rounded,
+                  color: AppTheme.gris,
+                ),
+              ),
+            IconButton(
+              tooltip: 'Quitar de la cola',
+              onPressed: onQuitar,
+              icon: const Doodle(Icons.close_rounded, color: AppTheme.gris),
+            ),
+          ],
         ),
       ),
     );
