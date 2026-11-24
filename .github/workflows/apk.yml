@@ -101,8 +101,11 @@ jobs:
 
       - run: flutter pub get
 
+      # Un APK por tipo de celular (casi todos son arm64) en vez de uno solo
+      # con todo: baja de ~187 MB a ~115 MB. El número de compilación sube en
+      # cada corrida, así Android siempre lo ve como una versión más nueva.
       - name: Armar el APK (debug)
-        run: flutter build apk --debug
+        run: flutter build apk --debug --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Mostrar las huellas de la firma
         run: |
@@ -132,14 +135,18 @@ jobs:
           else
             nombre="taotao-${corto}.apk"
           fi
-          cp build/app/outputs/flutter-apk/app-debug.apk "$nombre"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk "$nombre"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk "${nombre%.apk}-32bits.apk"
           echo "archivo=$nombre" >> "$GITHUB_OUTPUT"
+          echo "archivo32=${nombre%.apk}-32bits.apk" >> "$GITHUB_OUTPUT"
 
       - name: Subir el APK para descargar
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.nombre.outputs.archivo }}
-          path: ${{ steps.nombre.outputs.archivo }}
+          path: |
+            ${{ steps.nombre.outputs.archivo }}
+            ${{ steps.nombre.outputs.archivo32 }}
           retention-days: 14
 
       - name: Publicar en Releases (solo main, también a mano)
@@ -147,10 +154,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          archivo="${{ steps.nombre.outputs.archivo }}"
-          cp "$archivo" taotao.apk
-          gh release delete apk-de-prueba --yes --cleanup-tag || true
-          gh release create apk-de-prueba taotao.apk \
-            --prerelease \
-            --title "APK de prueba (último main)" \
-            --notes "APK de prueba armado desde el commit ${GITHUB_SHA::7}. Descárgalo desde el celular y ábrelo para instalar."
+          cp "${{ steps.nombre.outputs.archivo }}" taotao.apk
+          cp "${{ steps.nombre.outputs.archivo32 }}" taotao-32bits.apk
+          notas="APK de prueba armado desde el commit ${GITHUB_SHA::7} (compilación ${{ github.run_number }}).
+
+          Descarga **taotao.apk** desde el celular y ábrelo para instalar. Solo si tu celular es muy viejo y ese no abre, usa taotao-32bits.apk.
+
+          Si Android dice \"el paquete no es válido\" o \"entra en conflicto\": desinstala primero la versión de 星月/Taotao que ya tienes y vuelve a instalar. Pasa cuando la app instalada se firmó con otra llave."
+          # Se reemplazan los archivos sin borrar la versión, así nunca queda
+          # un rato sin APK para descargar (ni a medias si se cancela la corrida).
+          if gh release view apk-de-prueba >/dev/null 2>&1; then
+            gh release upload apk-de-prueba taotao.apk taotao-32bits.apk --clobber
+            gh release edit apk-de-prueba --notes "$notas"
+          else
+            gh release create apk-de-prueba taotao.apk taotao-32bits.apk \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "APK de prueba (último main)" \
+              --notes "$notas"
+          fi
