@@ -155,6 +155,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
+                    Branding.nombre,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 4,
+                      color: AppTheme.azul,
+                    ),
+                  ),
+                  const Text(
+                    Branding.significado,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppTheme.manuscrita,
+                      fontSize: 22,
+                      color: AppTheme.gris,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
                     _isRegister ? '¡Hola!' : '¡Hola de nuevo!',
                     textAlign: TextAlign.center,
                     style: TextStyle(

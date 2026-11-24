@@ -182,7 +182,7 @@ const _todas = [
     titulo: 'En tu pantalla',
     texto:
         'Mantén presionada la pantalla de inicio del celular, toca Widgets '
-        'y busca Taotao para vernos con sus días juntos y el ánimo.',
+        'y busca 你是我的星的月 para vernos con sus días juntos y el ánimo.',
     doodles: ['inicio', 'corazon_lleno'],
     donde: 'Solo en Android',
   ),

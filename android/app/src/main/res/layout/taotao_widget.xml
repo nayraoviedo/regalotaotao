@@ -98,7 +98,7 @@
             android:fontFamily="casual"
             android:gravity="center"
             android:maxLines="2"
-            android:text="Abre Taotao"
+            android:text="Abre la app"
             android:textColor="@color/taotao_widget_azul"
             android:textSize="15sp"
             android:textStyle="bold" />
