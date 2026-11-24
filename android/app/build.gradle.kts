@@ -43,7 +43,16 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Sin achicar el código: así no hay que mantener reglas de
+            // ProGuard para Firebase, las notificaciones y los widgets.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
+    }
+    // El lint "vital" del release revisa todas las librerías y alarga mucho
+    // la compilación en GitHub; ya revisamos el código con flutter analyze.
+    lint {
+        checkReleaseBuilds = false
     }
 }
 

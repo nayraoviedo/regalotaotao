@@ -19,6 +19,7 @@ class HojaDePapel extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(34, 40, 34, 40),
     this.conDibujos = true,
     this.radio = 18,
+    this.encima = const [],
   });
 
   final Widget child;
@@ -30,6 +31,9 @@ class HojaDePapel extends StatelessWidget {
   final EdgeInsets padding;
   final bool conDibujos;
   final double radio;
+
+  /// Cosas pegadas encima de la hoja (stickers), ya posicionadas.
+  final List<Widget> encima;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +61,7 @@ class HojaDePapel extends StatelessWidget {
                 child: _Dibujito(CartasStyle.papelAbajo),
               ),
             ],
+            ...encima,
           ],
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../models/note.dart';
 import 'formas.dart';
 import 'notas_style.dart';
+import 'recordatorio.dart';
 import '../../../widgets/doodle.dart';
 
 /// Una nota dibujada con su forma, color, texto o lista, sticker y foto.
@@ -91,6 +92,47 @@ class NotaVista extends StatelessWidget {
                   right: note.foto != null ? null : w * 0.03,
                   bottom: forma.clave == 'corazon' ? h * 0.1 : h * 0.01,
                   child: Sticker(note.sticker!, size: w * 0.19),
+                ),
+              // Más stickers: arriba a la derecha y a la izquierda.
+              if (note.stickers.length > 1)
+                Positioned(
+                  right: -w * 0.04,
+                  top: -h * 0.03,
+                  child: Transform.rotate(
+                    angle: 0.25,
+                    child: Sticker(note.stickers[1], size: w * 0.17),
+                  ),
+                ),
+              if (note.stickers.length > 2)
+                Positioned(
+                  left: -w * 0.05,
+                  top: h * 0.38,
+                  child: Transform.rotate(
+                    angle: -0.2,
+                    child: Sticker(note.stickers[2], size: w * 0.16),
+                  ),
+                ),
+              if (note.enlace != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: h * 0.015,
+                  child: Center(
+                    child: Doodle(Icons.link_rounded, size: w * 0.12),
+                  ),
+                ),
+              // Relojito mientras falta para el recordatorio.
+              if (note.recordatorioPendiente)
+                Positioned(
+                  left: w * 0.02,
+                  top: -h * 0.035,
+                  child: Transform.rotate(
+                    angle: -0.06,
+                    child: EtiquetaDeRecordatorio(
+                      cuando: note.recordatorio!,
+                      size: grande ? 1.3 : (w / 170).clamp(0.85, 1.15),
+                    ),
+                  ),
                 ),
               if (marcaPrivada != null)
                 Positioned(

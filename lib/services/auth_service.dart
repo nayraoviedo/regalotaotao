@@ -72,7 +72,13 @@ class AuthService {
   /// Envía el correo para restablecer la contraseña (en español).
   Future<void> sendPasswordReset(String email) async {
     await _auth.setLanguageCode('es');
-    await _auth.sendPasswordResetEmail(email: email);
+    await _auth.sendPasswordResetEmail(
+      email: email,
+      // Al terminar, el botón del correo vuelve a la app en la web.
+      actionCodeSettings: ActionCodeSettings(
+        url: 'https://taotao-bd5ee.web.app/',
+      ),
+    );
   }
 
   Future<void> signOut() => _auth.signOut();

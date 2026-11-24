@@ -141,6 +141,18 @@ D['vela'] = ambos('M30 42 L66 42 L66 84 L30 84 Z', CR) + relleno('M30 42 Q36 52 
 D['arbolito'] = ambos('M48 8 L70 36 L60 36 L78 60 L64 60 L84 82 L12 82 L32 60 L18 60 L36 36 L26 36 Z', VE) + ambos('M42 82 L54 82 L54 92 L42 92 Z', TO, 4) + ''.join(punto(x, y, 4, c) for x, y, c in [(42, 32, TO), (56, 50, AM), (36, 58, RO), (62, 72, TO), (30, 76, AM)])
 D['anillo'] = linea(CIRC(48, 62, 24), 6) + ambos('M36 26 L42 14 L54 14 L60 26 L48 38 Z', CE, 4.4) + linea('M36 26 L60 26 M42 14 L48 26 L54 14', 3)
 
+# ojito de la contraseña (mostrar / ocultar)
+OJO = 'M8 48 C22 24 74 24 88 48 C74 72 22 72 8 48 Z'
+D['ojo'] = ambos(OJO, CR) + ambos(CIRC(48, 48, 15), CE, 4.4) + punto(48, 48, 7) + punto(52, 44, 2.6, CR) + linea('M22 22 L18 14 M48 18 L48 8 M74 22 L78 14', 4)
+D['ojo_cerrado'] = linea('M8 42 C24 66 72 66 88 42') + linea('M20 54 L12 64 M36 61 L32 74 M60 61 L64 74 M76 54 L84 64', 4.4) + f'<circle cx="24" cy="36" r="4" fill="{RO}"/><circle cx="72" cy="36" r="4" fill="{RO}"/>'
+
+# cartas: enlace (eslabones) y sticker (estrellita con la esquina despegada)
+D['enlace'] = ambos('M40 58 L30 68 C22 76 10 64 18 56 L32 42 C40 34 50 38 52 44', CE, 6) + linea('M56 38 L66 28 C74 20 86 32 78 40 L64 54 C56 62 46 58 44 52', 6)
+D['sticker'] = ambos('M48 12 L58 34 L82 36 L64 52 L70 76 L48 64 L26 76 L32 52 L14 36 L38 34 Z', AM) + ambos('M64 52 L70 76 L56 68 Z', CR, 3.6) + f'<circle cx="40" cy="44" r="2.8" fill="{AZ}"/><circle cx="54" cy="44" r="2.8" fill="{AZ}"/>' + linea('M43 51 Q47 55 51 51', 3.2) + f'<circle cx="35" cy="50" r="3" fill="{RO}"/><circle cx="59" cy="50" r="3" fill="{RO}"/>'
+
+# recordatorio de las notas: relojito despertador con campanitas
+D['despertador'] = ambos('M22 20 C28 12 38 12 42 20 Z', TO, 4.4) + ambos('M54 20 C58 12 68 12 74 20 Z', TO, 4.4) + linea('M30 78 L22 88 M66 78 L74 88', 5) + ambos(CIRC(48, 52, 28), AM) + ambos(CIRC(48, 52, 19), CR, 3.4) + linea('M48 40 L48 53 L58 59', 4.6) + punto(48, 53, 3.4, TO) + linea('M10 40 L4 36 M10 52 L3 52 M86 40 L92 36 M86 52 L93 52', 3.6, CE)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

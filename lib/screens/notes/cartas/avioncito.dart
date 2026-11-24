@@ -8,6 +8,7 @@ import '../../../models/carta.dart';
 import '../../../services/cartas_service.dart';
 import '../../../services/user_service.dart';
 import '../../../theme.dart';
+import 'carta_fiesta.dart';
 import 'carta_pastel.dart';
 import 'carta_screen.dart';
 import 'carta_sorpresa.dart';
@@ -414,6 +415,23 @@ class LlegadaDeCartas extends StatefulWidget {
       if (c.to == uid && !c.abierta && !vistas.contains(c.id)) c,
   ];
 
+  /// Cartas de fiesta para [uid] que ya se pueden abrir y que todavía no
+  /// llegaron "con su fiesta" ([vistas] guarda las que ya).
+  static List<Carta> fiestasDeHoy(
+    List<Carta> cartas,
+    String uid,
+    Set<String> vistas,
+    DateTime ahora,
+  ) => [
+    for (final c in cartas)
+      if (c.to == uid &&
+          c.fiesta != null &&
+          !c.abierta &&
+          !c.cerradaPara(uid, ahora) &&
+          !vistas.contains(c.id))
+        c,
+  ];
+
   @override
   State<LlegadaDeCartas> createState() => _LlegadaDeCartasState();
 }
@@ -423,19 +441,50 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
   bool _mostrando = false;
 
   String get _clave => 'cartas_anunciadas_${widget.uid}';
+  String get _claveFiestas => 'cartas_fiesta_llegadas_${widget.uid}';
+
+  /// Las últimas cartas, para volver a revisar a la medianoche.
+  List<Carta>? _ultimas;
+  Timer? _reloj;
+  final _avisosAjustados = <String>{};
 
   @override
   void initState() {
     super.initState();
-    _sub = CartasService.instance
-        .watch(widget.coupleId)
-        .listen(_revisar, onError: (_) {});
+    _sub = CartasService.instance.watch(widget.coupleId).listen((c) {
+      _ultimas = c;
+      _revisar(c);
+    }, onError: (_) {});
+    // Si la app queda abierta cuando empieza la fiesta, la carta llega igual.
+    _reloj = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_ultimas case final c?) _revisar(c);
+    });
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _reloj?.cancel();
     super.dispose();
+  }
+
+  /// El aviso de una carta de fiesta se calcula en el teléfono de quien la
+  /// escribió; aquí se corrige a la hora de este teléfono (pueden vivir en
+  /// países distintos).
+  void _ajustarAvisos(List<Carta> cartas, DateTime ahora) {
+    for (final c in cartas) {
+      final f = c.fiesta, dia = c.fiestaDia, aviso = c.avisarEn;
+      if (c.to != widget.uid || c.abierta || f == null || dia == null) continue;
+      if (aviso == null || _avisosAjustados.contains(c.id)) continue;
+      final mio = CartasService.avisoDe(f, dia);
+      if (!mio.isAfter(ahora) || mio.difference(aviso).inMinutes.abs() < 1) {
+        continue;
+      }
+      _avisosAjustados.add(c.id);
+      CartasService.instance
+          .ajustarAviso(widget.coupleId, c.id, mio)
+          .catchError((_) {});
+    }
   }
 
   /// Al abrir la app la carta puede llegar antes que el perfil de la
@@ -454,10 +503,19 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
 
   Future<void> _revisar(List<Carta> cartas) async {
     if (_mostrando || !mounted) return;
+    final ahora = DateTime.now();
+    _ajustarAvisos(cartas, ahora);
     final prefs = await SharedPreferences.getInstance();
     final vistas = (prefs.getStringList(_clave) ?? const []).toSet();
     final nuevas = LlegadaDeCartas.sinAnunciar(cartas, widget.uid, vistas);
-    if (nuevas.isEmpty || !mounted || _mostrando) return;
+    final llegadas = (prefs.getStringList(_claveFiestas) ?? const []).toSet();
+    final fiestas = LlegadaDeCartas.fiestasDeHoy(
+      cartas,
+      widget.uid,
+      llegadas,
+      ahora,
+    );
+    if ((nuevas.isEmpty && fiestas.isEmpty) || !mounted || _mostrando) return;
 
     _mostrando = true;
     // Se guardan antes de mostrar, para no repetir si la app se cierra.
@@ -467,7 +525,31 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
       ...vistas.where(existentes.contains),
       ...nuevas.map((c) => c.id),
     ]);
+    await prefs.setStringList(_claveFiestas, [
+      ...llegadas.where(existentes.contains),
+      ...fiestas.map((c) => c.id),
+    ]);
     if (!mounted) return;
+    // El día de la fiesta, su carta llega con nieve, fuegos o corazones.
+    for (final carta in fiestas) {
+      final de = widget.partnerName ?? await _nombreDe(carta.from);
+      if (!mounted) return;
+      final abrir = await mostrarLlegadaFiesta(context, carta, de: de);
+      if (!mounted) return;
+      if (abrir) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CartaScreen(
+              carta: carta,
+              coupleId: widget.coupleId,
+              uid: widget.uid,
+              animarApertura: true,
+            ),
+          ),
+        );
+        if (!mounted) return;
+      }
+    }
     // Las sorpresas llegan con los gatitos, y las de cumpleaños o
     // aniversario con un pastel; se abren ahí mismo.
     for (final carta in nuevas.where((c) => c.sorpresa || c.especial != null)) {
@@ -494,7 +576,9 @@ class _LlegadaDeCartasState extends State<LlegadaDeCartas> {
       }
     }
     final normales = [
-      ...nuevas.where((c) => !c.sorpresa && c.especial == null),
+      ...nuevas.where(
+        (c) => !c.sorpresa && c.especial == null && !fiestas.contains(c),
+      ),
     ];
     if (normales.isEmpty) {
       _mostrando = false;

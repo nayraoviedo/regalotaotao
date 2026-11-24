@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _isRegister = false;
   bool _loading = false;
+  bool _verContrasena = false;
   String? _error;
 
   Future<void> _submit() async {
@@ -216,10 +217,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   const _Label('contraseña'),
                   TextField(
                     controller: _password,
-                    obscureText: true,
+                    obscureText: !_verContrasena,
                     autofillHints: const [AutofillHints.password],
                     onSubmitted: (_) => _loading ? null : _submit(),
-                    decoration: const InputDecoration(hintText: '••••••••'),
+                    decoration: InputDecoration(
+                      hintText: '••••••••',
+                      suffixIcon: IconButton(
+                        tooltip: _verContrasena
+                            ? 'Ocultar contraseña'
+                            : 'Mostrar contraseña',
+                        onPressed: () =>
+                            setState(() => _verContrasena = !_verContrasena),
+                        icon: Doodle(
+                          _verContrasena
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 26,
+                        ),
+                      ),
+                    ),
                   ),
                   if (!_isRegister)
                     Align(

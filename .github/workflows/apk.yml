@@ -56,10 +56,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Java 21: el lint del APK release (lintVitalAnalyzeRelease) usa
+      # List.removeLast(), que no existe en Java 17 y hace fallar la compilación.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
 
       - uses: subosito/flutter-action@v2
@@ -101,8 +103,30 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Armar el APK (debug)
-        run: flutter build apk --debug
+      # APK "release" (el de verdad, no el de depuración): pesa ~30 MB en vez
+      # de 187 MB, abre más rápido, y algunos celulares (Xiaomi) rechazan el
+      # de depuración con "el paquete no es válido". Se firma con la misma
+      # llave de arriba (ver android/app/build.gradle.kts), así Google sigue
+      # funcionando. Un APK por tipo de celular (casi todos son arm64), y el
+      # número de compilación sube en cada corrida. Solo arm y arm64 (los
+      # celulares de verdad; x86_64 es para emuladores), así tarda menos.
+      - name: Armar el APK
+        run: >-
+          flutter build apk --release --split-per-abi
+          --target-platform android-arm,android-arm64
+          --build-number=${{ github.run_number }}
+
+      # Revisa el APK con las herramientas oficiales de Android antes de
+      # publicarlo: si la firma o el paquete están mal, la corrida falla aquí.
+      - name: Revisar que el APK sea válido
+        run: |
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+                     build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk; do
+            echo "== $apk ($(du -h "$apk" | cut -f1))"
+            "$bt/apksigner" verify --verbose "$apk" | head -6
+            "$bt/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|native-code):"
+          done
 
       - name: Mostrar las huellas de la firma
         run: |
@@ -132,14 +156,18 @@ jobs:
           else
             nombre="taotao-${corto}.apk"
           fi
-          cp build/app/outputs/flutter-apk/app-debug.apk "$nombre"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$nombre"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "${nombre%.apk}-32bits.apk"
           echo "archivo=$nombre" >> "$GITHUB_OUTPUT"
+          echo "archivo32=${nombre%.apk}-32bits.apk" >> "$GITHUB_OUTPUT"
 
       - name: Subir el APK para descargar
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.nombre.outputs.archivo }}
-          path: ${{ steps.nombre.outputs.archivo }}
+          path: |
+            ${{ steps.nombre.outputs.archivo }}
+            ${{ steps.nombre.outputs.archivo32 }}
           retention-days: 14
 
       - name: Publicar en Releases (solo main, también a mano)
@@ -147,10 +175,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          archivo="${{ steps.nombre.outputs.archivo }}"
-          cp "$archivo" taotao.apk
-          gh release delete apk-de-prueba --yes --cleanup-tag || true
-          gh release create apk-de-prueba taotao.apk \
-            --prerelease \
-            --title "APK de prueba (último main)" \
-            --notes "APK de prueba armado desde el commit ${GITHUB_SHA::7}. Descárgalo desde el celular y ábrelo para instalar."
+          cp "${{ steps.nombre.outputs.archivo }}" taotao.apk
+          cp "${{ steps.nombre.outputs.archivo32 }}" taotao-32bits.apk
+          notas="APK de prueba armado desde el commit ${GITHUB_SHA::7} (compilación ${{ github.run_number }}).
+
+          Descarga **taotao.apk** desde el celular y ábrelo para instalar. Solo si tu celular es muy viejo y ese no abre, usa taotao-32bits.apk.
+
+          Si Android dice \"el paquete no es válido\" o \"entra en conflicto\": desinstala primero la versión de 星月/Taotao que ya tienes y vuelve a instalar. Pasa cuando la app instalada se firmó con otra llave."
+          # Se reemplazan los archivos sin borrar la versión, así nunca queda
+          # un rato sin APK para descargar (ni a medias si se cancela la corrida).
+          if gh release view apk-de-prueba >/dev/null 2>&1; then
+            gh release upload apk-de-prueba taotao.apk taotao-32bits.apk --clobber
+            gh release edit apk-de-prueba --notes "$notas"
+          else
+            gh release create apk-de-prueba taotao.apk taotao-32bits.apk \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "APK de prueba (último main)" \
+              --notes "$notas"
+          fi

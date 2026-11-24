@@ -5,3 +5,8 @@
 name = "taotao-notificaciones"
 main = "src/index.js"
 compatibility_date = "2025-06-01"
+
+# Cada minuto revisa los recordatorios de las notas (src/recordatorios.js).
+# Los Cron Triggers son gratis en el plan Free de Cloudflare.
+[triggers]
+crons = ["* * * * *"]

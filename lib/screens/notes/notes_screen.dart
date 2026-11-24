@@ -43,8 +43,15 @@ class NotesScreen extends StatelessWidget {
   NotesService get _service => NotesService.instance;
 
   Future<void> _crear(BuildContext context, {required bool compartida}) async {
-    final nota = await Navigator.of(context)
-        .push<Note>(MaterialPageRoute(builder: (_) => const EditorDeNota()));
+    final nota = await Navigator.of(context).push<Note>(
+      MaterialPageRoute(
+        builder: (_) => EditorDeNota(
+          coupleId: coupleId,
+          compartida: compartida,
+          tienePareja: partnerUid.isNotEmpty,
+        ),
+      ),
+    );
     if (nota == null) return;
     if (compartida) {
       await _service.addShared(coupleId, me.uid, nota.contenido());
@@ -58,9 +65,17 @@ class NotesScreen extends StatelessWidget {
     Note nota, {
     required bool privada,
   }) async {
-    final editada = await Navigator.of(
-      context,
-    ).push<Note>(MaterialPageRoute(builder: (_) => EditorDeNota(nota: nota)));
+    final editada = await Navigator.of(context).push<Note>(
+      MaterialPageRoute(
+        builder: (_) => EditorDeNota(
+          nota: nota,
+          coupleId: coupleId,
+          // Una privada compartida avisa desde su copia de los dos.
+          compartida: !privada || nota.isShared,
+          tienePareja: partnerUid.isNotEmpty,
+        ),
+      ),
+    );
     if (editada == null) return;
     if (privada) {
       await _service.updatePrivate(coupleId, me.uid, nota, editada.contenido());
@@ -95,6 +110,7 @@ class NotesScreen extends StatelessWidget {
         builder: (ctx) => DetalleDeNota(
           nota: nota,
           autor: mia ? 'Escrita por ti' : 'Escrita por tu pareja',
+          compartida: true,
           onToggle: (items) =>
               _service.setSharedItems(coupleId, nota.id, items),
           acciones: [
@@ -121,6 +137,7 @@ class NotesScreen extends StatelessWidget {
         builder: (ctx) => DetalleDeNota(
           nota: nota,
           autor: nota.isShared ? 'Mía, compartida' : 'Solo la ves tú',
+          compartida: nota.isShared,
           onToggle: (items) => _service.updatePrivate(coupleId, me.uid, nota, {
             'items': items.map((i) => i.toMap()).toList(),
           }),

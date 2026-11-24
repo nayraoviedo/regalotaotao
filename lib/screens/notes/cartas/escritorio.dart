@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../models/carta.dart';
+import '../../../models/carta_fiesta.dart';
 import '../../../services/cartas_service.dart';
 import '../../../theme.dart';
+import 'carta_fiesta.dart';
 import 'carta_screen.dart';
 import 'cartas_style.dart';
 import 'papel.dart';
@@ -16,7 +18,11 @@ class EscritorioDeCartas extends StatefulWidget {
     required this.uid,
     required this.coupleId,
     this.cartas,
+    this.ahora,
   });
+
+  /// Para pruebas y capturas: la fecha de hoy.
+  final DateTime? ahora;
 
   final String uid;
   final String coupleId;
@@ -35,7 +41,17 @@ class _EscritorioDeCartasState extends State<EscritorioDeCartas> {
 
   String _fecha(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
+  DateTime get _hoy => widget.ahora ?? DateTime.now();
+
+  String _seAbre(Carta c) =>
+      'Se abre el ${CartaFiesta.fechaTexto(c.fiestaDia!)}';
+
   void _abrir(Carta carta) {
+    // Una carta de fiesta queda cerrada hasta su día.
+    if (carta.cerradaPara(widget.uid, _hoy)) {
+      mostrarCartaCerrada(context, carta, ahora: _hoy);
+      return;
+    }
     final recibida = carta.to == widget.uid;
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -139,12 +155,22 @@ class _EscritorioDeCartasState extends State<EscritorioDeCartas> {
                       (context, i) {
                         final c = lista[i];
                         final String? pie;
+                        final cerrada =
+                            c.fiestaDia != null &&
+                            !c.abierta &&
+                            CartaFiesta.soloDia(_hoy).isBefore(c.fiestaDia!);
                         if (_paraMi) {
                           pie = c.openedAt != null
                               ? 'Abierta el ${_fecha(c.openedAt!)}'
+                              : cerrada
+                              ? _seAbre(c)
                               : null;
                         } else {
-                          pie = c.abierta ? 'Ya la abrió' : 'Aún no la abre';
+                          pie = c.abierta
+                              ? 'Ya la abrió'
+                              : cerrada
+                              ? _seAbre(c)
+                              : 'Aún no la abre';
                         }
                         return Sobre(
                           motivo: c.motivo,

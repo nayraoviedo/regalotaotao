@@ -154,6 +154,9 @@ await ok('A escribe una carta a B', setDoc(doc(db('A'),'couples/c1/letters/k1'),
 await no('A no se escribe a sí misma', setDoc(doc(db('A'),'couples/c1/letters/k2'),{from:'A',to:'A',cuando:'x',text:'hola',openedAt:null}));
 await no('A no firma como B', setDoc(doc(db('A'),'couples/c1/letters/k3'),{from:'B',to:'A',cuando:'x',text:'hola',openedAt:null}));
 await no('A no manda cartas ya abiertas', setDoc(doc(db('A'),'couples/c1/letters/k4'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:serverTimestamp()}));
+await ok('A pega foto, enlace y stickers en su carta', setDoc(doc(db('A'),'couples/c1/letters/k5'),{from:'A',to:'B',motivo:'triste',cuando:'estés triste',text:'Mira',papel:'cuadricula',openedAt:null,foto:'abc',enlace:'https://youtube.com/x',stickers:['luna','beso']}));
+await no('A no pega un enlace raro', setDoc(doc(db('A'),'couples/c1/letters/k6'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:null,enlace:'javascript:alert(1)'}));
+await no('A no pega más de 5 stickers', setDoc(doc(db('A'),'couples/c1/letters/k7'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:null,stickers:['a','b','c','d','e','f']}));
 await no('C no lee las cartas', getDoc(doc(db('C'),'couples/c1/letters/k1')));
 await no('A no marca abierta la carta que escribió', updateDoc(doc(db('A'),'couples/c1/letters/k1'),{openedAt:serverTimestamp()}));
 await no('B no cambia el texto', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{text:'otro'}));
@@ -161,6 +164,22 @@ await ok('B abre la carta', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{open
 await no('B no la vuelve a cerrar', updateDoc(doc(db('B'),'couples/c1/letters/k1'),{openedAt:null}));
 await no('B no borra la carta de A', deleteDoc(doc(db('B'),'couples/c1/letters/k1')));
 await ok('A borra su carta', deleteDoc(doc(db('A'),'couples/c1/letters/k1')));
+// Cartas de fiesta: cerradas hasta su día.
+{
+  const { Timestamp } = await import('firebase/firestore');
+  const enDias = (d) => Timestamp.fromMillis(Date.now() + d * 86400000);
+  const fiesta = (id, extra) => setDoc(doc(db('A'),'couples/c1/letters',id),{from:'A',to:'B',motivo:'navidad',cuando:'sea Navidad',text:'Feliz Navidad',papel:'cuadricula',openedAt:null,fiesta:'navidad',fiestaDia:'2026-12-25',abrirEl:enDias(30),avisarEn:enDias(30),...extra});
+  await ok('A guarda una carta para Navidad', fiesta('f1'));
+  await no('A no inventa fiestas', fiesta('f2',{fiesta:'otra'}));
+  await no('A no guarda una carta para dentro de dos años', fiesta('f3',{abrirEl:enDias(800)}));
+  await no('una carta normal no se puede cerrar', setDoc(doc(db('A'),'couples/c1/letters/f4'),{from:'A',to:'B',cuando:'x',text:'hola',openedAt:null,abrirEl:enDias(5)}));
+  await no('B no abre la carta de Navidad antes de tiempo', updateDoc(doc(db('B'),'couples/c1/letters/f1'),{openedAt:serverTimestamp()}));
+  await ok('B pone el aviso a la hora de su teléfono', updateDoc(doc(db('B'),'couples/c1/letters/f1'),{avisarEn:Timestamp.fromMillis(enDias(30).toMillis() + 12*3600000)}));
+  await no('B no mueve el aviso a otro día', updateDoc(doc(db('B'),'couples/c1/letters/f1'),{avisarEn:enDias(3)}));
+  await no('B no cambia el día de la fiesta', updateDoc(doc(db('B'),'couples/c1/letters/f1'),{abrirEl:enDias(0)}));
+  await ok('A manda una carta de San Valentín el mismo día', fiesta('f5',{fiesta:'sanValentin',fiestaDia:'2026-02-14',abrirEl:enDias(0),avisarEn:null}));
+  await ok('B la abre ese día', updateDoc(doc(db('B'),'couples/c1/letters/f5'),{openedAt:serverTimestamp()}));
+}
 // ---------- Desvincularse y volver a vincularse ----------
 function unlink(me, partner, id){ const d=db(me); const b=writeBatch(d); b.update(doc(d,'couples',id),{endedAt:serverTimestamp(),endedBy:me}); b.update(doc(d,'users',me),{coupleId:null}); b.update(doc(d,'users',partner),{coupleId:null}); return b.commit(); }
 function reopen(me, partner, id){ const d=db(me); const b=writeBatch(d); b.update(doc(d,'couples',id),{endedAt:null,endedBy:null}); b.update(doc(d,'users',me),{coupleId:id}); b.update(doc(d,'users',partner),{coupleId:id}); return b.commit(); }

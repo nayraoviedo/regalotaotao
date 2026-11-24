@@ -27,6 +27,31 @@ class DatosWidget {
     'pareja_nombre': parejaNombre,
     'pareja_animo_id': parejaAnimo?.id,
     'pareja_animo_label': parejaAnimo?.label,
+    'pareja_animo_frase': parejaAnimo == null ? null : fraseAnimo(parejaAnimo!),
+  };
+
+  /// Frasecita cariñosa que sale en el widget bajo el ánimo de tu pareja,
+  /// para que sepas cómo acompañarle.
+  static String fraseAnimo(MoodType animo) =>
+      _frases[animo.id] ?? 'Toca Te extraño y dale un mimo';
+
+  static const _frases = {
+    'feliz': 'Contágiate de su alegría',
+    'ilusionado': 'Pregúntale qué le ilusiona',
+    'contento': 'Qué bonito día para los dos',
+    'en_paz': 'Disfruten esta calmita juntos',
+    'normal': 'Un mensajito le alegraría el día',
+    'cansado': 'Mándale un abrazo para descansar',
+    'triste': 'Un abrazo tuyo le haría bien',
+    'ansioso': 'Respiren juntos un ratito',
+    'enojado': 'Escúchale con paciencia',
+    'decepcionado': 'También está bien sentirse así',
+    'estresado': 'Recuérdale que estás ahí',
+    'con_sueno': 'Dile que descanse bonito',
+    'sorprendido': 'Pregúntale qué pasó',
+    'apagado': 'Toca Te extraño y dale un mimo',
+    'manoso': 'Ve a darle mimitos',
+    'empachado': 'Prepárale un tecito',
   };
 
   static String fechaClave(DateTime d) =>

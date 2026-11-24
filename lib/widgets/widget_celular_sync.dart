@@ -116,33 +116,117 @@ class _WidgetCelularSyncState extends State<WidgetCelularSync> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Los dos gatitos con un corazón al medio, para la esquina del widget.
+/// Los dos gatitos asomándose por arriba del calendarito del widget, con
+/// las patitas agarradas del borde y un corazón al medio.
+///
+/// Usa los mismos dibujos que la app (`assets/images/gatito_*.png`): se
+/// muestra solo la parte de arriba (cabeza y hombros) de cada gatito.
 class DibujoGatitosWidget extends StatelessWidget {
   const DibujoGatitosWidget({super.key});
+
+  /// Qué parte del gatito (desde arriba) se asoma.
+  static const _asomado = .56;
+  static const _tam = 104.0;
 
   @override
   Widget build(BuildContext context) {
     final gatitos = Gatito.values;
     return SizedBox(
-      width: 220,
-      height: 110,
+      width: 190,
+      height: _tam * _asomado + 10,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          GatitoImagen(gatitos.first, size: 100),
+          _Asomado(gatitos.first),
           const Padding(
-            padding: EdgeInsets.only(bottom: 52),
-            child: CustomPaint(
-              size: Size.square(20),
-              painter: _Corazon(),
-            ),
+            padding: EdgeInsets.only(bottom: 30, left: 2, right: 2),
+            child: CustomPaint(size: Size.square(20), painter: _Corazon()),
           ),
-          GatitoImagen(gatitos.last, size: 100),
+          _Asomado(gatitos.last),
         ],
       ),
     );
   }
+}
+
+class _Asomado extends StatelessWidget {
+  const _Asomado(this.gatito);
+  final Gatito gatito;
+
+  @override
+  Widget build(BuildContext context) {
+    const tam = DibujoGatitosWidget._tam;
+    const alto = tam * DibujoGatitosWidget._asomado;
+    // Se recorta un poquito a los lados para que no se vea la colita.
+    const ancho = tam * .74;
+    return SizedBox(
+      width: ancho,
+      height: alto + 10,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.topCenter,
+                widthFactor: .74,
+                heightFactor: DibujoGatitosWidget._asomado,
+                child: GatitoImagen(gatito, size: tam),
+              ),
+            ),
+          ),
+          // Las patitas agarradas del borde del calendario.
+          for (final x in [ancho / 2 - 19, ancho / 2 + 3])
+            Positioned(
+              left: x,
+              top: alto - 6,
+              child: CustomPaint(
+                size: const Size(16, 12),
+                painter: _Patita(
+                  gatito.manchas == null ? gatito.pelo : gatito.claro,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Patita extends CustomPainter {
+  const _Patita(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    final forma = RRect.fromRectAndRadius(r, Radius.circular(size.height / 2));
+    canvas.drawRRect(forma, Paint()..color = color);
+    canvas.drawRRect(
+      forma,
+      Paint()
+        ..color = const Color(0xFF5B4A5E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    final dedo = Paint()
+      ..color = const Color(0xFF5B4A5E)
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    for (final f in [.36, .64]) {
+      canvas.drawLine(
+        Offset(size.width * f, size.height * .55),
+        Offset(size.width * f, size.height),
+        dedo,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Patita old) => old.color != color;
 }
 
 class _Corazon extends CustomPainter {

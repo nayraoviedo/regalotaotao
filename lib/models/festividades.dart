@@ -3,7 +3,8 @@
 /// siempre).
 ///
 /// Las fiestas chinas siguen el calendario lunar: sus fechas están en una
-/// tabla hasta 2030 ([_chinas]). Para años siguientes hay que agregarlas.
+/// tabla hasta 2045 ([_chinas]), sacadas del calendario lunar chino. Para
+/// años siguientes hay que agregarlas.
 enum Festividad {
   anioNuevo('Año Nuevo', '🎆'),
   anioNuevoChino('Año Nuevo Chino', '🧧'),
@@ -55,6 +56,28 @@ enum Festividad {
         inicioPareja == null
             ? null
             : alrededor(_mismoDia(anio, inicioPareja), 3, 3),
+    };
+  }
+
+  /// El día mismo de la fiesta en el año [anio] (`null` si no se sabe).
+  DateTime? dia(int anio, {DateTime? inicioPareja}) {
+    final chinas = _chinas[anio];
+    return switch (this) {
+      anioNuevo => DateTime(anio, 1, 1),
+      anioNuevoChino => chinas?.$1,
+      sanValentin => DateTime(anio, 2, 14),
+      carnaval => pascuaDe(anio).subtract(const Duration(days: 50)),
+      pascua => pascuaDe(anio),
+      barcoDragon => chinas?.$2,
+      diaDelGato => DateTime(anio, 8, 8),
+      qixi => chinas?.$3,
+      primavera => DateTime(anio, 9, 21),
+      medioOtono => chinas?.$4,
+      halloween => DateTime(anio, 10, 31),
+      todosSantos => DateTime(anio, 11, 1),
+      navidad => DateTime(anio, 12, 25),
+      aniversario =>
+        inicioPareja == null ? null : _mismoDia(anio, inicioPareja),
     };
   }
 
@@ -152,6 +175,96 @@ enum Festividad {
       DateTime(2030, 6, 5),
       DateTime(2030, 8, 5),
       DateTime(2030, 9, 12),
+    ),
+    2031: (
+      DateTime(2031, 1, 23),
+      DateTime(2031, 6, 24),
+      DateTime(2031, 8, 24),
+      DateTime(2031, 10, 1),
+    ),
+    2032: (
+      DateTime(2032, 2, 11),
+      DateTime(2032, 6, 12),
+      DateTime(2032, 8, 12),
+      DateTime(2032, 9, 19),
+    ),
+    2033: (
+      DateTime(2033, 1, 31),
+      DateTime(2033, 6, 1),
+      DateTime(2033, 8, 1),
+      DateTime(2033, 9, 8),
+    ),
+    2034: (
+      DateTime(2034, 2, 19),
+      DateTime(2034, 6, 20),
+      DateTime(2034, 8, 20),
+      DateTime(2034, 9, 27),
+    ),
+    2035: (
+      DateTime(2035, 2, 8),
+      DateTime(2035, 6, 10),
+      DateTime(2035, 8, 10),
+      DateTime(2035, 9, 16),
+    ),
+    2036: (
+      DateTime(2036, 1, 28),
+      DateTime(2036, 5, 30),
+      DateTime(2036, 8, 28),
+      DateTime(2036, 10, 4),
+    ),
+    2037: (
+      DateTime(2037, 2, 15),
+      DateTime(2037, 6, 18),
+      DateTime(2037, 8, 17),
+      DateTime(2037, 9, 24),
+    ),
+    2038: (
+      DateTime(2038, 2, 4),
+      DateTime(2038, 6, 7),
+      DateTime(2038, 8, 7),
+      DateTime(2038, 9, 13),
+    ),
+    2039: (
+      DateTime(2039, 1, 24),
+      DateTime(2039, 5, 27),
+      DateTime(2039, 8, 26),
+      DateTime(2039, 10, 2),
+    ),
+    2040: (
+      DateTime(2040, 2, 12),
+      DateTime(2040, 6, 14),
+      DateTime(2040, 8, 14),
+      DateTime(2040, 9, 20),
+    ),
+    2041: (
+      DateTime(2041, 2, 1),
+      DateTime(2041, 6, 3),
+      DateTime(2041, 8, 3),
+      DateTime(2041, 9, 10),
+    ),
+    2042: (
+      DateTime(2042, 1, 22),
+      DateTime(2042, 6, 22),
+      DateTime(2042, 8, 22),
+      DateTime(2042, 9, 28),
+    ),
+    2043: (
+      DateTime(2043, 2, 10),
+      DateTime(2043, 6, 11),
+      DateTime(2043, 8, 11),
+      DateTime(2043, 9, 17),
+    ),
+    2044: (
+      DateTime(2044, 1, 30),
+      DateTime(2044, 5, 31),
+      DateTime(2044, 7, 31),
+      DateTime(2044, 10, 5),
+    ),
+    2045: (
+      DateTime(2045, 2, 17),
+      DateTime(2045, 6, 19),
+      DateTime(2045, 8, 19),
+      DateTime(2045, 9, 25),
     ),
   };
 }

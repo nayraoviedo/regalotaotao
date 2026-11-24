@@ -55,7 +55,7 @@ class _PairingScreenState extends State<PairingScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vincula a tu pareja'),
+        title: const Text('Invita a tu pareja'),
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
@@ -72,7 +72,7 @@ class _PairingScreenState extends State<PairingScreen> {
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          const Text('Tu código de pareja es:'),
+          const Text('Este es tu código para invitar a tu pareja:'),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
@@ -89,15 +89,17 @@ class _PairingScreenState extends State<PairingScreen> {
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: widget.me.pairCode));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Código copiado')),
+                    const SnackBar(
+                      content: Text('¡Código copiado! Ya puedes mandárselo'),
+                    ),
                   );
                 },
               ),
             ),
           ),
           const Text(
-            'Compártelo con tu pareja, o ingresa el suyo aquí abajo. '
-            'Solo uno de los dos necesita hacerlo.',
+            'Mándaselo a tu pareja con cariño, o escribe el suyo aquí abajo. '
+            'Con que uno de los dos lo haga, ya quedan juntos.',
           ),
           const SizedBox(height: 24),
           TextField(

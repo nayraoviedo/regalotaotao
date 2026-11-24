@@ -1,21 +1,35 @@
-import 'dart:convert';
-
-import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../models/note.dart';
 import 'formas.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
+import 'recordatorio.dart';
 import 'tablero.dart';
 import '../../../widgets/doodle.dart';
-import '../../../services/pescaditos_service.dart';
+import '../adornos.dart';
 
 /// Pantalla "Nueva nota" (o "Editar nota"): título opcional, texto o lista
 /// de pendientes, color, forma, foto, sticker y categoría, con la nota en
 /// vivo arriba. Devuelve la nota con [Navigator.pop], o null si se cancela.
 class EditorDeNota extends StatefulWidget {
-  const EditorDeNota({super.key, this.nota, this.categoriaInicial});
+  const EditorDeNota({
+    super.key,
+    this.nota,
+    this.categoriaInicial,
+    this.coupleId = '',
+    this.compartida = false,
+    this.tienePareja = false,
+  });
+
+  /// Nota de los dos: el recordatorio les llega a los dos.
+  final bool compartida;
+
+  /// Si ya se vincularon (para poder avisarle a la pareja).
+  final bool tienePareja;
+
+  /// Para saber qué paquetes de stickers compraron en la casita.
+  final String coupleId;
 
   /// Nota a editar; null para una nueva.
   final Note? nota;
@@ -32,17 +46,17 @@ class _EditorDeNotaState extends State<EditorDeNota> {
   late String _forma = widget.nota?.forma ?? 'gatito';
   late String _categoria =
       widget.nota?.categoria ?? widget.categoriaInicial ?? 'personal';
-  late String? _sticker = widget.nota?.sticker;
+  late List<String> _stickers = [...?widget.nota?.stickers];
   late String? _foto = widget.nota?.foto;
+  late String? _enlace = widget.nota?.enlace;
   late bool _esLista = widget.nota?.esLista ?? false;
+  late DateTime? _recordatorio = widget.nota?.recordatorio;
+  late String _para = widget.nota?.recordatorioPara ?? 'yo';
   late final List<_Fila> _filas = [
     for (final i in widget.nota?.items ?? const <ItemDeLista>[])
       _Fila(i.texto, i.hecho),
   ];
   bool _cargandoFoto = false;
-
-  /// Tope para que la foto quepa holgada en un documento de Firestore (1 MB).
-  static const maxFoto = 700 * 1024;
 
   @override
   void initState() {
@@ -79,9 +93,12 @@ class _EditorDeNotaState extends State<EditorDeNota> {
     forma: _forma,
     categoria: _categoria,
     items: _esLista ? _items : null,
-    sticker: _sticker,
+    stickers: _stickers,
     foto: _foto,
+    enlace: _enlace,
     sharedNoteId: widget.nota?.sharedNoteId,
+    recordatorio: _recordatorio,
+    recordatorioPara: _para,
   );
 
   bool get _sePuedeGuardar {
@@ -89,7 +106,8 @@ class _EditorDeNotaState extends State<EditorDeNota> {
     return n.title != null ||
         n.text.isNotEmpty ||
         (n.items?.isNotEmpty ?? false) ||
-        n.foto != null;
+        n.foto != null ||
+        n.enlace != null;
   }
 
   void _cambiarALista(bool lista) {
@@ -117,33 +135,31 @@ class _EditorDeNotaState extends State<EditorDeNota> {
 
   Future<void> _elegirFoto() async {
     setState(() => _cargandoFoto = true);
-    try {
-      final img = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 720,
-        maxHeight: 720,
-        imageQuality: 65,
-      );
-      if (img == null) return;
-      final b64 = base64Encode(await img.readAsBytes());
-      if (b64.length > maxFoto) {
-        _aviso('Esa foto es muy pesada. Prueba con otra más chiquita.');
-        return;
-      }
-      setState(() {
-        _foto = b64;
+    final foto = await Adornos.elegirFoto(context);
+    if (!mounted) return;
+    setState(() {
+      _cargandoFoto = false;
+      if (foto != null) {
+        _foto = foto;
         if (_forma != 'polaroid') _forma = 'polaroid';
-      });
-    } catch (_) {
-      _aviso('No se pudo abrir la foto.');
-    } finally {
-      if (mounted) setState(() => _cargandoFoto = false);
-    }
+      }
+    });
   }
 
-  void _aviso(String texto) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  Future<void> _elegirEnlace() async {
+    final url = await Adornos.pedirEnlace(context, actual: _enlace);
+    if (url == null || !mounted) return;
+    setState(() => _enlace = url.isEmpty ? null : url);
+  }
+
+  Future<void> _elegirStickers() async {
+    final s = await Adornos.elegirStickers(
+      context,
+      elegidos: _stickers,
+      max: Note.maxStickers,
+      coupleId: widget.coupleId,
+    );
+    if (s != null && mounted) setState(() => _stickers = s);
   }
 
   @override
@@ -283,42 +299,54 @@ class _EditorDeNotaState extends State<EditorDeNota> {
           const SizedBox(height: 14),
           const _Etiqueta('Adornos'),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (_foto == null)
-                OutlinedButton.icon(
-                  onPressed: _cargandoFoto ? null : _elegirFoto,
-                  icon: _cargandoFoto
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Doodle(Icons.image_outlined),
-                  label: const Text('Subir foto'),
-                  style: _estiloBoton,
-                )
-              else
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _foto = null),
-                  icon: const Doodle(Icons.hide_image_outlined),
-                  label: const Text('Quitar foto'),
-                  style: _estiloBoton,
-                ),
-              for (final s in [
-                ...NotasStyle.stickers,
-                // Los de los paquetes que compraron en la casita.
-                ...PescaditosService.instance.ultimoEstado.value.stickersExtra,
-              ])
-                _OpcionDeSticker(
-                  nombre: s,
-                  elegido: _sticker == s,
-                  onTap: () =>
-                      setState(() => _sticker = _sticker == s ? null : s),
-                ),
-            ],
+          BotonesDeAdornos(
+            hayFoto: _foto != null,
+            hayEnlace: _enlace != null,
+            cuantosStickers: _stickers.length,
+            cargandoFoto: _cargandoFoto,
+            onFoto: _elegirFoto,
+            onEnlace: _elegirEnlace,
+            onStickers: _elegirStickers,
+          ),
+          if (_foto != null || _enlace != null || _stickers.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (_foto != null)
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _foto = null),
+                    icon: const Doodle(Icons.hide_image_outlined, size: 18),
+                    label: const Text('Quitar foto'),
+                    style: _estiloBoton,
+                  ),
+                // Tocar un sticker lo despega.
+                for (final st in _stickers)
+                  OpcionDeSticker(
+                    nombre: st,
+                    elegido: true,
+                    onTap: () => setState(() => _stickers.remove(st)),
+                  ),
+              ],
+            ),
+            if (_enlace != null)
+              EnlacePegado(
+                url: _enlace!,
+                onQuitar: () => setState(() => _enlace = null),
+              ),
+          ],
+          const SizedBox(height: 18),
+          const _Etiqueta('Recordatorio'),
+          const SizedBox(height: 4),
+          SeccionDeRecordatorio(
+            cuando: _recordatorio,
+            para: _para,
+            compartida: widget.compartida,
+            tienePareja: widget.tienePareja,
+            onCuando: (c) => setState(() => _recordatorio = c),
+            onPara: (p) => setState(() => _para = p),
           ),
           const SizedBox(height: 18),
           const _Etiqueta('Categoría'),
@@ -564,42 +592,6 @@ class _OpcionDeForma extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OpcionDeSticker extends StatelessWidget {
-  const _OpcionDeSticker({
-    required this.nombre,
-    required this.elegido,
-    required this.onTap,
-  });
-
-  final String nombre;
-  final bool elegido;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: elegido,
-      label: 'Sticker $nombre',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: elegido ? Colors.white : Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: elegido ? NotasStyle.azul : Colors.transparent,
-              width: 1.5,
-            ),
-          ),
-          child: Sticker(nombre, size: 32),
         ),
       ),
     );

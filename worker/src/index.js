@@ -16,8 +16,14 @@
 //   4. marca el documento con `pushSentFor` para no enviarlo dos veces.
 // El texto del aviso lo arma el Worker, no la app.
 //
+// Además, un Cron Trigger (wrangler.toml) lo despierta cada minuto para
+// mandar los recordatorios de las notas que ya llegaron a su hora
+// (src/recordatorios.js).
+//
 // La clave de la cuenta de servicio vive como secreto del Worker
 // (FIREBASE_SERVICE_ACCOUNT), nunca en el repositorio.
+
+import { revisarRecordatorios, FIESTAS } from "./recordatorios.js";
 
 const JWKS_URL =
   "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
@@ -27,8 +33,15 @@ const SCOPES = [
 ].join(" ");
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_AGE_SECONDS = 15 * 60; // solo documentos recientes
+// Canal de Android con importancia alta (lib/services/push_service.dart).
+const ANDROID_CHANNEL = "mimos_pareja";
 
 export default {
+  // Cada minuto: recordatorios de las notas.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cronRecordatorios(env, event.scheduledTime));
+  },
+
   async fetch(request, env) {
     if (request.method === "OPTIONS") return withCors(new Response(null, { status: 204 }));
     const url = new URL(request.url);
@@ -448,6 +461,8 @@ const KINDS = {
             title: d.especial === "cumple" ? "🎂 ¡Feliz cumpleaños!" : "💞 ¡Feliz aniversario!",
             body: `${name} te mandó ${regalosEspeciales(d)} de ${d.especial === "cumple" ? "cumpleaños" : "aniversario"}`,
           }
+        : FIESTAS[d.fiesta]
+        ? mensajeDeFiesta(name, d)
         : d.sorpresa === true
         ? {
             title: "✨ ¡Carta sorpresa!",
@@ -459,6 +474,21 @@ const KINDS = {
           },
   },
 };
+
+// Carta para una fiesta: si se guardó para más adelante, se avisa que
+// llegó y que se abre ese día; si es para hoy, ya se puede abrir.
+export function mensajeDeFiesta(name, d) {
+  const [emoji, que] = FIESTAS[d.fiesta];
+  return d.avisarEn
+    ? {
+        title: `${emoji} Una carta para ${que}`,
+        body: `${name} te guardó una carta para ${que}. Se abre ese día 💌`,
+      }
+    : {
+        title: `${emoji} ¡Feliz ${que}!`,
+        body: `${name} te mandó una carta de ${que} 💌`,
+      };
+}
 
 // "un pastel, un ramo de flores y una carta", para el aviso.
 function regalosEspeciales(d) {
@@ -476,14 +506,19 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
   const spec = KINDS[kind];
   const fs = firestore(sa);
 
-  const couple = await fs.get(`couples/${coupleId}`);
+  // Todo lo que hay que leer se pide a la vez (antes iba uno tras otro y
+  // cada lectura sumaba su espera antes de mandar el aviso).
+  const path = `couples/${coupleId}/${spec.collection}/${docId}`;
+  const [couple, doc, sender] = await Promise.all([
+    fs.get(`couples/${coupleId}`),
+    fs.get(path),
+    fs.get(`users/${uid}`),
+  ]);
   const members = couple?.data.members || [];
   if (!members.includes(uid)) return { status: 403, body: { error: "no_es_tu_pareja" } };
   const partner = members.find((m) => m !== uid);
   if (!partner) return { status: 403, body: { error: "sin_pareja" } };
 
-  const path = `couples/${coupleId}/${spec.collection}/${docId}`;
-  const doc = await fs.get(path);
   if (!doc) return { status: 404, body: { error: "documento_no_existe" } };
   if (!spec.check(doc.data, uid, partner)) {
     return { status: 403, body: { error: "no_permitido" } };
@@ -496,13 +531,12 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
 
   // Marca el documento antes de enviar. La condición updateTime hace que,
   // si llegan dos pedidos a la vez, solo uno gane.
-  const marked = await fs.setField(path, "pushSentFor", key, doc.updateTime);
-  if (!marked) return { status: 200, body: { ok: true, yaEnviado: true } };
-
-  const [sender, recipient] = await Promise.all([
-    fs.get(`users/${uid}`),
+  const [marked, recipient] = await Promise.all([
+    fs.setField(path, "pushSentFor", key, doc.updateTime),
     fs.get(`users/${partner}`),
   ]);
+  if (!marked) return { status: 200, body: { ok: true, yaEnviado: true } };
+
   const name = sender?.data.name || "Tu pareja";
   const tokens = [...new Set((recipient?.data.fcmTokens || []).filter(Boolean))];
   if (tokens.length === 0) return { status: 200, body: { ok: true, enviados: 0 } };
@@ -516,6 +550,38 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
     status: 200,
     body: { ok: true, enviados: results.filter((r) => r === "ok").length },
   };
+}
+
+// ---------- Recordatorios de las notas (Cron Trigger) ----------
+export async function cronRecordatorios(env, ahora = Date.now()) {
+  let sa;
+  try {
+    sa = serviceAccount(env);
+  } catch (e) {
+    console.error(e.message);
+    return null;
+  }
+  const fs = firestore(sa);
+  return revisarRecordatorios(
+    {
+      buscar: fs.buscarVencidos,
+      leer: fs.get,
+      limpiar: (path, updateTime) => fs.setNull(path, "avisarEn", updateTime),
+      enviar: (uid, msg) => pushToUser(sa, fs, uid, msg),
+    },
+    ahora,
+  );
+}
+
+// Manda el aviso a todos los celulares de `uid`; devuelve cuántos llegaron.
+async function pushToUser(sa, fs, uid, msg) {
+  const user = await fs.get(`users/${uid}`);
+  const tokens = [...new Set((user?.data.fcmTokens || []).filter(Boolean))];
+  if (tokens.length === 0) return 0;
+  const results = await Promise.all(tokens.map((t) => sendPush(sa, t, msg)));
+  const dead = tokens.filter((_, i) => results[i] === "dead");
+  if (dead.length) await fs.removeFromArray(`users/${uid}`, "fcmTokens", dead);
+  return results.filter((r) => r === "ok").length;
 }
 
 // ---------- Firebase Cloud Messaging (HTTP v1) ----------
@@ -532,7 +598,24 @@ async function sendPush(sa, token, { title, body }) {
         message: {
           token,
           notification: { title, body },
-          android: { priority: "HIGH" },
+          // Que llegue al instante aunque el celular esté en reposo:
+          // prioridad alta y el canal "Mimos de tu pareja" (importancia
+          // alta, lo crea la app). Sin canal, Android usaba el canal
+          // "Varios" de Firebase, que no avisa enseguida ni suena.
+          android: {
+            priority: "HIGH",
+            ttl: "86400s",
+            notification: {
+              channel_id: ANDROID_CHANNEL,
+              icon: "ic_notificacion",
+              notification_priority: "PRIORITY_MAX",
+              default_sound: true,
+              default_vibrate_timings: true,
+              visibility: "PUBLIC",
+            },
+          },
+          // En la web (navegador): mensaje urgente.
+          webpush: { headers: { Urgency: "high", TTL: "86400" } },
         },
       }),
     },
@@ -589,6 +672,52 @@ function firestore(sa) {
       const text = await res.text();
       if (/FAILED_PRECONDITION|ABORTED/.test(text)) return false;
       throw new Error(`Firestore commit ${path}: ${res.status} ${text}`);
+    },
+
+    // Como setField, pero deja el campo en null.
+    async setNull(path, field, updateTime) {
+      const res = await commit([
+        {
+          update: { name: `${root}/${path}`, fields: { [field]: { nullValue: null } } },
+          updateMask: { fieldPaths: [field] },
+          currentDocument: { updateTime },
+        },
+      ]);
+      if (res.ok) return true;
+      const text = await res.text();
+      if (/FAILED_PRECONDITION|ABORTED|NOT_FOUND/.test(text)) return false;
+      throw new Error(`Firestore commit ${path}: ${res.status} ${text}`);
+    },
+
+    // Notas de cualquier pareja o usuario cuyo `avisarEn` ya pasó.
+    // Necesita el índice de grupo de colecciones de firestore.indexes.json.
+    async buscarVencidos(coleccion, hastaIso, limite) {
+      const res = await fetch(`${base}:runQuery`, {
+        method: "POST",
+        headers: await headers(),
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: coleccion, allDescendants: true }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: "avisarEn" },
+                op: "LESS_THAN_OR_EQUAL",
+                value: { timestampValue: hastaIso },
+              },
+            },
+            limit: limite,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error(`Firestore runQuery ${coleccion}: ${res.status} ${await res.text()}`);
+      const rows = await res.json();
+      return rows
+        .filter((r) => r.document)
+        .map((r) => ({
+          path: r.document.name.slice(root.length + 1),
+          data: decodeFields(r.document.fields),
+          updateTime: r.document.updateTime,
+        }));
     },
 
     async removeFromArray(path, field, values) {

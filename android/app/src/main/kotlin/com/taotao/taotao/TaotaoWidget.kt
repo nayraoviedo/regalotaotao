@@ -13,11 +13,12 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * Widget de la pantalla de inicio: días juntos y el ánimo de tu pareja.
+ * Widget de la pantalla de inicio: días juntos (un calendarito con los
+ * gatitos asomados) y el ánimo de tu pareja con una frase cariñosa.
  *
  * Los datos los guarda la app (lib/services/widget_celular/) con home_widget:
  *   vinculados, dias_inicio (yyyy-MM-dd), pareja_nombre, pareja_animo_id,
- *   pareja_animo_label, img_gatitos, img_animo_<id> (rutas de PNG).
+ *   pareja_animo_label, pareja_animo_frase, img_gatitos, img_animo_<id> (rutas de PNG).
  * Los días se cuentan aquí, así el número cambia solo cada día.
  */
 class TaotaoWidget : HomeWidgetProvider() {
@@ -47,20 +48,21 @@ class TaotaoWidget : HomeWidgetProvider() {
             v.setTextViewText(R.id.widget_dias, "♡")
             v.setTextViewText(R.id.widget_dias_texto, "星月")
             v.setViewVisibility(R.id.widget_animo, View.GONE)
-            v.setTextViewText(R.id.widget_pareja, "")
-            v.setTextViewText(R.id.widget_animo_texto, "Abre la app y vincúlate")
+            v.setTextViewText(R.id.widget_pareja, "Tu rincón te espera…")
+            v.setTextViewText(R.id.widget_animo_texto, "Invita a tu pareja")
+            v.setTextViewText(R.id.widget_frase, "“Toca aquí y mándale tu código” ♡")
             return
         }
 
         val dias = diasDesde(datos.getString("dias_inicio", null))
         if (dias == null) {
             v.setTextViewText(R.id.widget_dias, "♡")
-            v.setTextViewText(R.id.widget_dias_texto, "Pon su fecha\nen Nosotros")
+            v.setTextViewText(R.id.widget_dias_texto, "Elige su fecha\nen Perfil")
         } else {
             v.setTextViewText(R.id.widget_dias, dias.toString())
             v.setTextViewText(
                 R.id.widget_dias_texto,
-                if (dias == 1L) "día juntos" else "días juntos",
+                if (dias == 1L) "día juntos ♡" else "días juntos ♡",
             )
         }
 
@@ -68,15 +70,20 @@ class TaotaoWidget : HomeWidgetProvider() {
             ?: "Tu pareja"
         val animoId = datos.getString("pareja_animo_id", null)
         val animo = datos.getString("pareja_animo_label", null)
+        val frase = datos.getString("pareja_animo_frase", null)?.takeIf { it.isNotBlank() }
         v.setViewVisibility(R.id.widget_animo, View.VISIBLE)
+        v.setTextViewText(R.id.widget_pareja, "$nombre se siente…")
         if (animoId == null || animo == null) {
-            ponerImagen(v, R.id.widget_animo, null)
-            v.setTextViewText(R.id.widget_pareja, nombre)
-            v.setTextViewText(R.id.widget_animo_texto, "aún no cuenta\ncómo está")
+            ponerImagen(v, R.id.widget_animo, datos.getString("img_gatitos", null))
+            v.setTextViewText(R.id.widget_animo_texto, "¿Cómo estará?")
+            v.setTextViewText(R.id.widget_frase, "“Pregúntale cómo le va hoy” ♡")
         } else {
             ponerImagen(v, R.id.widget_animo, datos.getString("img_animo_$animoId", null))
-            v.setTextViewText(R.id.widget_pareja, "$nombre se siente")
             v.setTextViewText(R.id.widget_animo_texto, animo)
+            v.setTextViewText(
+                R.id.widget_frase,
+                "“${frase ?: "Toca Te extraño y dale un mimo"}” ♡",
+            )
         }
     }
 

@@ -357,6 +357,9 @@ class PescaditosService {
     required String to,
     required String text,
     required Papel papel,
+    String? foto,
+    String? enlace,
+    List<String> stickers = const [],
   }) async {
     const precio = Casita.precioCartaSorpresa;
     final cartaRef = Db.coupleSub(coupleId, 'letters').doc();
@@ -374,6 +377,7 @@ class PescaditosService {
         'cuando': Carta.cuandoSorpresa,
         'text': text,
         'papel': papel.name,
+        ...Carta.adornos(foto: foto, enlace: enlace, stickers: stickers),
         'sorpresa': true,
         'openedAt': null,
         'createdAt': FieldValue.serverTimestamp(),
