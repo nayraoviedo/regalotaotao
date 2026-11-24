@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 
 import 'models/app_user.dart';
 import 'screens/auth/login_screen.dart';
@@ -51,6 +52,9 @@ class _TaotaoAppState extends State<TaotaoApp> {
     return MaterialApp(
       title: 'Taotao',
       debugShowCheckedModeBanner: false,
+      // En la web con mouse o trackpad también se puede arrastrar para
+      // deslizar filas horizontales (categorías de la tienda, chips, etc.).
+      scrollBehavior: const ArrastreConMouse(),
       theme: AppTheme.light,
       // Calendarios, botones de "Atrás" y demás textos del sistema en
       // español (si no, salen en inglés).
@@ -146,6 +150,23 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: CircularProgressIndicator()));
+}
+
+/// Deja deslizar con el mouse y el trackpad, no solo con el dedo: en la web,
+/// Flutter por defecto no deja arrastrar con el mouse y las filas
+/// horizontales (sin rueda de lado) quedaban cortadas.
+class ArrastreConMouse extends MaterialScrollBehavior {
+  const ArrastreConMouse();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
 }
 
 /// Se muestra si Firebase todavía no está configurado.
