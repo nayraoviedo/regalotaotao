@@ -91,6 +91,8 @@ final Map<int, String> _doodles = {
     Icons.lock: 'candado',
     Icons.lock_outline: 'candado',
     Icons.lock_open_outlined: 'candado_abierto',
+    Icons.visibility_outlined: 'ojo',
+    Icons.visibility_off_outlined: 'ojo_cerrado',
     Icons.card_giftcard: 'regalo',
     Icons.send_rounded: 'enviar',
     Icons.send: 'enviar',
