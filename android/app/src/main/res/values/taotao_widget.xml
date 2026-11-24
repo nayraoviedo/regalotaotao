@@ -4,6 +4,11 @@
     <color name="taotao_widget_azul">#FF2B3A75</color>
     <color name="taotao_widget_gris">#FF8A8FA3</color>
     <color name="taotao_widget_rosa">#FFE8798E</color>
+    <color name="taotao_widget_papel">#FFFFFCF7</color>
+    <color name="taotao_widget_lila">#FFC9B8E0</color>
+    <color name="taotao_widget_costura">#66E8798E</color>
+    <color name="taotao_widget_pastilla">#FFF1E6D8</color>
+    <color name="taotao_widget_cafe">#FF6E5A70</color>
     <string name="taotao_widget_descripcion">Días juntos y el ánimo de tu pareja</string>
     <string name="casita_widget_descripcion">La casita de los gatitos, de día y de noche</string>
 </resources>

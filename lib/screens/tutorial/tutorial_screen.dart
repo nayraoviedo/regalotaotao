@@ -105,7 +105,7 @@ const _todas = [
     guia: Guia.ambos,
     titulo: '¡Hola!',
     texto:
-        'Somos sus gatitos y les vamos a mostrar su rinconcito. '
+        'Somos sus gatitos y te vamos a mostrar su rinconcito. '
         'Es cortito, lo prometemos.',
   ),
   PaginaTutorial(
@@ -113,8 +113,9 @@ const _todas = [
     guia: Guia.mio,
     titulo: 'Mimos al instante',
     texto:
-        'En el Inicio ven el ánimo de los dos y su racha. Con Te extraño, '
-        'Beso y Abrazo le mandas un mimo a {pareja} y le llega al momento.',
+        'Aquí ves cómo se sienten los dos y su racha. Cuando pienses en '
+        '{pareja}, toca Te extraño, Beso o Abrazo y le llega tu mimo al '
+        'momento.',
     donde: 'Inicio',
   ),
   PaginaTutorial(
@@ -122,7 +123,7 @@ const _todas = [
     guia: Guia.suyo,
     titulo: '¿Cómo te sientes?',
     texto:
-        'Cuéntanos tu ánimo con un dibujito. Si hay estrés, tristeza o '
+        'Cuéntanos cómo estás con un dibujito. Si hay estrés, tristeza o '
         'ansiedad, te invitamos a respirar con nosotros un ratito.',
     donde: 'Inicio › Mi ánimo',
   ),
@@ -131,8 +132,9 @@ const _todas = [
     guia: Guia.mio,
     titulo: 'Pomodoro en pareja',
     texto:
-        'Uno invita y el otro acepta. Se concentran al mismo tiempo, pueden '
-        'poner música juntos y al terminar les avisamos con un maullido.',
+        'Invita a {pareja} a un pomodoro y, cuando acepte, se concentran '
+        'juntos. Pueden poner música y al terminar te avisamos con un '
+        'maullido.',
     donde: 'Inicio › Pomodoro',
   ),
   PaginaTutorial(
@@ -140,9 +142,9 @@ const _todas = [
     guia: Guia.suyo,
     titulo: 'Pregunta del día',
     texto:
-        'Cada día sale un naipe con una pregunta para los dos. En Nuestros '
-        'planes anotan citas y viajes, y nosotros subimos la escalera '
-        'cuando los cumplen.',
+        'Cada día te espera un naipe con una pregunta para los dos. En '
+        'Nuestros planes anota sus citas y viajes, y nosotros subimos la '
+        'escalera cada vez que cumplen uno.',
     doodles: ['pregunta', 'por_hacer', 'fuego'],
     donde: 'Inicio',
   ),
@@ -151,9 +153,9 @@ const _todas = [
     guia: Guia.mio,
     titulo: 'Notas y cartas',
     texto:
-        'Tienen un tablero de notas para los dos y tus notas privadas, que '
-        'compartes solo si quieres. También pueden escribirse cartas '
-        '"Ábrelo cuando…".',
+        'Deja notitas en el tablero de los dos, o guarda las tuyas en '
+        'privado y compártelas solo si quieres. También puedes escribirle '
+        'a {pareja} cartas "Ábrelo cuando…".',
     doodles: ['sobre_lleno', 'editar', 'candado'],
     donde: 'Notas',
   ),
@@ -162,8 +164,8 @@ const _todas = [
     guia: Guia.suyo,
     titulo: 'Sus días juntos',
     texto:
-        'Aquí contamos los días que llevan juntos y les recordamos el '
-        'aniversario. La fecha se elige en Perfil.',
+        'Aquí contamos cada día que llevan juntos y te recordamos su '
+        'aniversario. Elige su fecha especial en Perfil.',
     doodles: ['corazon_lleno', 'calendario', 'celebrar'],
     donde: 'Nosotros',
   ),
@@ -172,7 +174,7 @@ const _todas = [
     guia: Guia.mio,
     titulo: 'Nuestra casita',
     texto:
-        'Todo lo que hacen juntos les da pescaditos. Con ellos nos compran '
+        'Todo lo que hacen juntos les da pescaditos. Con ellos nos compras '
         'muebles, ropita y stickers en la tienda.',
     donde: 'Inicio › Casita',
   ),
@@ -181,8 +183,9 @@ const _todas = [
     guia: Guia.suyo,
     titulo: 'En tu pantalla',
     texto:
-        'Mantén presionada la pantalla de inicio del celular, toca Widgets '
-        'y busca 星月 para vernos con sus días juntos y el ánimo.',
+        'Mantén presionada la pantalla de inicio de tu celular, toca '
+        'Widgets y busca 星月. Así nos ves con sus días juntos y cómo se '
+        'siente {pareja}.',
     doodles: ['inicio', 'corazon_lleno'],
     donde: 'Solo en Android',
   ),
@@ -191,8 +194,8 @@ const _todas = [
     guia: Guia.ambos,
     titulo: '¡Eso es todo!',
     texto:
-        'Si quieren volver a vernos explicar, entren a Perfil y toquen '
-        '"Ver el tutorial".',
+        'Si quieres que te lo expliquemos otra vez, entra a Perfil y toca '
+        '"Ver el tutorial". ¡Disfruten mucho!',
   ),
 ];
 
