@@ -148,7 +148,7 @@ class ElegirGatito extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             const Text(
-              'Sale en Días juntos y en Por hacer juntos.',
+              'Sale en Días juntos y en Nuestros planes.',
               style: TextStyle(color: AppTheme.gris, fontSize: 13),
             ),
             const SizedBox(height: 12),
