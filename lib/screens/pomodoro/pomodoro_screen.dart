@@ -10,6 +10,7 @@ import '../../models/pomodoro_task.dart';
 import '../../models/reward.dart';
 import '../../services/focus/focus_lock.dart';
 import '../../services/maullido_service.dart';
+import '../musica/musica_en_vivo.dart';
 import '../musica/musica_pomodoro.dart';
 import '../../services/pescaditos_service.dart';
 import '../../services/pomodoro_service.dart';
@@ -216,7 +217,9 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     if (sessionId != null && !_counted.add(sessionId)) return;
     _mostrarUnRato(MomentoPomodoro.terminado);
     // Que se escuche el maullido (y descansen los oídos).
-    if (_musica.value) pausarMusicaAlTerminar(_coupleId, widget.me.uid);
+    if (_musica.value || MusicaEnVivo.instance.activa) {
+      pausarMusicaAlTerminar(_coupleId, widget.me.uid);
+    }
     final task = _task;
     final id = await _rewards.logAchievement(
       _coupleId,

@@ -1,20 +1,23 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../models/sala_musica.dart';
-import '../../services/musica_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import 'agregar_cancion.dart';
-import 'motor_youtube.dart';
+import 'musica_en_vivo.dart';
 import '../../widgets/texto_doodle.dart';
 
-final _servicio = MusicaService.instance;
+final _vivo = MusicaEnVivo.instance;
 
 /// El reproductor compartido: los dos escuchan la misma canción, en el
 /// mismo segundo. Cada play, pausa o salto se guarda en Firestore y el
 /// reproductor de cada uno se acomoda solo.
+///
+/// La música vive en [MusicaEnVivo] (para toda la app): esta tarjeta solo
+/// la enciende y muestra el video en su lugar. Al salir de la pantalla la
+/// música sigue en el reproductor chiquito.
 class ReproductorJuntos extends StatefulWidget {
   const ReproductorJuntos({
     super.key,
@@ -33,177 +36,80 @@ class ReproductorJuntos extends StatefulWidget {
   State<ReproductorJuntos> createState() => _ReproductorJuntosState();
 }
 
-class _ReproductorJuntosState extends State<ReproductorJuntos>
-    with AutomaticKeepAliveClientMixin {
-  late final MotorYoutube _motor = MotorYoutube.fabrica();
-  StreamSubscription<SalaMusica>? _salaSub;
-  StreamSubscription<String>? _avisosSub;
-  Timer? _reloj;
-  Timer? _latido;
-
-  SalaMusica _sala = SalaMusica.vacia;
-  bool _cargo = false;
-
-  /// Canción cargada en el reproductor.
-  String? _cargado;
-
-  /// Último cambio de la sala que ya se aplicó (ver [_aplicar]).
-  String? _firma;
-  DateTime? _horaAplicada;
-
-  /// En la web, el navegador no deja sonar sin un toque: se pide uno.
-  int _intentos = 0;
-  bool _pideToque = false;
-
-  /// Canción que YouTube no deja escuchar fuera de su app.
-  String? _bloqueada;
-
-  int _ticks = 0;
-
-  @override
-  bool get wantKeepAlive => true;
+class _ReproductorJuntosState extends State<ReproductorJuntos> {
+  final _area = GlobalKey();
+  ScrollableState? _scroll;
+  bool _esActual = true;
+  bool _video = false;
 
   @override
   void initState() {
     super.initState();
-    _salaSub = _servicio
-        .watch(widget.coupleId)
-        .listen(
-          (s) {
-            _sala = s;
-            _cargo = true;
-            _aplicar();
-            if (mounted) setState(() {});
-          },
-          onError: (_) {
-            if (mounted) setState(() => _cargo = true);
-          },
-        );
-    _avisosSub = _motor.avisos.listen(_aviso);
-    _reloj = Timer.periodic(const Duration(seconds: 1), (_) => _cadaSegundo());
-    _marcarOyente(true);
-    _latido = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) => _marcarOyente(true),
+    _vivo.encender(
+      coupleId: widget.coupleId,
+      uid: widget.uid,
+      partnerUid: widget.partnerUid,
+      partnerName: widget.partnerName,
     );
+    _vivo.addListener(_cambio);
+    SchedulerBinding.instance.addPostFrameCallback(_medir);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scroll = Scrollable.maybeOf(context);
+    final actual = ModalRoute.of(context)?.isCurrent ?? true;
+    if (actual != _esActual) {
+      _esActual = actual;
+      // Si algo se abre encima (una hoja, un aviso), el video se esconde
+      // para no taparlo.
+      if (!actual) _vivo.ponerVentana(this, null);
+    }
   }
 
   @override
   void dispose() {
-    _salaSub?.cancel();
-    _avisosSub?.cancel();
-    _reloj?.cancel();
-    _latido?.cancel();
-    _marcarOyente(false);
-    _motor.dispose();
+    _vivo.removeListener(_cambio);
+    _vivo.ponerVentana(this, null);
+    // Sin canción puesta, al salir se deja de "escuchar".
+    final vivo = _vivo;
+    scheduleMicrotask(vivo.apagarSiNoHayNada);
     super.dispose();
   }
 
-  void _marcarOyente(bool presente) {
-    _servicio
-        .marcarOyente(widget.coupleId, widget.uid, presente)
-        .catchError((_) {});
+  void _cambio() {
+    if (mounted) setState(() {});
   }
 
-  // ---- Seguir a la sala ----
-
-  void _aplicar() {
-    final s = _sala;
-    final a = s.actual;
-    if (a == null) {
-      if (_cargado != null) _motor.pausar();
-      return;
-    }
-    // La hora del servidor llega un momento después de escribir: ese
-    // segundo aviso no es un cambio nuevo.
-    final firma = '${a.videoId}|${s.sonando}|${s.posicion}|${s.por}';
-    final hora = s.cambiadoEn;
-    final nuevo =
-        firma != _firma ||
-        (hora != null && _horaAplicada != null && hora != _horaAplicada);
-    _firma = firma;
-    _horaAplicada = hora;
-    if (!nuevo) return;
-
-    final pos = s.posicionEn(DateTime.now());
-    _intentos = 0;
-    if (_cargado != a.videoId) {
-      _cargado = a.videoId;
-      _bloqueada = null;
-      _motor.cargar(a.videoId, pos, tocar: s.sonando);
-      return;
-    }
-    if (s.sonando) {
-      _motor.ir(pos);
-      _motor.tocar();
-    } else {
-      _motor.pausar();
-      _motor.ir(pos);
-    }
-  }
-
-  /// Cada segundo se mueve el reloj; cada tres, se revisa que el
-  /// reproductor vaya al mismo tiempo que la pareja.
-  Future<void> _cadaSegundo() async {
+  /// Después de cada cuadro (sin pedir cuadros de más) se mira dónde quedó
+  /// el video, para que el reproductor lo siga al mover la lista o al
+  /// abrir y cerrar la pantalla.
+  void _medir(Duration _) {
     if (!mounted) return;
-    setState(() {});
-    if (++_ticks % 3 != 0) return;
-    final a = _sala.actual;
-    if (a == null || _cargado != a.videoId || _bloqueada == a.videoId) return;
-    final estado = await _motor.estado();
-    if (estado == -2 || !mounted) return;
-    if (_sala.sonando) {
-      if (estado == EstadoYoutube.sonando) {
-        _intentos = 0;
-        if (_pideToque) setState(() => _pideToque = false);
-        final t = await _motor.tiempo();
-        final debe = _sala.posicionEn(DateTime.now());
-        if (t >= 0 && (t - debe).abs() > 2.5) _motor.ir(debe);
-      } else if (estado != EstadoYoutube.cargando &&
-          estado != EstadoYoutube.terminado) {
-        _motor.ir(_sala.posicionEn(DateTime.now()));
-        _motor.tocar();
-        if (++_intentos >= 2 && !_pideToque) {
-          setState(() => _pideToque = true);
-        }
-      }
-    } else if (estado == EstadoYoutube.sonando) {
-      _motor.pausar();
-    }
+    SchedulerBinding.instance.addPostFrameCallback(_medir);
+    _vivo.ponerVentana(this, _dondeEsta());
   }
 
-  void _aviso(String m) {
-    final a = _sala.actual;
-    if (m == 'estado:${EstadoYoutube.terminado}') {
-      if (a != null && a.videoId == _cargado) {
-        _servicio
-            .siguiente(widget.coupleId, widget.uid, terminada: a.videoId)
-            .catchError((_) {});
-      }
-    } else if (m == 'estado:${EstadoYoutube.sonando}') {
-      if (_pideToque && mounted) setState(() => _pideToque = false);
-    } else if (m.startsWith('titulo:')) {
-      final resto = m.substring(7);
-      final i = resto.indexOf('|');
-      if (i <= 0) return;
-      final id = resto.substring(0, i);
-      if (a != null && a.videoId == id && a.titulo.isEmpty) {
-        _servicio
-            .completarTitulo(widget.coupleId, id, resto.substring(i + 1))
-            .catchError((_) {});
-      }
-    } else if (m.startsWith('error:')) {
-      // 101 y 150: quien subió el video no deja que suene fuera de YouTube.
-      if (a == null || !mounted) return;
-      setState(() => _bloqueada = a.videoId);
+  VentanaVideo? _dondeEsta() {
+    if (!_esActual) return null;
+    final rb = _area.currentContext?.findRenderObject();
+    if (rb is! RenderBox || !rb.attached || !rb.hasSize) return null;
+    final caja = rb.localToGlobal(Offset.zero) & rb.size;
+    var recorte = caja;
+    final vp = _scroll?.context.findRenderObject();
+    if (vp is RenderBox && vp.attached && vp.hasSize) {
+      recorte = recorte.intersect(vp.localToGlobal(Offset.zero) & vp.size);
     }
-  }
-
-  // ---- Botones (lo que se toca se comparte) ----
-
-  Future<double> _ahora() async {
-    final t = await _motor.tiempo();
-    return t >= 0 ? t : _sala.posicionEn(DateTime.now());
+    final vista = View.maybeOf(context);
+    if (vista != null) {
+      final pantalla =
+          Offset.zero & (vista.physicalSize / vista.devicePixelRatio);
+      recorte = recorte.intersect(pantalla);
+    }
+    // Casi fuera de la pantalla: cuenta como que no se ve.
+    if (recorte.width < caja.width * 0.5 || recorte.height < 24) return null;
+    return VentanaVideo(caja: caja, recorte: recorte, video: _video);
   }
 
   void _error() {
@@ -213,57 +119,22 @@ class _ReproductorJuntosState extends State<ReproductorJuntos>
     );
   }
 
-  Future<void> _playPausa() async {
-    if (_sala.sonando) {
-      _motor.pausar();
-      final t = await _ahora();
-      await _servicio
-          .pausar(widget.coupleId, widget.uid, t)
-          .catchError((_) => _error());
-    } else {
-      // Se toca aquí mismo (dentro del toque) para que el navegador deje
-      // sonar; la sala avisa a la pareja.
-      _motor.tocar();
-      setState(() => _pideToque = false);
-      final t = await _ahora();
-      await _servicio
-          .tocar(widget.coupleId, widget.uid, t)
-          .catchError((_) => _error());
-    }
-  }
-
-  Future<void> _saltar(double segundos) async {
-    final t = (await _ahora()) + segundos;
-    await _servicio
-        .ir(widget.coupleId, widget.uid, t < 0 ? 0 : t, sonando: _sala.sonando)
-        .catchError((_) => _error());
-  }
-
-  Future<void> _siguiente() => _servicio
-      .siguiente(widget.coupleId, widget.uid)
-      .catchError((_) => _error());
-
   Future<void> _agregar() => agregarCancion(
     context,
     coupleId: widget.coupleId,
     uid: widget.uid,
-    hayCancion: _sala.actual != null,
+    hayCancion: _vivo.sala.actual != null,
   );
-
-  void _unirme() {
-    _motor.ir(_sala.posicionEn(DateTime.now()));
-    _motor.tocar();
-    setState(() => _pideToque = false);
-  }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    final s = _sala;
+    final s = _vivo.sala;
     final a = s.actual;
     final ahora = DateTime.now();
     final pareja = s.escuchando(widget.partnerUid, ahora);
     final azul = AppTheme.azul;
+    final bloqueada = a != null && _vivo.bloqueada == a.videoId;
+    _video = a != null && !bloqueada && !_vivo.pideToque;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -277,32 +148,41 @@ class _ReproductorJuntosState extends State<ReproductorJuntos>
             ClipRRect(
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
+                key: _area,
                 aspectRatio: 16 / 9,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // El reproductor siempre está, para que esté listo.
-                    IgnorePointer(child: _motor.vista),
+                    // Debajo del video (que pone MusicaFlotante encima): la
+                    // portada, por si el video se esconde un momento.
+                    ColoredBox(color: azul),
+                    if (a != null)
+                      Image.network(
+                        a.miniatura,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
                     if (a == null)
                       _Tapa(
-                        texto: _cargo
+                        texto: _vivo.cargo
                             ? 'Elijan una canción para escucharla juntos'
                             : 'Cargando…',
-                        onTap: _cargo ? _agregar : null,
+                        onTap: _vivo.cargo ? _agregar : null,
                       )
-                    else if (_bloqueada == a.videoId)
+                    else if (bloqueada)
                       _Tapa(
                         texto:
                             'YouTube no deja escuchar esta canción fuera de '
                             'su app. Prueben con otra versión (por ejemplo, '
                             'el "audio" o la "letra").',
-                        onTap: _siguiente,
+                        onTap: () =>
+                            _vivo.siguiente().catchError((_) => _error()),
                         boton: 'Siguiente',
                       )
-                    else if (_pideToque)
+                    else if (_vivo.pideToque)
                       _Tapa(
                         texto: 'Toca para escuchar con ${widget.partnerName}',
-                        onTap: _unirme,
+                        onTap: _vivo.unirme,
                         boton: 'Escuchar',
                       ),
                   ],
@@ -334,7 +214,9 @@ class _ReproductorJuntosState extends State<ReproductorJuntos>
               children: [
                 IconButton(
                   tooltip: 'Atrás 10 segundos',
-                  onPressed: a == null ? null : () => _saltar(-10),
+                  onPressed: a == null
+                      ? null
+                      : () => _vivo.saltar(-10).catchError((_) => _error()),
                   icon: const Icon(Icons.replay_10_rounded),
                   color: azul,
                 ),
@@ -342,7 +224,9 @@ class _ReproductorJuntosState extends State<ReproductorJuntos>
                   tooltip: s.sonando
                       ? 'Pausar para los dos'
                       : 'Play para los dos',
-                  onPressed: a == null ? null : _playPausa,
+                  onPressed: a == null
+                      ? null
+                      : () => _vivo.playPausa().catchError((_) => _error()),
                   iconSize: 34,
                   style: IconButton.styleFrom(backgroundColor: azul),
                   icon: Icon(
@@ -352,13 +236,17 @@ class _ReproductorJuntosState extends State<ReproductorJuntos>
                 ),
                 IconButton(
                   tooltip: 'Adelante 10 segundos',
-                  onPressed: a == null ? null : () => _saltar(10),
+                  onPressed: a == null
+                      ? null
+                      : () => _vivo.saltar(10).catchError((_) => _error()),
                   icon: const Icon(Icons.forward_10_rounded),
                   color: azul,
                 ),
                 IconButton(
                   tooltip: 'Siguiente de la cola',
-                  onPressed: a == null ? null : _siguiente,
+                  onPressed: a == null
+                      ? null
+                      : () => _vivo.siguiente().catchError((_) => _error()),
                   icon: const Icon(Icons.skip_next_rounded),
                   color: azul,
                 ),

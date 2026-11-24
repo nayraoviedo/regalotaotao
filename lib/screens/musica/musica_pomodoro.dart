@@ -83,7 +83,8 @@ class _MusicaPomodoroState extends State<MusicaPomodoro> {
               children: [
                 const Expanded(
                   child: Text(
-                    'Se pausa sola cuando termina el pomodoro.',
+                    'Se pausa sola cuando termina el pomodoro. Si sales, '
+                    'sigue sonando abajo, en chiquito.',
                     style: TextStyle(color: AppTheme.gris, fontSize: 12.5),
                   ),
                 ),
