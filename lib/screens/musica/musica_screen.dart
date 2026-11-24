@@ -147,7 +147,8 @@ class _AquiEnTaotao extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           'Lo que toques (play, pausa, adelantar) le pasa también a tu '
-          'pareja. Dejen Taotao abierto mientras escuchan.',
+          'pareja. Puedes salir de aquí: la música sigue sonando en el '
+          'reproductor chiquito de abajo.',
           style: TextStyle(color: AppTheme.gris, fontSize: 12.5, height: 1.3),
         ),
         const SizedBox(height: 22),
