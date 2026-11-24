@@ -9,6 +9,10 @@
 //   - nota de los dos (couples/{c}/notes): a los dos,
 //   - nota privada (users/{uid}/privateNotes): a quien eligió su dueño.
 // Una nota privada que se compartió no avisa: ya avisa su copia compartida.
+//
+// También avisa las cartas guardadas para una fiesta (couples/{c}/letters,
+// con `fiesta` y `avisarEn`): ese día, a quien la recibe, que ya la puede
+// abrir. Si ya la abrió, no se avisa.
 
 // Si el Worker estuvo apagado, un recordatorio de hace más de un día ya no
 // se manda (solo se limpia).
@@ -24,19 +28,23 @@ const POR_VUELTA = 40;
  */
 export async function revisarRecordatorios(deps, ahora = Date.now()) {
   const hasta = new Date(ahora).toISOString();
-  const [compartidas, privadas] = await Promise.all([
+  const [compartidas, privadas, cartas] = await Promise.all([
     deps.buscar("notes", hasta, POR_VUELTA),
     deps.buscar("privateNotes", hasta, POR_VUELTA),
+    deps.buscar("letters", hasta, POR_VUELTA),
   ]);
   const resumen = { enviados: 0, revisados: 0 };
   const todas = [
     ...compartidas.map((n) => ({ ...n, privada: false })),
     ...privadas.map((n) => ({ ...n, privada: true })),
+    ...cartas.map((n) => ({ ...n, carta: true })),
   ];
   await Promise.all(
     todas.map(async (nota) => {
       try {
-        resumen.enviados += await avisar(deps, nota, ahora);
+        resumen.enviados += await (nota.carta
+          ? avisarCarta(deps, nota, ahora)
+          : avisar(deps, nota, ahora));
         resumen.revisados++;
       } catch (e) {
         console.error("Recordatorio", nota.path, e.stack || e.message);
@@ -117,4 +125,32 @@ export function deQueTrata(d) {
   );
   const limpio = (texto || "tu nota").trim().replace(/\s+/g, " ");
   return limpio.length > 90 ? `${limpio.slice(0, 89)}…` : limpio;
+}
+
+// Las fiestas de las cartas: emoji y nombre para el aviso.
+export const FIESTAS = {
+  anioNuevo: ["🎆", "Año Nuevo"],
+  sanValentin: ["💘", "San Valentín"],
+  anioNuevoChino: ["🧧", "Año Nuevo chino"],
+  qixi: ["🌌", "Qixi 七夕"],
+  navidad: ["🎄", "Navidad"],
+};
+
+async function avisarCarta(deps, carta, ahora) {
+  const partes = carta.path.split("/");
+  if (partes.length !== 4 || partes[0] !== "couples" || partes[2] !== "letters") return 0;
+  const d = carta.data;
+  const cuando = Date.parse(d.avisarEn);
+  if (!(await deps.limpiar(carta.path, carta.updateTime))) return 0;
+  if (!(ahora - cuando <= MUY_VIEJO_MS)) return 0;
+  const fiesta = FIESTAS[d.fiesta];
+  if (!fiesta || d.openedAt != null) return 0;
+  const members = (await deps.leer(`couples/${partes[1]}`))?.data.members || [];
+  if (!members.includes(d.from) || !members.includes(d.to) || d.from === d.to) return 0;
+  const nombre = (await deps.leer(`users/${d.from}`))?.data.name || "Tu pareja";
+  const [emoji, que] = fiesta;
+  return deps.enviar(d.to, {
+    title: `${emoji} ¡Feliz ${que}!`,
+    body: `Ya puedes abrir la carta que te guardó ${nombre} 💌`,
+  });
 }

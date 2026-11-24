@@ -22,6 +22,7 @@ import '../bucket_list/bucket_list_screen.dart';
 import '../daily_question/daily_question_screen.dart';
 import '../mood/mood_screen.dart';
 import '../notes/cartas/avioncito.dart';
+import '../notes/cartas/carta_fiesta.dart';
 import '../notes/cartas/carta_pastel.dart';
 import '../notes/cartas/carta_screen.dart';
 import '../../services/cartas_service.dart';
@@ -422,20 +423,47 @@ class _HomeBodyState extends State<_HomeBody> {
               partnerUid: partnerUid,
               partnerName: partnerName,
             ),
-            celebracion: CelebracionesHoy(
-              uid: me.uid,
-              partnerName: partnerName,
-              cumplePareja: partner?.cumple,
-              inicioPareja: couple.startDate,
-              cartas: CartasService.instance.watch(couple.id),
-              onMandar: (c) => _open(
-                EscribirCartaScreen(
+            celebracion: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CelebracionesHoy(
                   uid: me.uid,
-                  partnerUid: partnerUid,
-                  coupleId: couple.id,
-                  especial: c,
+                  partnerName: partnerName,
+                  cumplePareja: partner?.cumple,
+                  inicioPareja: couple.startDate,
+                  cartas: CartasService.instance.watch(couple.id),
+                  onMandar: (c) => _open(
+                    EscribirCartaScreen(
+                      uid: me.uid,
+                      partnerUid: partnerUid,
+                      coupleId: couple.id,
+                      especial: c,
+                    ),
+                  ),
                 ),
-              ),
+                // Navidad, San Valentín, Año Nuevo, Año Nuevo chino y Qixi.
+                FiestaCercana(
+                  uid: me.uid,
+                  partnerName: partnerName,
+                  cartas: CartasService.instance.watch(couple.id),
+                  onEscribir: (f) => _open(
+                    EscribirCartaScreen(
+                      uid: me.uid,
+                      partnerUid: partnerUid,
+                      coupleId: couple.id,
+                      fiesta: f,
+                    ),
+                  ),
+                  onAbrir: (carta) => _open(
+                    CartaScreen(
+                      carta: carta,
+                      coupleId: couple.id,
+                      uid: me.uid,
+                      animarApertura: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
             invitacionPomodoro: InvitacionPomodoroInicio(
               coupleId: couple.id,

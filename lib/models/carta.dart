@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'carta_fiesta.dart';
 import 'celebracion.dart';
 
 /// Una carta "Ábrelo cuando…" que una persona le escribe a su pareja.
@@ -25,6 +26,9 @@ class Carta {
     this.foto,
     this.enlace,
     this.stickers = const [],
+    this.fiesta,
+    this.fiestaDia,
+    this.avisarEn,
   });
 
   final String id;
@@ -66,6 +70,24 @@ class Carta {
 
   static const maxStickers = 5;
 
+  /// Carta guardada para una fiesta (Navidad, San Valentín…): queda
+  /// cerrada hasta [fiestaDia] y ese día llega un aviso.
+  final CartaFiesta? fiesta;
+
+  /// El día de la fiesta. Se compara con la fecha del teléfono de quien
+  /// la recibe, así se abre en su día aunque vivan en otro país.
+  final DateTime? fiestaDia;
+
+  /// Cuándo le avisa el Worker que ya la puede abrir (null si ya avisó).
+  final DateTime? avisarEn;
+
+  /// ¿Es una carta de fiesta que todavía no se puede abrir? Quien la
+  /// escribió siempre la puede leer.
+  bool cerradaPara(String uid, DateTime ahora) =>
+      to == uid &&
+      fiestaDia != null &&
+      CartaFiesta.soloDia(ahora).isBefore(fiestaDia!);
+
   /// ¿Trae algo (pastel, ramo o regalitos)?
   bool get conRegalos => pastel != null || ramo != null || regalitos.isNotEmpty;
 
@@ -77,6 +99,7 @@ class Carta {
 
   String get etiqueta => switch (especial) {
     final c? => c.etiqueta,
+    null when fiesta != null => fiesta!.etiqueta,
     null when sorpresa => 'Carta sorpresa ✨',
     null => 'Ábrelo cuando $cuando',
   };
@@ -106,6 +129,9 @@ class Carta {
         for (final s in l.take(maxStickers))
           if (s is String) s,
     ],
+    fiesta: CartaFiesta.deId(d['fiesta'] as String?),
+    fiestaDia: CartaFiesta.leerDia(d['fiestaDia'] as String?),
+    avisarEn: (d['avisarEn'] as Timestamp?)?.toDate(),
   );
 
   /// Campos de foto, enlace y stickers para guardar (solo los que hay).

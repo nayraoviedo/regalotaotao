@@ -4,9 +4,11 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../models/carta.dart';
+import '../../../models/carta_fiesta.dart';
 import '../../../models/celebracion.dart';
 import '../../../services/cartas_service.dart';
 import '../../../services/pescaditos_service.dart';
+import 'carta_fiesta.dart';
 import 'carta_pastel.dart';
 import 'carta_sorpresa.dart';
 import '../../../theme.dart';
@@ -31,8 +33,11 @@ class LecturaEnPapel extends StatelessWidget {
     this.foto,
     this.enlace,
     this.stickers = const [],
+    this.fiesta,
   });
 
+  /// Carta de fiesta: su dibujo va en la esquina de la hoja.
+  final CartaFiesta? fiesta;
   final String? foto;
   final String? enlace;
   final List<String> stickers;
@@ -53,7 +58,8 @@ class LecturaEnPapel extends StatelessWidget {
           child: HojaDePapel(
             papel: papel,
             semilla: semilla,
-            encima: stickersEnLaHoja(stickers),
+            encima: [...fiestaEnLaHoja(fiesta), ...stickersEnLaHoja(stickers)],
+            conDibujos: fiesta == null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -230,6 +236,7 @@ class _CartaScreenState extends State<CartaScreen>
                       foto: carta.foto,
                       enlace: carta.enlace,
                       stickers: carta.stickers,
+                      fiesta: carta.fiesta,
                     ),
                   ),
                 ),
@@ -393,7 +400,15 @@ class EscribirCartaScreen extends StatefulWidget {
     this.onEnviarSorpresa,
     this.especial,
     this.onEnviarEspecial,
+    this.fiesta,
+    this.ahora,
   });
+
+  /// Empieza como carta para esta fiesta (desde la tarjeta del inicio).
+  final CartaFiesta? fiesta;
+
+  /// Para pruebas y capturas: la fecha de hoy.
+  final DateTime? ahora;
 
   final String uid;
   final String partnerUid;
@@ -435,6 +450,8 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   List<String> _stickers = [];
   bool _cargandoFoto = false;
   Celebracion? get _especial => widget.especial;
+  late CartaFiesta? _fiesta = widget.fiesta;
+  DateTime get _hoy => widget.ahora ?? DateTime.now();
   int? _pescaditos;
   StreamSubscription<EstadoCasita>? _casita;
 
@@ -460,6 +477,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   }
 
   String get _cuando =>
+      _fiesta?.cuando ??
       _motivo?.cuando ??
       _otro.text.trim().replaceFirst(
         RegExp(r'^cuando\s+', caseSensitive: false),
@@ -570,13 +588,15 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
           widget.coupleId,
           from: widget.uid,
           to: widget.partnerUid,
-          motivo: _motivo?.id ?? 'otro',
+          motivo: _fiesta?.id ?? _motivo?.id ?? 'otro',
           cuando: cuando,
           text: texto,
           papel: _papel,
           foto: _foto,
           enlace: _enlace,
           stickers: _stickers,
+          fiesta: _fiesta,
+          fiestaDia: _fiesta?.proxima(_hoy),
         );
       }
       if (!mounted) return;
@@ -619,18 +639,24 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
           ChoiceChip(
             avatar: Doodle(CartasStyle.iconoDe(m.id), size: 18),
             label: Text(m.cuando),
-            selected: _motivo == m,
-            onSelected: (_) => setState(() => _motivo = m),
+            selected: _fiesta == null && _motivo == m,
+            onSelected: (_) => setState(() {
+              _motivo = m;
+              _fiesta = null;
+            }),
           ),
         ChoiceChip(
           avatar: const Doodle(Icons.edit, size: 18),
           label: const Text('otro…'),
-          selected: _motivo == null,
-          onSelected: (_) => setState(() => _motivo = null),
+          selected: _fiesta == null && _motivo == null,
+          onSelected: (_) => setState(() {
+            _motivo = null;
+            _fiesta = null;
+          }),
         ),
       ],
     ),
-    if (_motivo == null) ...[
+    if (_motivo == null && _fiesta == null) ...[
       const SizedBox(height: 12),
       TextField(
         controller: _otro,
@@ -643,14 +669,47 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
         onChanged: (_) => setState(() {}),
       ),
     ],
+    const SizedBox(height: 18),
+    const Text(
+      '…o guárdala para una fiesta',
+      style: TextStyle(
+        fontFamily: AppTheme.manuscrita,
+        fontSize: 26,
+        color: CartasStyle.azul,
+      ),
+    ),
+    const SizedBox(height: 8),
+    ElegirFiesta(
+      elegida: _fiesta,
+      hoy: _hoy,
+      onElegir: (f) => setState(() => _fiesta = _fiesta == f ? null : f),
+    ),
+    if (_fiesta case final f?)
+      InfoDeFiesta(fiesta: f, hoy: _hoy, onIdea: _ponerIdea),
   ];
+
+  /// Escribe la frase al principio de la carta (o al final si ya hay algo).
+  void _ponerIdea(String idea) {
+    final t = _texto.text.trimRight();
+    _texto.text = t.isEmpty ? '$idea ' : '$t\n$idea ';
+    _texto.selection = TextSelection.collapsed(offset: _texto.text.length);
+    setState(() {});
+  }
+
+  /// Faltan días para la fiesta elegida (0 si es hoy).
+  int get _faltanFiesta => _fiesta?.faltan(_hoy) ?? 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _especial?.titulo ?? (_sorpresa ? 'Carta sorpresa' : 'Nueva carta'),
+          _especial?.titulo ??
+              (_sorpresa
+                  ? 'Carta sorpresa'
+                  : _fiesta != null
+                  ? 'Carta de ${_fiesta!.nombre}'
+                  : 'Nueva carta'),
         ),
       ),
       body: ListView(
@@ -753,10 +812,14 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
             papel: _papel,
             semilla: 21,
             // Tocar un sticker pegado lo despega.
-            encima: stickersEnLaHoja(
-              _stickers,
-              onTocar: (s) => setState(() => _stickers.remove(s)),
-            ),
+            conDibujos: _fiesta == null || _sorpresa,
+            encima: [
+              if (!_sorpresa) ...fiestaEnLaHoja(_fiesta),
+              ...stickersEnLaHoja(
+                _stickers,
+                onTocar: (s) => setState(() => _stickers.remove(s)),
+              ),
+            ],
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -769,6 +832,8 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                           ? _especial!.etiqueta
                           : _sorpresa
                           ? 'Carta sorpresa ✨'
+                          : _fiesta != null
+                          ? _fiesta!.etiqueta
                           : _cuando.isEmpty
                           ? 'Ábrelo cuando…'
                           : 'Ábrelo cuando $_cuando',
@@ -844,6 +909,8 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
                       : 'Mandar regalos y carta')
                 : _sorpresa
                 ? 'Mandar con los gatitos'
+                : _fiesta != null && _faltanFiesta > 0
+                ? 'Guardar para ${_fiesta!.nombre}'
                 : 'Enviar en avioncito',
           ),
         ),

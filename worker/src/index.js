@@ -23,7 +23,7 @@
 // La clave de la cuenta de servicio vive como secreto del Worker
 // (FIREBASE_SERVICE_ACCOUNT), nunca en el repositorio.
 
-import { revisarRecordatorios } from "./recordatorios.js";
+import { revisarRecordatorios, FIESTAS } from "./recordatorios.js";
 
 const JWKS_URL =
   "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
@@ -461,6 +461,8 @@ const KINDS = {
             title: d.especial === "cumple" ? "🎂 ¡Feliz cumpleaños!" : "💞 ¡Feliz aniversario!",
             body: `${name} te mandó ${regalosEspeciales(d)} de ${d.especial === "cumple" ? "cumpleaños" : "aniversario"}`,
           }
+        : FIESTAS[d.fiesta]
+        ? mensajeDeFiesta(name, d)
         : d.sorpresa === true
         ? {
             title: "✨ ¡Carta sorpresa!",
@@ -472,6 +474,21 @@ const KINDS = {
           },
   },
 };
+
+// Carta para una fiesta: si se guardó para más adelante, se avisa que
+// llegó y que se abre ese día; si es para hoy, ya se puede abrir.
+export function mensajeDeFiesta(name, d) {
+  const [emoji, que] = FIESTAS[d.fiesta];
+  return d.avisarEn
+    ? {
+        title: `${emoji} Una carta para ${que}`,
+        body: `${name} te guardó una carta para ${que}. Se abre ese día 💌`,
+      }
+    : {
+        title: `${emoji} ¡Feliz ${que}!`,
+        body: `${name} te mandó una carta de ${que} 💌`,
+      };
+}
 
 // "un pastel, un ramo de flores y una carta", para el aviso.
 function regalosEspeciales(d) {

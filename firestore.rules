@@ -172,16 +172,39 @@ service cloud.firestore {
                   && request.resource.data.enlace.matches('https?://.+')))
           && request.resource.data.get('stickers', []) is list
           && request.resource.data.get('stickers', []).size() <= 5
+          // Carta guardada para una fiesta: se abre ese día.
+          && request.resource.data.get('fiesta', null)
+               in [null, 'anioNuevo', 'sanValentin', 'anioNuevoChino', 'qixi', 'navidad']
+          && (request.resource.data.get('fiesta', null) == null
+              ? (request.resource.data.get('abrirEl', null) == null
+                  && request.resource.data.get('avisarEn', null) == null)
+              : (request.resource.data.fiestaDia is string
+                  && request.resource.data.fiestaDia.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+                  && request.resource.data.abrirEl is timestamp
+                  && request.resource.data.abrirEl < request.time + duration.value(400, 'd')
+                  && (request.resource.data.get('avisarEn', null) == null
+                      || request.resource.data.avisarEn is timestamp)))
           // Una carta sorpresa se paga con pescaditos en el mismo momento.
           && (request.resource.data.get('sorpresa', false) == false
               || (request.resource.data.sorpresa == true
                   && existsAfter(/databases/$(database)/documents/couples/$(coupleId)/casitaMovs/$('carta_' + letterId))));
+        // Quien la recibe la marca abierta (una carta de fiesta, solo desde
+        // su día: se dan 26 h de margen por si viven en otro huso horario),
+        // o pone el aviso de la fiesta a la hora de su teléfono.
         allow update: if isMember(coupleId)
           && me() == resource.data.to
           && resource.data.openedAt == null
-          && request.resource.data.openedAt is timestamp
-          && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['openedAt']);
+          && ((request.resource.data.openedAt is timestamp
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['openedAt'])
+              && (resource.data.get('abrirEl', null) == null
+                  || request.time > resource.data.abrirEl - duration.value(26, 'h')))
+            || (resource.data.get('avisarEn', null) != null
+              && request.resource.data.avisarEn is timestamp
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['avisarEn'])
+              && request.resource.data.avisarEn > resource.data.abrirEl - duration.value(26, 'h')
+              && request.resource.data.avisarEn < resource.data.abrirEl + duration.value(36, 'h')));
         allow delete: if isMember(coupleId) && me() == resource.data.from;
       }
 
