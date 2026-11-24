@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<!--
+  Página propia para los enlaces de los correos de Firebase Auth
+  (cambiar la contraseña, confirmar o recuperar el correo).
+
+  Para que los correos traigan este enlace en vez del de Firebase:
+  consola de Firebase > Authentication > Plantillas > (lápiz) >
+  "Personalizar URL de acción" > https://taotao-bd5ee.web.app/cuenta.html
+
+  Firebase le agrega ?mode=...&oobCode=...&apiKey=...&lang=... y con eso
+  esta página habla directo con Firebase Auth (sin servidor propio, gratis).
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>星月 · tu cuenta</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    @font-face {
+      font-family: 'Manuscrita';
+      src: url('assets/assets/fonts/DancingScript-Bold.ttf') format('truetype');
+      font-display: swap;
+    }
+    :root {
+      --azul: #2B3A75;
+      --crema: #F7F2EC;
+      --amarillo: #F6C84C;
+      --gris: #8A8FA3;
+      --rojo: #C0504D;
+      --borde: #D9D4CC;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--crema);
+      color: var(--azul);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 32px 20px 48px;
+    }
+    main { width: 100%; max-width: 400px; text-align: center; }
+    .dibujo { width: 150px; height: 150px; object-fit: contain; }
+    .nombre { font-size: 40px; letter-spacing: 6px; margin: 8px 0 0; }
+    .frase { font-family: 'Manuscrita', cursive; font-size: 20px; color: var(--gris); margin: 2px 0 18px; }
+    h1 { font-family: 'Manuscrita', cursive; font-size: 40px; font-weight: 700; margin: 6px 0 8px; }
+    p { line-height: 1.5; margin: 0 0 14px; }
+    .suave { color: var(--gris); font-size: 15px; }
+    form { text-align: left; margin-top: 18px; }
+    label { display: block; color: var(--gris); font-size: 13px; margin: 0 0 6px 4px; }
+    .campo { position: relative; margin-bottom: 14px; }
+    input {
+      width: 100%;
+      font: inherit;
+      font-size: 16px;
+      color: var(--azul);
+      background: #fff;
+      border: 1.5px solid var(--borde);
+      border-radius: 16px;
+      padding: 14px 52px 14px 16px;
+      outline: none;
+    }
+    input:focus { border-color: var(--azul); }
+    .ojito {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      width: 42px; height: 42px; border: 0; background: transparent;
+      border-radius: 50%; cursor: pointer; padding: 6px;
+    }
+    .ojito:focus-visible { outline: 2px solid var(--azul); }
+    .ojito img { width: 28px; height: 28px; display: block; margin: auto; }
+    .boton {
+      display: block; width: 100%; margin-top: 8px;
+      font: inherit; font-size: 16px; font-weight: 600;
+      color: #fff; background: var(--azul);
+      border: 0; border-radius: 999px; padding: 15px 20px;
+      cursor: pointer; text-decoration: none; text-align: center;
+    }
+    .boton:disabled { opacity: .6; cursor: default; }
+    .error { color: var(--rojo); font-size: 14px; min-height: 20px; margin: 4px 0 0; text-align: center; }
+    .oculto { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <img class="dibujo" src="assets/assets/images/login.png" alt=""
+       onerror="this.src='icons/Icon-192.png'">
+  <div class="nombre">星月</div>
+  <div class="frase">tú eres mi estrella y mi luna</div>
+
+  <!-- Cargando -->
+  <section id="cargando">
+    <p class="suave">Un momentito…</p>
+  </section>
+
+  <!-- Cambiar contraseña -->
+  <section id="nueva" class="oculto">
+    <h1>Nueva contraseña</h1>
+    <p>Elige una contraseña nueva para <b id="correo"></b>.</p>
+    <form id="formulario" novalidate>
+      <label for="clave">contraseña nueva</label>
+      <div class="campo">
+        <input id="clave" type="password" autocomplete="new-password" placeholder="mínimo 6 letras o números" required>
+        <button type="button" class="ojito" data-para="clave" aria-label="Mostrar contraseña">
+          <img src="assets/assets/doodles/ojo.png" alt="">
+        </button>
+      </div>
+      <label for="clave2">repítela</label>
+      <div class="campo">
+        <input id="clave2" type="password" autocomplete="new-password" placeholder="la misma otra vez" required>
+        <button type="button" class="ojito" data-para="clave2" aria-label="Mostrar contraseña">
+          <img src="assets/assets/doodles/ojo.png" alt="">
+        </button>
+      </div>
+      <p class="error" id="error" role="alert"></p>
+      <button class="boton" id="guardar" type="submit">Guardar contraseña</button>
+    </form>
+  </section>
+
+  <!-- Todo bien -->
+  <section id="listo" class="oculto">
+    <h1 id="listo-titulo">¡Listo!</h1>
+    <p id="listo-texto"></p>
+    <a class="boton" id="volver" href="/">Abrir 星月</a>
+  </section>
+
+  <!-- Algo salió mal -->
+  <section id="problema" class="oculto">
+    <h1>Ups…</h1>
+    <p id="problema-texto">Este enlace ya no sirve. Puede que ya lo hayas usado o que haya pasado mucho tiempo.</p>
+    <p class="suave">Pide otro desde la app con <b>¿Olvidaste tu contraseña?</b> y usa el correo más nuevo.</p>
+    <a class="boton" href="/">Abrir 星月</a>
+  </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var modo = q.get('mode');
+  var codigo = q.get('oobCode');
+  var apiKey = q.get('apiKey');
+  var sigue = q.get('continueUrl');
+
+  function ver(id) {
+    ['cargando', 'nueva', 'listo', 'problema'].forEach(function (s) {
+      document.getElementById(s).classList.toggle('oculto', s !== id);
+    });
+  }
+  function listo(titulo, texto) {
+    document.getElementById('listo-titulo').textContent = titulo;
+    document.getElementById('listo-texto').textContent = texto;
+    ver('listo');
+  }
+  function problema(texto) {
+    if (texto) document.getElementById('problema-texto').textContent = texto;
+    ver('problema');
+  }
+
+  // "Abrir 星月" vuelve a la app (o a donde diga el enlace, si es de aquí).
+  try {
+    if (sigue && new URL(sigue).origin === location.origin) {
+      document.getElementById('volver').href = sigue;
+    }
+  } catch (e) {}
+
+  // Ojitos: muestran u ocultan la contraseña.
+  document.querySelectorAll('.ojito').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var campo = document.getElementById(b.dataset.para);
+      var mostrar = campo.type === 'password';
+      campo.type = mostrar ? 'text' : 'password';
+      b.querySelector('img').src = 'assets/assets/doodles/' + (mostrar ? 'ojo_cerrado' : 'ojo') + '.png';
+      b.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+  });
+
+  if (!modo || !codigo || !apiKey || typeof firebase === 'undefined') {
+    problema(!modo || !codigo
+      ? 'Este enlace está incompleto. Ábrelo tal cual desde el correo.'
+      : null);
+    return;
+  }
+
+  var auth = firebase.initializeApp({ apiKey: apiKey }).auth();
+  auth.languageCode = 'es';
+
+  if (modo === 'resetPassword') {
+    auth.verifyPasswordResetCode(codigo).then(function (correo) {
+      document.getElementById('correo').textContent = correo;
+      ver('nueva');
+      document.getElementById('clave').focus();
+    }).catch(function () { problema(); });
+
+    var error = document.getElementById('error');
+    var guardar = document.getElementById('guardar');
+    document.getElementById('formulario').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var a = document.getElementById('clave').value;
+      var b = document.getElementById('clave2').value;
+      if (a.length < 6) { error.textContent = 'Usa al menos 6 letras o números.'; return; }
+      if (a !== b) { error.textContent = 'Las dos contraseñas no son iguales.'; return; }
+      error.textContent = '';
+      guardar.disabled = true;
+      guardar.textContent = 'Guardando…';
+      auth.confirmPasswordReset(codigo, a).then(function () {
+        listo('¡Listo!', 'Ya tienes tu contraseña nueva. Entra a 星月 con ella cuando quieras.');
+      }).catch(function (e) {
+        guardar.disabled = false;
+        guardar.textContent = 'Guardar contraseña';
+        if (e && e.code === 'auth/weak-password') {
+          error.textContent = 'Esa contraseña es muy fácil. Prueba con otra más larga.';
+        } else if (e && (e.code === 'auth/expired-action-code' || e.code === 'auth/invalid-action-code')) {
+          problema();
+        } else {
+          error.textContent = 'No se pudo guardar. Revisa tu internet e inténtalo otra vez.';
+        }
+      });
+    });
+  } else if (modo === 'verifyEmail') {
+    auth.applyActionCode(codigo).then(function () {
+      listo('¡Correo confirmado!', 'Gracias. Ya puedes volver a 星月.');
+    }).catch(function () { problema(); });
+  } else if (modo === 'recoverEmail') {
+    auth.checkActionCode(codigo).then(function (info) {
+      var correo = info.data.email;
+      return auth.applyActionCode(codigo).then(function () {
+        listo('Volvió tu correo', 'Tu cuenta vuelve a usar ' + correo + '. Si tú no pediste el cambio, cambia tu contraseña desde la app.');
+      });
+    }).catch(function () { problema(); });
+  } else {
+    problema('No reconocemos este enlace. Ábrelo tal cual desde el correo.');
+  }
+})();
+</script>
+</body>
+</html>
