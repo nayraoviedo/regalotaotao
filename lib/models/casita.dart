@@ -133,6 +133,7 @@ enum Escena {
   picnic(Cuarto.jardin, 'de picnic'),
   pelotas(Cuarto.juegos, 'jugando con pelotitas'),
   huerto(Cuarto.huerto, 'regando el huerto'),
+  besitos(Cuarto.sala, 'dándose besitos'),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
   medianoche(Cuarto.cocina, 'comiendo a medianoche', libre: false),
@@ -205,7 +206,13 @@ enum Ingrediente {
   zanahoria('zanahorias', 'zanahoria', 'zanahorias', '🥕'),
   fresa('fresas', 'fresa', 'fresas', '🍓'),
   lechuga('lechugas', 'lechuga', 'lechugas', '🥬'),
-  calabaza('calabazas', 'calabaza', 'calabazas', '🎃');
+  calabaza('calabazas', 'calabaza', 'calabazas', '🎃'),
+  papa('papas', 'papa', 'papas', '🥔'),
+  arveja('arvejas', 'arveja', 'arvejas', '🫛'),
+  cebolla('cebollas', 'cebolla', 'cebollas', '🧅'),
+  sandia('sandias', 'sandía', 'sandías', '🍉'),
+  quinua('quinua', 'puñado de quinua', 'puñados de quinua', '🌾'),
+  arandano('arandanos', 'arándano', 'arándanos', '🫐');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
 
@@ -223,6 +230,9 @@ enum Ingrediente {
     }
     return null;
   }
+
+  /// Para el botón: "Recoger tomates", "Recoger quinua".
+  String get alRecoger => this == quinua ? 'quinua' : varios;
 
   /// "1 tomate", "3 tomates".
   String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
@@ -264,6 +274,60 @@ enum Receta {
     'batido_fresa',
     'batido de fresa',
     {Ingrediente.fresa: 2},
+    {Comida.desayuno},
+  ),
+  papasFritas(
+    'papas_fritas',
+    'papas fritas',
+    {Ingrediente.papa: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaQuinua(
+    'sopa_quinua',
+    'sopa de quinua',
+    {Ingrediente.quinua: 1, Ingrediente.papa: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  guisoArvejas(
+    'guiso_arvejas',
+    'guiso de arvejas',
+    {Ingrediente.arveja: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  tortillaPapa(
+    'tortilla_papa',
+    'tortilla de papa',
+    {Ingrediente.papa: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pastelChoclo(
+    'pastel_choclo',
+    'pastel de choclo',
+    {Ingrediente.choclo: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaTomate(
+    'pizza_tomate',
+    'pizza de tomate',
+    {Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  jugoSandia(
+    'jugo_sandia',
+    'jugo de sandía',
+    {Ingrediente.sandia: 1},
+    {Comida.desayuno},
+  ),
+  panquequesArandanos(
+    'panqueques_arandanos',
+    'panqueques con arándanos',
+    {Ingrediente.arandano: 2},
+    {Comida.desayuno},
+  ),
+  ensaladaFrutas(
+    'ensalada_frutas',
+    'ensalada de frutas',
+    {Ingrediente.fresa: 1, Ingrediente.sandia: 1, Ingrediente.arandano: 1},
     {Comida.desayuno},
   );
 
@@ -865,6 +929,36 @@ class Catalogo {
       'Semillas de calabaza',
       25,
       lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'arvejas',
+      'Semillas de arveja',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('papas', 'Semillas de papa', 25, lugar: Lugar.bancal, semilla: true),
+    Cosa(
+      'cebollas',
+      'Semillas de cebolla',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'sandias',
+      'Semillas de sandía',
+      30,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa('quinua', 'Semillas de quinua', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'arandanos',
+      'Semillas de arándano',
+      35,
+      lugar: Lugar.fondoHuerto,
       semilla: true,
     ),
 
@@ -1687,6 +1781,7 @@ class EstadoCasita {
   static Escena? _rutina(int hora) => switch (hora) {
     7 => Escena.bano,
     8 => Escena.desayuno,
+    9 => Escena.besitos,
     12 || 18 => Escena.cocinando,
     13 => Escena.almuerzo,
     14 || 15 => Escena.siesta,
@@ -1701,7 +1796,7 @@ class EstadoCasita {
   ///
   /// - De 0 a 2 el naranja se levanta a comer a la cocina mientras el
   ///   blanco duerme (si hay cocina y dónde dormir). Hasta las 7 duermen.
-  /// - 7 bañito, 8 desayuno, 12 cocinan y 13 almuerzan, 14 y 15 siesta,
+  /// - 7 bañito, 8 desayuno, 9 besitos, 12 cocinan y 13 almuerzan, 14 y 15 siesta,
   ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 y 21 ven su drama, y
   ///   desde las 22 duermen.
   /// - En los ratos libres (o si no tienen el cuarto de la rutina) hacen

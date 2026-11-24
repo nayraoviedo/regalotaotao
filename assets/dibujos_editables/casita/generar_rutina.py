@@ -7,6 +7,8 @@
   escena_cocinar_<quien>_1/2  <quien> cocina con gorro de chef y una olla
                               y el otro le ayuda picando en una tablita
   picando_<cosa>_<quien>      lo que pica <quien> en la tablita
+  escena_besitos_1/2          se dan besitos (ojitos cerrados, cachetes
+                              rosados y corazones)
 
 Los gatitos siguen sentados en su lugar de siempre (como en las otras
 escenas), así que todo va delante de ellos. Para cambiar un dibujo basta
@@ -16,7 +18,10 @@ Corre después de generar_viva.py.
 Uso:  python3 assets/dibujos_editables/casita/generar_rutina.py
 """
 
+from PIL import Image
+
 from generar import (
+    ESCALA, SALIDA,
     AMARILLO, AMARILLO_OSC, AZUL_CLARO, BLANCO, CIELO_CLARO, GATITO_POS, GRIS,
     GRIS_CLARO, MADERA, MADERA_CLARA, MADERA_OSC, ROSA, ROSA_CLARO, ROSA_OSC,
     TRAZO, VERDE, VERDE_CLARO, VERDE_OSC, Capa,
@@ -142,6 +147,71 @@ def batido_fresa(c, x, y):
 COMIDAS["batido_fresa"] = batido_fresa
 
 
+def vaso(jugo, oscuro, borde=None):
+    def dibujar(c, x, y):
+        c.sprite(x + 3, y - 2, [
+            ".....r",
+            "....r.",
+            "oooooo",
+            "oPPPPo",
+            "oPpPPo",
+            "oPPpPo",
+            "oPPPPo",
+            ".oooo.",
+        ], {"o": TRAZO, "P": jugo, "p": oscuro, "r": borde or BLANCO})
+    return dibujar
+
+
+PAPA, PAPA_OSC = (226, 186, 110), (196, 146, 76)
+MORADO = (150, 90, 160)
+AZULITO = (90, 110, 190)
+COMIDAS.update({
+    "papas_fritas": en_plato([
+        "...y..y.....",
+        "..yy.yy.y...",
+        ".yYyyYyyYy..",
+        ".yyyyyyyyyy.",
+    ], {"y": (250, 214, 110), "Y": (226, 170, 70)}),
+    "sopa_quinua": en_tazon((236, 214, 160), BLANCO,
+                            [(3, 0, (250, 236, 200)), (6, 0, VERDE),
+                             (8, 0, (240, 150, 60))]),
+    "guiso_arvejas": en_plato([
+        "............",
+        "..gGgnGg....",
+        ".gnGgGgnGg..",
+        ".GgGnGgGgGg.",
+    ], {"g": VERDE_CLARO, "G": VERDE, "n": (240, 150, 60)}),
+    "tortilla_papa": en_plato([
+        "............",
+        "...oooooo...",
+        "..oYyYyyYo..",
+        ".oyyYyyYyyo.",
+    ], {"o": PAPA_OSC, "y": (250, 220, 120), "Y": PAPA}),
+    "jugo_sandia": vaso((240, 110, 120), (200, 70, 90), VERDE),
+    "panqueques_arandanos": en_plato([
+        "...b.b.b....",
+        "..PPPPPPPP..",
+        "..pPPPPPPp..",
+        "..PPPPPPPP..",
+    ], {"P": PAN, "p": PAN_OSC, "b": AZULITO}),
+    "ensalada_frutas": en_tazon(BLANCO, ROSA_CLARO,
+                                [(3, 0, ROJO), (5, 0, AZULITO), (7, 0, (240, 110, 120)),
+                                 (9, 0, AMARILLO)]),
+    "pastel_choclo": en_plato([
+        "............",
+        "..oooooooo..",
+        ".oyYyyYyyYo.",
+        ".oTTTTTTTTo.",
+    ], {"o": TRAZO, "y": AMARILLO, "Y": AMARILLO_OSC, "T": (204, 116, 80)}),
+    "pizza_tomate": en_plato([
+        "............",
+        "..pppppppp..",
+        ".prRyrRrygp.",
+        ".pRrrRyrRrp.",
+    ], {"p": PAN, "r": ROJO, "R": ROJO_OSC, "y": (250, 236, 170), "g": VERDE}),
+})
+
+
 def plato(nombre):
     c = Capa()
     for x, y in DELANTE.values():
@@ -217,7 +287,7 @@ def cocinar(quien, frame):
     c = Capa()
     ayuda = "blanco" if quien == "naranja" else "naranja"
     gx, gy = GATITO_POS[quien]
-    c.sprite(gx + 4, gy - 6, GORRO, {"o": TRAZO, "w": BLANCO, "G": GRIS_CLARO})
+    c.sprite(gx + 4, gy - 3, GORRO, {"o": TRAZO, "w": BLANCO, "G": GRIS_CLARO})
     ox, oy = DELANTE[quien]
     c.sprite(ox - 2, oy - 2, OLLA,
              {"o": TRAZO, "_": (240, 200, 120), "A": GRIS, "a": GRIS_CLARO})
@@ -282,6 +352,48 @@ INGREDIENTES = {
         "nNnNn",
         ".nNn.",
     ], {"n": (240, 150, 60), "N": (204, 110, 40), "v": VERDE}),
+    "papa": ([
+        ".....",
+        ".ppp.",
+        "pPppp",
+        ".ppP.",
+        ".....",
+    ], {"p": PAPA, "P": PAPA_OSC}),
+    "arveja": ([
+        "v....",
+        ".vvv.",
+        "vgggv",
+        ".vvv.",
+        "....v",
+    ], {"v": VERDE, "g": VERDE_CLARO}),
+    "cebolla": ([
+        "..g..",
+        ".mMm.",
+        "mMmMm",
+        "mmMmm",
+        ".mmm.",
+    ], {"g": VERDE_CLARO, "m": MORADO, "M": (196, 150, 206)}),
+    "sandia": ([
+        "rrrrr",
+        "rkrkr",
+        "rrrrr",
+        ".ggg.",
+        ".....",
+    ], {"r": (240, 110, 120), "k": TRAZO, "g": VERDE}),
+    "quinua": ([
+        ".q.Q.",
+        "QqQqQ",
+        "qQqQq",
+        ".QqQ.",
+        ".....",
+    ], {"q": (236, 214, 160), "Q": (250, 236, 200)}),
+    "arandano": ([
+        ".....",
+        ".b.b.",
+        "bBbBb",
+        ".bBb.",
+        ".....",
+    ], {"b": AZULITO, "B": (60, 76, 150)}),
     "pescadito": ([
         ".....",
         "oooo.",
@@ -302,9 +414,45 @@ def picando(cosa, quien):
     return c
 
 
+# ---------------------------------------------------------------- besitos
+# Dónde están los ojitos de cada gatito sentado (columna, fila del sprite).
+OJOS = [(4, 6), (5, 6), (4, 7), (5, 7), (14, 6), (15, 6), (14, 7), (15, 7)]
+
+
+def besitos(frame):
+    """Se dan besitos: cierran los ojitos, se sonrojan y salen corazones."""
+    c = Capa()
+    for nombre, (gx, gy) in GATITO_POS.items():
+        sentado = Image.open(SALIDA / f"gatito_{nombre}.png").convert("RGBA")
+        # El color de la carita al lado del ojo, para "cerrarlo".
+        piel = sentado.getpixel(((gx + 3) * ESCALA + 1, (gy + 7) * ESCALA + 1))[:3]
+        for i, j in OJOS:
+            c.px(gx + i, gy + j, piel)
+        # Ojitos felices cerrados: ^ ^
+        for ox in (4, 14):
+            c.px(gx + ox, gy + 6, TRAZO)
+            c.px(gx + ox + 1, gy + 6, TRAZO)
+            c.px(gx + ox - 1, gy + 7, TRAZO)
+            c.px(gx + ox + 2, gy + 7, TRAZO)
+        # Cachetes sonrojados.
+        for cx in (2, 3, 16, 17):
+            c.px(gx + cx, gy + 9, ROSA)
+    # Corazones que suben entre los dos.
+    sube = 0 if frame == 1 else 4
+    corazon(c, 38, 66 - sube)
+    corazon(c, 33, 58 - sube, ROSA)
+    corazon(c, 44, 54 - sube, ROSA_OSC)
+    # "Muak": tres rayitas de beso.
+    for k, (dx, dy) in enumerate([(-2, 0), (0, -2), (2, 0)]):
+        if (k + frame) % 2 == 0:
+            c.px(40 + dx, 75 + dy, ROSA_OSC)
+    return c
+
+
 def main():
     for f in (1, 2):
         comer(f).guardar(f"escena_comer_{f}")
+        besitos(f).guardar(f"escena_besitos_{f}")
         for quien in ("naranja", "blanco"):
             cocinar(quien, f).guardar(f"escena_cocinar_{quien}_{f}")
     for nombre in COMIDAS:
