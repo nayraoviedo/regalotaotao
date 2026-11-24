@@ -27,6 +27,8 @@ const SCOPES = [
 ].join(" ");
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_AGE_SECONDS = 15 * 60; // solo documentos recientes
+// Canal de Android con importancia alta (lib/services/push_service.dart).
+const ANDROID_CHANNEL = "mimos_pareja";
 
 export default {
   async fetch(request, env) {
@@ -476,14 +478,19 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
   const spec = KINDS[kind];
   const fs = firestore(sa);
 
-  const couple = await fs.get(`couples/${coupleId}`);
+  // Todo lo que hay que leer se pide a la vez (antes iba uno tras otro y
+  // cada lectura sumaba su espera antes de mandar el aviso).
+  const path = `couples/${coupleId}/${spec.collection}/${docId}`;
+  const [couple, doc, sender] = await Promise.all([
+    fs.get(`couples/${coupleId}`),
+    fs.get(path),
+    fs.get(`users/${uid}`),
+  ]);
   const members = couple?.data.members || [];
   if (!members.includes(uid)) return { status: 403, body: { error: "no_es_tu_pareja" } };
   const partner = members.find((m) => m !== uid);
   if (!partner) return { status: 403, body: { error: "sin_pareja" } };
 
-  const path = `couples/${coupleId}/${spec.collection}/${docId}`;
-  const doc = await fs.get(path);
   if (!doc) return { status: 404, body: { error: "documento_no_existe" } };
   if (!spec.check(doc.data, uid, partner)) {
     return { status: 403, body: { error: "no_permitido" } };
@@ -496,13 +503,12 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
 
   // Marca el documento antes de enviar. La condición updateTime hace que,
   // si llegan dos pedidos a la vez, solo uno gane.
-  const marked = await fs.setField(path, "pushSentFor", key, doc.updateTime);
-  if (!marked) return { status: 200, body: { ok: true, yaEnviado: true } };
-
-  const [sender, recipient] = await Promise.all([
-    fs.get(`users/${uid}`),
+  const [marked, recipient] = await Promise.all([
+    fs.setField(path, "pushSentFor", key, doc.updateTime),
     fs.get(`users/${partner}`),
   ]);
+  if (!marked) return { status: 200, body: { ok: true, yaEnviado: true } };
+
   const name = sender?.data.name || "Tu pareja";
   const tokens = [...new Set((recipient?.data.fcmTokens || []).filter(Boolean))];
   if (tokens.length === 0) return { status: 200, body: { ok: true, enviados: 0 } };
@@ -532,7 +538,24 @@ async function sendPush(sa, token, { title, body }) {
         message: {
           token,
           notification: { title, body },
-          android: { priority: "HIGH" },
+          // Que llegue al instante aunque el celular esté en reposo:
+          // prioridad alta y el canal "Mimos de tu pareja" (importancia
+          // alta, lo crea la app). Sin canal, Android usaba el canal
+          // "Varios" de Firebase, que no avisa enseguida ni suena.
+          android: {
+            priority: "HIGH",
+            ttl: "86400s",
+            notification: {
+              channel_id: ANDROID_CHANNEL,
+              icon: "ic_notificacion",
+              notification_priority: "PRIORITY_MAX",
+              default_sound: true,
+              default_vibrate_timings: true,
+              visibility: "PUBLIC",
+            },
+          },
+          // En la web (navegador): mensaje urgente.
+          webpush: { headers: { Urgency: "high", TTL: "86400" } },
         },
       }),
     },
