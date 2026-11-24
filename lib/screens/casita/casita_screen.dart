@@ -1000,7 +1000,7 @@ class _CasitaViewState extends State<CasitaView> {
                       onPressed: _ocupado ? null : () => _recoger(c),
                       icon: TextoDoodle(Ingrediente.deSemilla(c.id)!.emoji),
                       label: Text(
-                        'Recoger ${Ingrediente.deSemilla(c.id)!.varios}',
+                        'Recoger ${Ingrediente.deSemilla(c.id)!.alRecoger}',
                       ),
                     ),
                 ],
@@ -2191,7 +2191,11 @@ class _Despensa extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final r in Receta.values)
+                // Primero lo que alcanza para cocinar.
+                for (final r in [
+                  ...Receta.values.where(estado.puedeCocinar),
+                  ...Receta.values.where((r) => !estado.puedeCocinar(r)),
+                ])
                   ActionChip(
                     label: TextoDoodle(
                       '${r.nombre[0].toUpperCase()}${r.nombre.substring(1)} '

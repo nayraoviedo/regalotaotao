@@ -387,6 +387,11 @@ void main() {
       Escena? aLas(int h) => e.escena(DateTime(2026, 11, 24, h, 20));
       expect(aLas(7), Escena.bano);
       expect(aLas(8), Escena.desayuno);
+      expect(aLas(9), Escena.besitos);
+      expect(
+        CasaView.queHacen(e, DateTime(2026, 11, 24, 9, 20)),
+        'Los gatitos están dándose besitos en la sala',
+      );
       expect(aLas(12), Escena.cocinando);
       expect(aLas(13), Escena.almuerzo);
       expect([aLas(14), aLas(15)], everyElement(Escena.siesta));
@@ -466,6 +471,16 @@ void main() {
         },
       });
       expect(huerto.cosechables(ahora).map((c) => c.id), ['tomatera']);
+      // Cada ingrediente sale de una semilla de la tienda, y cada uno se
+      // usa en alguna receta.
+      for (final i in Ingrediente.values) {
+        expect(Catalogo.porId(i.semilla)?.semilla, isTrue, reason: i.name);
+        expect(
+          Receta.values.any((r) => r.ingredientes.containsKey(i)),
+          isTrue,
+          reason: i.name,
+        );
+      }
       final e = EstadoCasita.fromMap({
         'tenemos': ['cuarto_cocina'],
         'despensa': {'tomate': 3, 'lechuga': 0},
