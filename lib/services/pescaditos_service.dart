@@ -416,6 +416,47 @@ class PescaditosService {
         'puestos': {lugar.name: cosa?.id ?? ''},
       }, SetOptions(merge: true));
 
+  /// Recoge lo que creció en el huerto: va a la despensa y la mata se
+  /// vuelve a sembrar (crece otra vez en unos días). Devuelve lo que
+  /// recogieron, o null si ya lo había recogido la pareja.
+  Future<Ingrediente?> recoger(String coupleId, Cosa semilla) async {
+    final ingrediente = Ingrediente.deSemilla(semilla.id);
+    if (ingrediente == null) return null;
+    final ref = _estado(coupleId);
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      if (estado.etapa(semilla) < 2) return null;
+      tx.set(ref, {
+        'despensa': {
+          ingrediente.name: estado.hay(ingrediente) + Ingrediente.porCosecha,
+        },
+        'sembrado': {semilla.id: DateTime.now().millisecondsSinceEpoch},
+      }, SetOptions(merge: true));
+      return ingrediente;
+    });
+  }
+
+  /// Cocinan [receta] con lo de la despensa. Devuelve false si ya no
+  /// alcanza (por ejemplo, la pareja cocinó otra cosa justo antes).
+  Future<bool> cocinar(String coupleId, Receta receta) async {
+    final ref = _estado(coupleId);
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      if (!estado.puedeCocinar(receta)) return false;
+      tx.set(ref, {
+        'despensa': {
+          for (final e in receta.ingredientes.entries)
+            e.key.name: estado.hay(e.key) - e.value,
+        },
+        'cocinado': {
+          'receta': receta.name,
+          'en': DateTime.now().millisecondsSinceEpoch,
+        },
+      }, SetOptions(merge: true));
+      return true;
+    });
+  }
+
   /// Le pone nombre a un gatito bebé adoptado.
   Future<void> nombrarBebe(String coupleId, Cosa bebe, String nombre) =>
       _estado(coupleId).set({

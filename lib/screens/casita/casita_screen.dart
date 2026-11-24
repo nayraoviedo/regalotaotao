@@ -74,6 +74,8 @@ class CasitaScreen extends StatelessWidget {
           onDescartar: () => servicio.descartarPropuesta(coupleId),
           onNombrar: (bebe, nombre) =>
               servicio.nombrarBebe(coupleId, bebe, nombre),
+          onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
+          onCocinar: (receta) => servicio.cocinar(coupleId, receta),
           onCartaSorpresa: partner == null
               ? null
               : () => Navigator.of(context).push(
@@ -112,6 +114,8 @@ class CasitaView extends StatefulWidget {
     this.onDescartar,
     this.onCartaSorpresa,
     this.onNombrar,
+    this.onRecoger,
+    this.onCocinar,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -147,6 +151,12 @@ class CasitaView extends StatefulWidget {
 
   /// Ponerle nombre a un gatito bebé.
   final Future<void> Function(Cosa bebe, String nombre)? onNombrar;
+
+  /// Recoger lo que creció en el huerto (va a la despensa).
+  final Future<Ingrediente?> Function(Cosa semilla)? onRecoger;
+
+  /// Cocinar una receta con lo de la despensa.
+  final Future<bool> Function(Receta receta)? onCocinar;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -328,6 +338,44 @@ class _CasitaViewState extends State<CasitaView> {
   void dispose() {
     _finDelBano?.cancel();
     super.dispose();
+  }
+
+  bool _ocupado = false;
+
+  Future<void> _recoger(Cosa semilla) async {
+    setState(() => _ocupado = true);
+    try {
+      final i = await widget.onRecoger!(semilla);
+      if (i != null) {
+        _aviso(
+          '${i.emoji} Recogieron ${i.cuantos(Ingrediente.porCosecha)}. '
+          'Ya están en la despensa de la cocina.',
+        );
+      }
+    } catch (_) {
+      _aviso('No se pudo recoger. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _cocinar(Receta r) async {
+    setState(() => _ocupado = true);
+    try {
+      final listo = await widget.onCocinar!(r);
+      final cuando = r.comidas.contains(Comida.desayuno)
+          ? 'en el desayuno'
+          : 'en el almuerzo y la cena';
+      _aviso(
+        listo
+            ? '¡Qué rico! Los gatitos comerán ${r.nombre} $cuando.'
+            : 'Ya no alcanza lo de la despensa para ${r.nombre}.',
+      );
+    } catch (_) {
+      _aviso('No se pudo cocinar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
   }
 
   /// Lo sembrado en este cuarto que todavía no termina de crecer.
@@ -931,6 +979,42 @@ class _CasitaViewState extends State<CasitaView> {
               'Cada semilla tarda dos días en crecer.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+          ],
+          if (_cuarto == Cuarto.huerto &&
+              _estado.abierto(_cuarto) &&
+              widget.onRecoger != null)
+            if (_estado.cosechables(_hoy) case final listas
+                when listas.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in listas)
+                    FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                      ),
+                      onPressed: _ocupado ? null : () => _recoger(c),
+                      icon: TextoDoodle(Ingrediente.deSemilla(c.id)!.emoji),
+                      label: Text(
+                        'Recoger ${Ingrediente.deSemilla(c.id)!.varios}',
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          if (_cuarto == Cuarto.cocina &&
+              _estado.abierto(_cuarto) &&
+              widget.onCocinar != null) ...[
+            const SizedBox(height: 12),
+            _Despensa(
+              estado: _estado,
+              ahora: _hoy,
+              ocupado: _ocupado,
+              onCocinar: _cocinar,
             ),
           ],
           if (_estado.abierto(_cuarto) && _estado.sePuedenBanar(_cuarto)) ...[
@@ -2046,6 +2130,89 @@ class _CartaSorpresaEnTienda extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// La despensa de la cocina (lo recogido del huerto) y lo que se puede
+/// cocinar con eso.
+class _Despensa extends StatelessWidget {
+  const _Despensa({
+    required this.estado,
+    required this.ahora,
+    required this.ocupado,
+    required this.onCocinar,
+  });
+
+  final EstadoCasita estado;
+  final DateTime ahora;
+  final bool ocupado;
+  final ValueChanged<Receta> onCocinar;
+
+  @override
+  Widget build(BuildContext context) {
+    final hay = [
+      for (final i in Ingrediente.values)
+        if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Despensa',
+            style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          TextoDoodle(
+            hay.isEmpty
+                ? 'Está vacía. Recojan lo que crece en el huerto para '
+                      'cocinar con eso.'
+                : hay.join(' · '),
+            style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+          ),
+          if (hay.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Cocinar',
+              style: TextStyle(
+                color: AppTheme.azul,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final r in Receta.values)
+                  ActionChip(
+                    label: TextoDoodle(
+                      '${r.nombre[0].toUpperCase()}${r.nombre.substring(1)} '
+                      '(${r.cuesta})',
+                    ),
+                    onPressed: ocupado || !estado.puedeCocinar(r)
+                        ? null
+                        : () => onCocinar(r),
+                  ),
+              ],
+            ),
+          ],
+          if (estado.cocinado case final r?
+              when estado.platoDe(r.comidas.first, ahora) != null) ...[
+            const SizedBox(height: 8),
+            TextoDoodle(
+              '🍲 Hoy comen ${r.nombre} del huerto.',
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+          ],
+        ],
       ),
     );
   }
