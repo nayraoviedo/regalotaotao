@@ -46,6 +46,11 @@ android {
             isShrinkResources = false
         }
     }
+    // El lint "vital" del release revisa todas las librerías y alarga mucho
+    // la compilación en GitHub; ya revisamos el código con flutter analyze.
+    lint {
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {
