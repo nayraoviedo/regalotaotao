@@ -228,8 +228,12 @@ Cuando termina un pomodoro (solo, el descanso o la sesión juntos) suena
 `assets/sonidos/raw/maullido.mp3`. En Android, si la app está en segundo
 plano o con la pantalla apagada, llega una notificación con ese mismo
 maullido. Para usar otro sonido, reemplaza ese archivo con el **mismo
-nombre** (mp3 corto, de 1 a 2 segundos). El que viene ahora es un maullido
-provisional hecho con `assets/dibujos_editables/generar_maullido.py`.
+nombre** (mp3 corto, de 1 a 2 segundos). El que viene ahora es el maullido
+que eligió nayra (`meow.mp3`).
+
+Las notificaciones de las **notas** (recordatorios y cartas de fiesta) también
+maúllan con ese mismo archivo: en Android llegan por el canal "Avisos de tus
+notas" (`notas_maullido`), que la app crea con ese sonido.
 
 ## Cartas "Ábrelo cuando…" y el papel de las notas
 
