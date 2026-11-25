@@ -302,11 +302,11 @@ test("cron: manda los recordatorios de las notas a los dos", async () => {
   assert.deepEqual(
     sent.map((m) => [m.token, m.notification.title, m.notification.body, m.android.notification.channel_id]).sort(),
     [
-      ["tok-ana", "⏰ Recordatorio", "De los dos: Pagar la luz", "notas_maullido"],
-      ["tok-bueno", "⏰ Recordatorio de tu pareja", "De los dos: Pagar la luz", "notas_maullido"],
+      ["tok-ana", "⏰ Recordatorio", "De los dos: Pagar la luz", "recordatorios_alarma"],
+      ["tok-bueno", "⏰ Recordatorio de tu pareja", "De los dos: Pagar la luz", "recordatorios_alarma"],
     ],
   );
-  assert.ok(sent.every((m) => m.android.notification.sound === "maullido"));
+  assert.ok(sent.every((m) => m.android.notification.sound === "maullido_alarma"));
   assert.equal(docs["couples/c1/notes/n1"].data.avisarEn, null);
   assert.deepEqual(docs["users/beto"].data.fcmTokens, ["tok-bueno"]);
   sent = [];

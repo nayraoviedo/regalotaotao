@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -33,7 +35,7 @@ class PushService {
     importance: Importance.max,
   );
 
-  /// Canal de los avisos de las notas (recordatorios y cartas de fiesta):
+  /// Canal de los avisos de las notas (cartas de fiesta, "leyó tu nota"…):
   /// suenan con el maullido (assets/sonidos/raw/maullido.mp3, que también
   /// es el recurso raw "maullido" de Android). El id debe coincidir con
   /// CANAL_NOTAS en worker/src/index.js. Android no deja cambiar el sonido
@@ -41,10 +43,25 @@ class PushService {
   static const _canalNotas = AndroidNotificationChannel(
     'notas_maullido',
     'Avisos de tus notas',
-    description: 'Recordatorios de las notas y cartas, con un maullido',
+    description: 'Cartas y avisos de las notas, con un maullido',
     importance: Importance.max,
     playSound: true,
     sound: RawResourceAndroidNotificationSound('maullido'),
+  );
+
+  /// Canal de los recordatorios de las notas: suenan como alarma, con
+  /// varios maullidos seguidos (assets/sonidos/raw/maullido_alarma.mp3,
+  /// unos 10 segundos). El id debe coincidir con CANAL_RECORDATORIOS en
+  /// worker/src/index.js.
+  static const _canalRecordatorios = AndroidNotificationChannel(
+    'recordatorios_alarma',
+    'Recordatorios de tus notas',
+    description: 'Suena como alarma con maullidos cuando llega la hora',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+    sound: RawResourceAndroidNotificationSound('maullido_alarma'),
+    audioAttributesUsage: AudioAttributesUsage.alarm,
   );
 
   final _notis = FlutterLocalNotificationsPlugin();
@@ -100,6 +117,7 @@ class PushService {
           >();
       await android?.createNotificationChannel(_canal);
       await android?.createNotificationChannel(_canalNotas);
+      await android?.createNotificationChannel(_canalRecordatorios);
       _notisListas = true;
     } catch (e) {
       debugPrint('No se pudo crear el canal de avisos: $e');
@@ -114,9 +132,12 @@ class PushService {
       return;
     }
     if (!_notisListas) return;
-    final canal = m.notification?.android?.channelId == _canalNotas.id
-        ? _canalNotas
-        : _canal;
+    final canal = switch (n.android?.channelId) {
+      'notas_maullido' => _canalNotas,
+      'recordatorios_alarma' => _canalRecordatorios,
+      _ => _canal,
+    };
+    final alarma = canal == _canalRecordatorios;
     _notis
         .show(
           id: m.messageId.hashCode,
@@ -131,6 +152,11 @@ class PushService {
               priority: Priority.high,
               playSound: true,
               sound: canal.sound,
+              audioAttributesUsage: canal.audioAttributesUsage,
+              category: alarma ? AndroidNotificationCategory.alarm : null,
+              // Con la app abierta el recordatorio maúlla sin parar hasta
+              // que lo toques o lo deslices (FLAG_INSISTENT).
+              additionalFlags: alarma ? Int32List.fromList([4]) : null,
               icon: '@drawable/ic_notificacion',
             ),
           ),
