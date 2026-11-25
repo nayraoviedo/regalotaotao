@@ -4,6 +4,7 @@ import '../../../models/note.dart';
 import 'formas.dart';
 import 'nota_vista.dart';
 import 'notas_style.dart';
+import 'compartir.dart';
 import 'recordatorio.dart';
 import 'tablero.dart';
 import '../../../widgets/doodle.dart';
@@ -20,7 +21,12 @@ class EditorDeNota extends StatefulWidget {
     this.coupleId = '',
     this.compartida = false,
     this.tienePareja = false,
+    this.compartirConPareja,
   });
+
+  /// Solo en una nota privada nueva: el interruptor "Compartir con tu
+  /// pareja". Quien abre el editor lee su valor al guardar.
+  final ValueNotifier<bool>? compartirConPareja;
 
   /// Nota de los dos: el recordatorio les llega a los dos.
   final bool compartida;
@@ -338,12 +344,26 @@ class _EditorDeNotaState extends State<EditorDeNota> {
               ),
           ],
           const SizedBox(height: 18),
+          if (widget.compartirConPareja case final compartir?) ...[
+            const _Etiqueta('¿Para quién?'),
+            const SizedBox(height: 8),
+            ValueListenableBuilder(
+              valueListenable: compartir,
+              builder: (context, valor, _) => InterruptorDeCompartir(
+                valor: valor,
+                onChanged: (v) => setState(() => compartir.value = v),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
           const _Etiqueta('Recordatorio'),
           const SizedBox(height: 4),
           SeccionDeRecordatorio(
             cuando: _recordatorio,
             para: _para,
-            compartida: widget.compartida,
+            compartida:
+                widget.compartida ||
+                (widget.compartirConPareja?.value ?? false),
             tienePareja: widget.tienePareja,
             onCuando: (c) => setState(() => _recordatorio = c),
             onPara: (p) => setState(() => _para = p),

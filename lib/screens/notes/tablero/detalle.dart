@@ -31,7 +31,11 @@ class DetalleDeNota extends StatefulWidget {
     this.onToggle,
     this.acciones = const [],
     this.compartida = false,
+    this.extra,
   });
+
+  /// Algo más debajo de la nota (por ejemplo, el interruptor de compartir).
+  final Widget? extra;
 
   /// Nota de los dos (para decir a quién le llega el recordatorio).
   final bool compartida;
@@ -185,6 +189,10 @@ class _DetalleDeNotaState extends State<DetalleDeNota> {
             if (nota.enlace != null) ...[
               const SizedBox(height: 18),
               Center(child: EnlacePegado(url: nota.enlace!)),
+            ],
+            if (widget.extra != null) ...[
+              const SizedBox(height: 22),
+              widget.extra!,
             ],
             const SizedBox(height: 28),
             Wrap(
