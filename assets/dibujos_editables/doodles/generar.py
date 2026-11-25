@@ -156,6 +156,9 @@ D['despertador'] = ambos('M22 20 C28 12 38 12 42 20 Z', TO, 4.4) + ambos('M54 20
 # foto de perfil: camarita con lente y flash
 D['camara'] = ambos('M12 32 L32 32 L38 22 L58 22 L64 32 L84 32 L84 78 L12 78 Z', CE) + ambos(CIRC(48, 54, 16), CR, 4.6) + punto(48, 54, 6) + punto(52, 50, 2.4, CR) + f'<circle cx="74" cy="42" r="4" fill="{AM}"/>'
 
+# buscar la foto en los archivos del celular: carpetita abierta con una foto
+D['carpeta'] = ambos('M10 30 L10 80 L84 80 L84 36 L46 36 L40 26 L16 26 Z', AM) + ambos('M30 20 L66 20 L66 50 L30 50 Z', CE, 4) + relleno('M33 47 L44 34 L52 42 L56 38 L63 47 Z', VE, 0, 0) + ambos('M8 46 L88 46 L82 82 L12 82 Z', AM)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

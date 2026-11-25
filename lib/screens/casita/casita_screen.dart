@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:image_picker/image_picker.dart';
+import '../../widgets/elegir_imagen.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
@@ -438,13 +439,13 @@ class _CasitaViewState extends State<CasitaView> {
   Future<void> _elegirFoto(Cosa cuadro) async {
     setState(() => _subiendoFoto = true);
     try {
-      final img = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
+      final bytes = await ElegirImagen.elegir(
+        context,
+        maxLado: 800,
+        calidad: 90,
       );
-      if (img == null) return;
-      final foto = await pixelarFoto(await img.readAsBytes());
+      if (bytes == null) return;
+      final foto = await pixelarFoto(bytes);
       await widget.onFoto!(foto);
       if (_estado.puesto(Lugar.cuadro)?.id != cuadro.id) {
         await widget.onPoner(Lugar.cuadro, cuadro);
