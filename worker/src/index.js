@@ -35,6 +35,9 @@ const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_AGE_SECONDS = 15 * 60; // solo documentos recientes
 // Canal de Android con importancia alta (lib/services/push_service.dart).
 const ANDROID_CHANNEL = "mimos_pareja";
+// Canal de los avisos de las notas: suena con el maullido (recurso raw
+// "maullido" de la app). También lo crea lib/services/push_service.dart.
+const CANAL_NOTAS = "notas_maullido";
 
 export default {
   // Cada minuto: recordatorios de las notas.
@@ -592,7 +595,9 @@ async function pushToUser(sa, fs, uid, msg) {
 }
 
 // ---------- Firebase Cloud Messaging (HTTP v1) ----------
-async function sendPush(sa, token, { title, body }) {
+// `canal: "notas"` manda el aviso al canal del maullido.
+async function sendPush(sa, token, { title, body, canal }) {
+  const notas = canal === "notas";
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
     {
@@ -613,10 +618,12 @@ async function sendPush(sa, token, { title, body }) {
             priority: "HIGH",
             ttl: "86400s",
             notification: {
-              channel_id: ANDROID_CHANNEL,
+              channel_id: notas ? CANAL_NOTAS : ANDROID_CHANNEL,
               icon: "ic_notificacion",
               notification_priority: "PRIORITY_MAX",
-              default_sound: true,
+              // En Android 8+ manda el sonido del canal; esto es para los
+              // celulares más viejos.
+              ...(notas ? { sound: "maullido" } : { default_sound: true }),
               default_vibrate_timings: true,
               visibility: "PUBLIC",
             },

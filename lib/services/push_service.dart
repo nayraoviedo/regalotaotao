@@ -33,6 +33,20 @@ class PushService {
     importance: Importance.max,
   );
 
+  /// Canal de los avisos de las notas (recordatorios y cartas de fiesta):
+  /// suenan con el maullido (assets/sonidos/raw/maullido.mp3, que también
+  /// es el recurso raw "maullido" de Android). El id debe coincidir con
+  /// CANAL_NOTAS en worker/src/index.js. Android no deja cambiar el sonido
+  /// de un canal ya creado: si algún día cambia el sonido, usar un id nuevo.
+  static const _canalNotas = AndroidNotificationChannel(
+    'notas_maullido',
+    'Avisos de tus notas',
+    description: 'Recordatorios de las notas y cartas, con un maullido',
+    importance: Importance.max,
+    playSound: true,
+    sound: RawResourceAndroidNotificationSound('maullido'),
+  );
+
   final _notis = FlutterLocalNotificationsPlugin();
   bool _notisListas = false;
   bool _escuchando = false;
@@ -80,11 +94,12 @@ class PushService {
           android: AndroidInitializationSettings('@drawable/ic_notificacion'),
         ),
       );
-      await _notis
+      final android = _notis
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(_canal);
+          >();
+      await android?.createNotificationChannel(_canal);
+      await android?.createNotificationChannel(_canalNotas);
       _notisListas = true;
     } catch (e) {
       debugPrint('No se pudo crear el canal de avisos: $e');
@@ -99,6 +114,9 @@ class PushService {
       return;
     }
     if (!_notisListas) return;
+    final canal = m.notification?.android?.channelId == _canalNotas.id
+        ? _canalNotas
+        : _canal;
     _notis
         .show(
           id: m.messageId.hashCode,
@@ -106,11 +124,13 @@ class PushService {
           body: n.body,
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              _canal.id,
-              _canal.name,
-              channelDescription: _canal.description,
+              canal.id,
+              canal.name,
+              channelDescription: canal.description,
               importance: Importance.max,
               priority: Priority.high,
+              playSound: true,
+              sound: canal.sound,
               icon: '@drawable/ic_notificacion',
             ),
           ),
