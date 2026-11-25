@@ -231,9 +231,14 @@ maullido. Para usar otro sonido, reemplaza ese archivo con el **mismo
 nombre** (mp3 corto, de 1 a 2 segundos). El que viene ahora es el maullido
 que eligió nayra (`meow.mp3`).
 
-Las notificaciones de las **notas** (recordatorios y cartas de fiesta) también
+Las notificaciones de las **notas** (cartas de fiesta, "leyó tu nota") también
 maúllan con ese mismo archivo: en Android llegan por el canal "Avisos de tus
 notas" (`notas_maullido`), que la app crea con ese sonido.
+
+Los **recordatorios** de las notas suenan como alarma: varios maullidos
+seguidos, unos 10 segundos (`assets/sonidos/raw/maullido_alarma.mp3`, canal
+"Recordatorios de tus notas", `recordatorios_alarma`). Con la app abierta
+siguen maullando hasta que toques o deslices el aviso.
 
 ## Cartas "Ábrelo cuando…" y el papel de las notas
 
