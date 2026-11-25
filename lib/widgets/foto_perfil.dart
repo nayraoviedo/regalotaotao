@@ -12,6 +12,7 @@ import '../models/app_user.dart';
 import '../services/user_service.dart';
 import '../theme.dart';
 import 'doodle.dart';
+import 'elegir_imagen.dart';
 import 'texto_doodle.dart';
 
 /// Cambiar la foto de perfil: de la galería o de la cámara, recortada en
@@ -51,34 +52,40 @@ class FotoPerfil {
           aviso('Quitamos tu foto');
           return;
         case _Opcion.galeria:
+        case _Opcion.archivos:
         case _Opcion.camara:
           break;
       }
 
-      final XFile? archivo;
+      final Uint8List? bytes;
       try {
-        archivo = await ImagePicker().pickImage(
-          source: opcion == _Opcion.camara
-              ? ImageSource.camera
-              : ImageSource.gallery,
-          preferredCameraDevice: CameraDevice.front,
-          maxWidth: 1600,
-          maxHeight: 1600,
-          imageQuality: 90,
-        );
+        if (opcion == _Opcion.archivos) {
+          bytes = await ElegirImagen.deArchivos(maxLado: 1600, calidad: 90);
+        } else {
+          final archivo = await ImagePicker().pickImage(
+            source: opcion == _Opcion.camara
+                ? ImageSource.camera
+                : ImageSource.gallery,
+            preferredCameraDevice: CameraDevice.front,
+            maxWidth: 1600,
+            maxHeight: 1600,
+            imageQuality: 90,
+          );
+          bytes = await archivo?.readAsBytes();
+        }
       } catch (_) {
-        aviso(
-          opcion == _Opcion.camara
-              ? 'No se pudo abrir la cámara.'
-              : 'No se pudo abrir tu galería.',
-        );
+        aviso(switch (opcion) {
+          _Opcion.camara => 'No se pudo abrir la cámara.',
+          _Opcion.archivos => 'No se pudo abrir esa foto. Prueba con otra.',
+          _ => 'No se pudo abrir tu galería.',
+        });
         return;
       }
-      if (archivo == null || !context.mounted) return;
+      if (bytes == null || !context.mounted) return;
 
       final ui.Image imagen;
       try {
-        imagen = await _decodificar(await archivo.readAsBytes());
+        imagen = await _decodificar(bytes);
       } catch (_) {
         aviso('No se pudo abrir esa foto. Prueba con otra.');
         return;
@@ -105,7 +112,7 @@ class FotoPerfil {
   }
 }
 
-enum _Opcion { galeria, camara, gatito, quitar }
+enum _Opcion { galeria, archivos, camara, gatito, quitar }
 
 class _Opciones extends StatelessWidget {
   const _Opciones({required this.user});
@@ -149,6 +156,11 @@ class _Opciones extends StatelessWidget {
               'Elegir de tu galería',
               _Opcion.galeria,
             ),
+            if (ElegirImagen.hayArchivos)
+              ElegirImagen.opcionArchivos(
+                context,
+                () => Navigator.pop(context, _Opcion.archivos),
+              ),
             fila(
               Icons.photo_camera_outlined,
               'Tomarte una foto',

@@ -412,7 +412,11 @@ class _BarraHito extends StatelessWidget {
                       ? '¡Hoy cumplimos ${hito.nombre}! 🎉'
                       : 'Faltan ${hito.faltan} '
                             '${hito.faltan == 1 ? 'día' : 'días'} para '
-                            '${hito.nombre.contains('año') ? 'nuestro' : 'los'} '
+                            '${hito.nombre == '1 año'
+                                ? 'nuestro'
+                                : hito.nombre.contains('año')
+                                ? 'nuestros'
+                                : 'los'} '
                             '${hito.nombre}',
                   style: TextStyle(
                     color: AppTheme.azul,
