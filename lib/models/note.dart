@@ -40,6 +40,10 @@ class Note {
     this.sharedNoteId,
     this.recordatorio,
     this.recordatorioPara = 'yo',
+    this.fromPrivate = false,
+    this.leidaEn,
+    this.leidaPor,
+    this.avisarLeida = true,
   });
 
   final String id;
@@ -86,6 +90,20 @@ class Note {
   /// Todavía no llega la hora del recordatorio.
   bool get recordatorioPendiente =>
       recordatorio != null && recordatorio!.isAfter(DateTime.now());
+
+  /// Solo en la copia de los dos: viene de una nota privada compartida.
+  final bool fromPrivate;
+
+  /// Solo en la copia de los dos: cuándo la leyó la pareja (null si aún
+  /// no la abre). Se borra cuando quien la escribió la cambia.
+  final DateTime? leidaEn;
+  final String? leidaPor;
+
+  /// Solo en la copia de los dos: si quien la compartió quiere un aviso
+  /// cuando su pareja la lea (worker/src/index.js, tipo notaLeida).
+  final bool avisarLeida;
+
+  bool get leida => leidaEn != null;
 
   bool get isShared => sharedNoteId != null;
   bool get esLista => items != null;
@@ -145,6 +163,10 @@ class Note {
         final String p when paraQuien.contains(p) => p,
         _ => 'yo',
       },
+      fromPrivate: d['fromPrivate'] == true,
+      leidaEn: (d['leidaEn'] as Timestamp?)?.toDate(),
+      leidaPor: d['leidaPor'] as String?,
+      avisarLeida: d['avisarLeida'] != false,
     );
   }
 }

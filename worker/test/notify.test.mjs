@@ -54,6 +54,9 @@ beforeEach(() => {
     "couples/c1/besos/b1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
+    "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
+    "couples/c1/notes/nl2": { authorId: "beto", fromPrivate: true, text: "shh", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: false },
+    "couples/c1/notes/nl3": { authorId: "beto", fromPrivate: true, text: "aún no", leidaPor: null, leidaEn: null, avisarLeida: true },
     "couples/c1/letters/l1": { from: "ana", to: "beto", cuando: "estés triste", openedAt: null },
     "couples/c1/letters/l3": { from: "ana", to: "beto", cuando: "sea tu cumpleaños", especial: "cumple", pastel: "fresa", ramo: "rosa", regalitos: ["peluche", "globos"], openedAt: null },
     "couples/c1/letters/l2": { from: "ana", to: "beto", cuando: "te llegue esta sorpresa", sorpresa: true, openedAt: null },
@@ -209,6 +212,17 @@ test("invitación de pomodoro y premio", async () => {
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te invita a concentrarse 50 min",
     "Ana terminó una tarea y eligió: Un helado",
+  ]);
+});
+
+test("nota leída avisa a quien la compartió, solo si lo pidió y de verdad la leyó", async () => {
+  assert.equal((await call({ kind: "notaLeida", coupleId: "c1", docId: "nl1" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "notaLeida", coupleId: "c1", docId: "nl2" }, await idToken("ana"))).status, 403);
+  assert.equal((await call({ kind: "notaLeida", coupleId: "c1", docId: "nl3" }, await idToken("ana"))).status, 403);
+  const r = await call({ kind: "notaLeida", coupleId: "c1", docId: "nl1" }, await idToken("ana"));
+  assert.equal(r.status, 200);
+  assert.deepEqual(sent.map((m) => [m.token, m.notification.title, m.notification.body]), [
+    ["tok-bueno", "👀 Leyó tu nota", 'Ana ya leyó tu nota "Para ti" 💌'],
   ]);
 });
 

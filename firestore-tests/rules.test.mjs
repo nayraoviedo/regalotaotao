@@ -30,6 +30,14 @@ await ok('B quita un pendiente de A', updateDoc(doc(db('B'),'couples/c1/notes/nl
 await no('B no cambia el texto de la nota de A', updateDoc(doc(db('B'),'couples/c1/notes/nl1'),{text:'otro'}));
 await no('B no borra la nota de A', deleteDoc(doc(db('B'),'couples/c1/notes/nl1')));
 await no('C no marca pendientes', updateDoc(doc(db('C'),'couples/c1/notes/nl1'),{items:[]}));
+// Nota privada compartida: la pareja la marca como leída.
+await ok('A comparte una nota privada', setDoc(doc(db('A'),'couples/c1/notes/np1'),{authorId:'A',text:'te quiero',fromPrivate:true,leidaEn:null,leidaPor:null,avisarLeida:true}));
+await no('B no la marca leída por otra persona', updateDoc(doc(db('B'),'couples/c1/notes/np1'),{leidaEn:serverTimestamp(),leidaPor:'C'}));
+await no('B no cambia el texto al marcarla', updateDoc(doc(db('B'),'couples/c1/notes/np1'),{leidaEn:serverTimestamp(),leidaPor:'B',text:'otro'}));
+await ok('B la marca como leída', updateDoc(doc(db('B'),'couples/c1/notes/np1'),{leidaEn:serverTimestamp(),leidaPor:'B'}));
+await no('B no la vuelve a marcar', updateDoc(doc(db('B'),'couples/c1/notes/np1'),{leidaEn:serverTimestamp(),leidaPor:'B'}));
+await no('C no marca notas', updateDoc(doc(db('C'),'couples/c1/notes/np1'),{leidaEn:serverTimestamp(),leidaPor:'C'}));
+await no('B no marca leída una nota normal de A', updateDoc(doc(db('B'),'couples/c1/notes/nl1'),{leidaEn:serverTimestamp(),leidaPor:'B'}));
 await ok('A invita pomodoro', setDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));
 await no('A no puede aceptar su propia invitación', updateDoc(doc(db('A'),'couples/c1/pomodoros/p1'),{status:'accepted'}));
 await ok('A invita a otra sesión', setDoc(doc(db('A'),'couples/c1/pomodoros/p2'),{invitedBy:'A',invitee:'B',minutes:25,status:'pending',startedAt:null}));

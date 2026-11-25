@@ -139,6 +139,16 @@ service cloud.firestore {
         allow update: if isMember(coupleId)
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['items']);
+        // Quien recibe una nota privada compartida la marca como leída
+        // (una vez, con la hora del servidor), para que su pareja lo sepa.
+        allow update: if isMember(coupleId)
+          && resource.data.authorId != me()
+          && resource.data.get('fromPrivate', false) == true
+          && resource.data.get('leidaEn', null) == null
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['leidaEn', 'leidaPor'])
+          && request.resource.data.leidaPor == me()
+          && request.resource.data.leidaEn == request.time;
       }
 
       // Cartas "Ábrelo cuando…": cada uno escribe para su pareja. Quien la

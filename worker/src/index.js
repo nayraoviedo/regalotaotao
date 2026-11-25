@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -458,6 +458,29 @@ const KINDS = {
         body: adivina
           ? `${name} adivinó ${n} de 5 de tus respuestas. Mira y gana pescaditos 🐟`
           : `${name} ya jugó: pensaron igual en ${n} de 5. Mira y gana pescaditos 🐟`,
+      };
+    },
+  },
+  // Tu pareja abrió la nota privada que le compartiste. Aquí quien llama
+  // es quien la leyó, y el aviso va para quien la escribió.
+  notaLeida: {
+    collection: "notes",
+    check: (d, uid, partner) =>
+      d.fromPrivate === true &&
+      d.authorId === partner &&
+      d.leidaPor === uid &&
+      d.leidaEn != null &&
+      d.avisarLeida !== false,
+    dedupeKey: (d) => `leida-${JSON.stringify(d.leidaEn)}`,
+    message: (name, d) => {
+      const titulo = String(d.title || d.text || "").trim().replace(/\s+/g, " ");
+      return {
+        // Canal con maullido de las notas (PR #81); sin él va al de siempre.
+        canal: "notas",
+        title: "👀 Leyó tu nota",
+        body: titulo
+          ? `${name} ya leyó tu nota "${titulo.length > 40 ? titulo.slice(0, 40) + "…" : titulo}" 💌`
+          : `${name} ya leyó la nota que le compartiste 💌`,
       };
     },
   },

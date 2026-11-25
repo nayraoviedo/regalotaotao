@@ -6,6 +6,7 @@ import '../../models/note.dart';
 import '../../services/notes_service.dart';
 import 'cartas/carta_screen.dart';
 import 'cartas/escritorio.dart';
+import 'tablero/compartir.dart';
 import 'tablero/detalle.dart';
 import 'tablero/editor.dart';
 import 'tablero/formas.dart';
@@ -15,7 +16,8 @@ import '../../widgets/doodle.dart';
 
 /// Tres pestañas: el tablero de notas de los dos, el tablero de mis notas
 /// privadas y el escritorio de cartas "Ábrelo cuando…".
-/// Una nota privada se puede compartir (y dejar de compartir).
+/// Una nota privada se puede compartir (y dejar de compartir) con un
+/// interruptor, y quien la compartió ve si su pareja ya la leyó.
 class NotesScreen extends StatelessWidget {
   const NotesScreen({
     super.key,
@@ -26,6 +28,7 @@ class NotesScreen extends StatelessWidget {
     this.demoDeLosDos,
     this.demoPrivadas,
     this.demoCartas,
+    this.demoCopias,
   });
   final AppUser me;
   final String coupleId;
@@ -40,23 +43,42 @@ class NotesScreen extends StatelessWidget {
   final Stream<List<Note>>? demoPrivadas;
   final Stream<List<Carta>>? demoCartas;
 
+  /// Para capturas: las copias de los dos de las privadas compartidas,
+  /// por su id (para ver si ya las leyó).
+  final Map<String, Note>? demoCopias;
+
+  bool get _tienePareja => coupleId.isNotEmpty && partnerUid.isNotEmpty;
+
+  Stream<Note?> _copia(String sharedId) => demoCopias != null
+      ? Stream.value(demoCopias![sharedId])
+      : _service.watchSharedNote(coupleId, sharedId);
+
   NotesService get _service => NotesService.instance;
 
   Future<void> _crear(BuildContext context, {required bool compartida}) async {
+    final compartir = !compartida && _tienePareja ? ValueNotifier(false) : null;
     final nota = await Navigator.of(context).push<Note>(
       MaterialPageRoute(
         builder: (_) => EditorDeNota(
           coupleId: coupleId,
           compartida: compartida,
           tienePareja: partnerUid.isNotEmpty,
+          compartirConPareja: compartir,
         ),
       ),
     );
+    final alFinal = compartir?.value ?? false;
+    compartir?.dispose();
     if (nota == null) return;
     if (compartida) {
       await _service.addShared(coupleId, me.uid, nota.contenido());
     } else {
-      await _service.addPrivate(me.uid, nota.contenido());
+      await _service.addPrivate(
+        me.uid,
+        nota.contenido(),
+        coupleId: coupleId,
+        compartir: alFinal,
+      );
     }
   }
 
@@ -78,7 +100,14 @@ class NotesScreen extends StatelessWidget {
     );
     if (editada == null) return;
     if (privada) {
-      await _service.updatePrivate(coupleId, me.uid, nota, editada.contenido());
+      // Si cambió, tu pareja la vuelve a ver como nueva (sin leer).
+      await _service.updatePrivate(
+        coupleId,
+        me.uid,
+        nota,
+        editada.contenido(),
+        releer: true,
+      );
     } else {
       await _service.updateShared(coupleId, nota.id, editada.contenido());
     }
@@ -105,12 +134,19 @@ class NotesScreen extends StatelessWidget {
 
   void _abrirCompartida(BuildContext context, Note nota) {
     final mia = nota.authorId == me.uid;
+    // Tu pareja te compartió una nota privada: al abrirla queda leída.
+    if (!mia && demoDeLosDos == null) {
+      _service.marcarLeida(coupleId, me.uid, nota);
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (ctx) => DetalleDeNota(
           nota: nota,
           autor: mia ? 'Escrita por ti' : 'Escrita por tu pareja',
           compartida: true,
+          extra: mia && nota.fromPrivate
+              ? _Cajita(child: EtiquetaDeLeida(nota: nota))
+              : null,
           onToggle: (items) =>
               _service.setSharedItems(coupleId, nota.id, items),
           acciones: [
@@ -131,42 +167,61 @@ class NotesScreen extends StatelessWidget {
     );
   }
 
-  void _abrirPrivada(BuildContext context, Note nota) {
+  void _abrirPrivada(BuildContext context, Note inicial) {
+    // La nota se sigue en vivo para que el interruptor, editar y borrar
+    // usen siempre si está compartida o no.
+    final enVivo = demoPrivadas != null
+        ? Stream.value(inicial)
+        : _service.watchPrivateNote(me.uid, inicial.id);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => DetalleDeNota(
-          nota: nota,
-          autor: nota.isShared ? 'Mía, compartida' : 'Solo la ves tú',
-          compartida: nota.isShared,
-          onToggle: (items) => _service.updatePrivate(coupleId, me.uid, nota, {
-            'items': items.map((i) => i.toMap()).toList(),
-          }),
-          acciones: [
-            AccionDeNota('Editar', Icons.edit_outlined, () async {
-              Navigator.pop(ctx);
-              await _editar(context, nota, privada: true);
-            }),
-            if (coupleId.isNotEmpty)
-              nota.isShared
-                  ? AccionDeNota(
-                      'Dejar de compartir',
-                      Icons.link_off,
-                      () async {
-                        Navigator.pop(ctx);
-                        await _service.unshare(coupleId, me.uid, nota);
-                      },
-                    )
-                  : AccionDeNota('Compartir', Icons.favorite_border, () async {
-                      Navigator.pop(ctx);
-                      await _service.share(coupleId, me.uid, nota);
-                    }),
-            AccionDeNota('Borrar', Icons.delete_outline, () async {
-              if (!await _confirmarBorrar(ctx)) return;
-              if (ctx.mounted) Navigator.pop(ctx);
-              await _service.unshare(coupleId, me.uid, nota);
-              await _service.deletePrivate(me.uid, nota.id);
-            }, peligro: true),
-          ],
+        builder: (ctx) => StreamBuilder<Note?>(
+          stream: enVivo,
+          initialData: inicial,
+          builder: (ctx, snap) {
+            final nota = snap.data ?? inicial;
+            return DetalleDeNota(
+              key: ValueKey(nota.id),
+              nota: nota,
+              autor: nota.isShared ? 'Mía, compartida' : 'Solo la ves tú',
+              compartida: nota.isShared,
+              onToggle: (items) => _service.updatePrivate(
+                coupleId,
+                me.uid,
+                nota,
+                {'items': items.map((i) => i.toMap()).toList()},
+              ),
+              extra: TarjetaDeCompartir(
+                nota: nota,
+                tienePareja: _tienePareja,
+                copia: nota.sharedNoteId == null
+                    ? null
+                    : _copia(nota.sharedNoteId!),
+                onCompartir: (compartir) => compartir
+                    ? _service.share(coupleId, me.uid, nota)
+                    : _service.unshare(coupleId, me.uid, nota),
+                onAvisar: nota.sharedNoteId == null
+                    ? null
+                    : (avisar) => _service.setAvisarLeida(
+                        coupleId,
+                        nota.sharedNoteId!,
+                        avisar,
+                      ),
+              ),
+              acciones: [
+                AccionDeNota('Editar', Icons.edit_outlined, () async {
+                  Navigator.pop(ctx);
+                  await _editar(context, nota, privada: true);
+                }),
+                AccionDeNota('Borrar', Icons.delete_outline, () async {
+                  if (!await _confirmarBorrar(ctx)) return;
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _service.unshare(coupleId, me.uid, nota);
+                  await _service.deletePrivate(me.uid, nota.id);
+                }, peligro: true),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -240,12 +295,25 @@ class NotesScreen extends StatelessWidget {
                   onAbrir: (n) => _abrirCompartida(context, n),
                   onToggle: (n, i) => _marcar(n, i, privada: false),
                 ),
-                TableroDeNotas(
-                  notas: demoPrivadas ?? _service.watchPrivate(me.uid),
-                  vacio: 'Tus notas privadas solo las ves tú.',
-                  onAbrir: (n) => _abrirPrivada(context, n),
-                  onToggle: (n, i) => _marcar(n, i, privada: true),
-                  marca: (n) => n.isShared ? 'compartida ♡' : null,
+                _Privadas(
+                  copias: demoCopias != null
+                      ? Stream.value(demoCopias!)
+                      : coupleId.isEmpty
+                      ? Stream.value(const {})
+                      : _service
+                            .watchShared(coupleId)
+                            .map((l) => {for (final n in l) n.id: n}),
+                  builder: (copias) => TableroDeNotas(
+                    notas: demoPrivadas ?? _service.watchPrivate(me.uid),
+                    vacio: 'Tus notas privadas solo las ves tú.\nSi quieres, puedes compartirlas con tu pareja.',
+                    onAbrir: (n) => _abrirPrivada(context, n),
+                    onToggle: (n, i) => _marcar(n, i, privada: true),
+                    marca: (n) => !n.isShared
+                        ? null
+                        : (copias[n.sharedNoteId]?.leida ?? false)
+                        ? 'leída ✓'
+                        : 'compartida ♡',
+                  ),
                 ),
                 EscritorioDeCartas(
                   uid: me.uid,
@@ -259,6 +327,36 @@ class NotesScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Las copias de los dos, para marcar "leída" en mis privadas.
+class _Privadas extends StatelessWidget {
+  const _Privadas({required this.copias, required this.builder});
+  final Stream<Map<String, Note>> copias;
+  final Widget Function(Map<String, Note> copias) builder;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<Map<String, Note>>(
+    stream: copias,
+    builder: (context, snap) => builder(snap.data ?? const {}),
+  );
+}
+
+/// Fondo blanco redondito, como las demás tarjetas de la nota.
+class _Cajita extends StatelessWidget {
+  const _Cajita({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: NotasStyle.celeste.withValues(alpha: 0.8)),
+    ),
+    child: child,
+  );
 }
 
 class _Pestana extends StatelessWidget {
