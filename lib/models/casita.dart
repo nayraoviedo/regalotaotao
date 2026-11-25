@@ -56,13 +56,17 @@ class Casita {
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
 
-  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes.
+  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes y los
+  /// kois.
   static const animadas = {
     'pajarito_azul',
     'pajarito_canario',
     'pajarito_rosa',
     'pecera_pececito',
     'pecera_pareja',
+    'pecera_koi',
+    'estanque_koi',
+    'estanque_koi_loto',
   };
 
   /// Cosas que se prenden de noche (tienen su halo `luz_{id}`).
@@ -675,12 +679,14 @@ class Catalogo {
     Cosa('cuadro_pescadito', 'Cuadro de pescadito', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_corazon', 'Cuadro de corazón', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_foto', 'Foto de los dos', 60, lugar: Lugar.cuadro),
+    Cosa('cuadro_koi', 'Cuadro de kois', 40, lugar: Lugar.cuadro),
     // Visitantes (en la repisa de la ventana)
     Cosa('pajarito_azul', 'Pajarito azul', 100, lugar: Lugar.pajarito),
     Cosa('pajarito_canario', 'Canario', 100, lugar: Lugar.pajarito),
     Cosa('pajarito_rosa', 'Pajarito rosado', 120, lugar: Lugar.pajarito),
     Cosa('pecera_pececito', 'Pecera con pececito', 120, lugar: Lugar.pecera),
     Cosa('pecera_pareja', 'Pecera de dos peces', 180, lugar: Lugar.pecera),
+    Cosa('pecera_koi', 'Pecera con kois', 150, lugar: Lugar.pecera),
     // Luces
     Cosa('lampara_pie', 'Lámpara de pie', 50, lugar: Lugar.lampara),
     Cosa(
@@ -813,6 +819,14 @@ class Catalogo {
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
     Cosa('estanque_fuente', 'Fuente', 110, lugar: Lugar.estanque),
+    // Kois: uno naranja y uno blanquito, como ellos.
+    Cosa('estanque_koi', 'Estanque de kois', 140, lugar: Lugar.estanque),
+    Cosa(
+      'estanque_koi_loto',
+      'Kois con flores de loto',
+      170,
+      lugar: Lugar.estanque,
+    ),
 
     // Baño
     Cosa('pared_bano_menta', 'Azulejos menta', 0, lugar: Lugar.paredBano),
