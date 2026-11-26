@@ -211,7 +211,14 @@ enum Ingrediente {
   cebolla('cebollas', 'cebolla', 'cebollas', '🧅'),
   sandia('sandias', 'sandía', 'sandías', '🍉'),
   quinua('quinua', 'puñado de quinua', 'puñados de quinua', '🌾'),
-  arandano('arandanos', 'arándano', 'arándanos', '🫐');
+  arandano('arandanos', 'arándano', 'arándanos', '🫐'),
+  trigo('trigo', 'puñado de trigo', 'puñados de trigo', '🍞'),
+  albahaca('albahaca', 'ramita de albahaca', 'ramitas de albahaca', '🌿'),
+  pimiento('pimientos', 'pimiento', 'pimientos', '🫑'),
+  arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
+  ajo('ajos', 'ajo', 'ajos', '🧄'),
+  palta('paltos', 'palta', 'paltas', '🥑'),
+  berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
 
@@ -231,7 +238,10 @@ enum Ingrediente {
   }
 
   /// Para el botón: "Recoger tomates", "Recoger quinua".
-  String get alRecoger => this == quinua ? 'quinua' : varios;
+  String get alRecoger => switch (this) {
+    quinua || trigo || arroz || albahaca => name,
+    _ => varios,
+  };
 
   /// "1 tomate", "3 tomates".
   String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
@@ -371,6 +381,91 @@ enum Receta {
     'kimchi',
     {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
     {Comida.almuerzo, Comida.cena},
+  ),
+  // ---- Famosas del mundo ----
+  pizzaMargarita(
+    'pizza_margarita',
+    'pizza margarita',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 1, Ingrediente.albahaca: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  paella(
+    'paella',
+    'paella',
+    {Ingrediente.arroz: 2, Ingrediente.pimiento: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  lasana(
+    'lasana',
+    'lasaña',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  espaguetisPesto(
+    'espaguetis_pesto',
+    'espaguetis al pesto',
+    {Ingrediente.trigo: 1, Ingrediente.albahaca: 2, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  risotto(
+    'risotto',
+    'risotto',
+    {Ingrediente.arroz: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  guacamole(
+    'guacamole',
+    'guacamole con totopos',
+    {Ingrediente.palta: 2, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ratatouille(
+    'ratatouille',
+    'ratatouille',
+    {Ingrediente.berenjena: 1, Ingrediente.pimiento: 1, Ingrediente.tomate: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  arrozFrito(
+    'arroz_frito',
+    'arroz frito chino',
+    {Ingrediente.arroz: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  gazpacho(
+    'gazpacho',
+    'gazpacho',
+    {Ingrediente.tomate: 2, Ingrediente.pimiento: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  bibimbap(
+    'bibimbap',
+    'bibimbap',
+    {Ingrediente.arroz: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  curryCalabaza(
+    'curry_calabaza',
+    'curry de calabaza',
+    {Ingrediente.calabaza: 1, Ingrediente.arroz: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  panAjo(
+    'pan_ajo',
+    'pan de ajo',
+    {Ingrediente.trigo: 1, Ingrediente.ajo: 1},
+    {Comida.desayuno},
+  ),
+  crepasFresa(
+    'crepas_fresa',
+    'crepas con fresa',
+    {Ingrediente.trigo: 1, Ingrediente.fresa: 2},
+    {Comida.desayuno},
+  ),
+  tostadaPalta(
+    'tostada_palta',
+    'tostada de palta',
+    {Ingrediente.trigo: 1, Ingrediente.palta: 1},
+    {Comida.desayuno},
   ),
   // ---- Solo en su fiesta ----
   pavo(
@@ -1061,6 +1156,43 @@ class Catalogo {
       'Semillas de arándano',
       35,
       lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa('trigo', 'Semillas de trigo', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'albahaca',
+      'Semillas de albahaca',
+      20,
+      lugar: Lugar.bancal,
+      semilla: true,
+    ),
+    Cosa(
+      'pimientos',
+      'Semillas de pimiento',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('arroz', 'Semillas de arroz', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'ajos',
+      'Dientes de ajo para sembrar',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'paltos',
+      'Semilla de palta',
+      40,
+      lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa(
+      'berenjenas',
+      'Semillas de berenjena',
+      25,
+      lugar: Lugar.tomatera,
       semilla: true,
     ),
 

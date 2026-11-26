@@ -767,6 +767,26 @@ void main() {
       expect(Receta.dumplings.deTemporada(DateTime(2026, 7, 1)), isTrue);
     });
 
+    test('cada receta tiene su plato y sus ingredientes se cosechan', () {
+      final ids = Catalogo.cosas.map((c) => c.id).toSet();
+      for (final i in Ingrediente.values) {
+        expect(ids, contains(i.semilla), reason: i.name);
+        expect(File('assets/casita/${i.semilla}.png').existsSync(), isTrue);
+        expect(
+          File('assets/casita/picando_${i.name}_naranja.png').existsSync(),
+          isTrue,
+          reason: i.name,
+        );
+      }
+      for (final r in Receta.values) {
+        expect(
+          File('assets/casita/plato_${r.dibujo}.png').existsSync(),
+          isTrue,
+          reason: r.name,
+        );
+      }
+    });
+
     test('los cuartos nuevos se abren comprándolos', () {
       const cerrado = EstadoCasita.vacio;
       expect(cerrado.abierto(Cuarto.sala), isTrue);
