@@ -613,20 +613,71 @@ async function pushToUser(sa, fs, uid, msg) {
   const user = await fs.get(`users/${uid}`);
   const tokens = [...new Set((user?.data.fcmTokens || []).filter(Boolean))];
   if (tokens.length === 0) return 0;
-  const results = await Promise.all(tokens.map((t) => sendPush(sa, t, msg)));
+  // La app nueva avisa que ya sabe hacer sonar los recordatorios como
+  // alarma (lib/services/push_service.dart).
+  const m = { ...msg, comoAlarma: user?.data.recordatoriosComoAlarma === true };
+  const results = await Promise.all(tokens.map((t) => sendPush(sa, t, m)));
   const dead = tokens.filter((_, i) => results[i] === "dead");
   if (dead.length) await fs.removeFromArray(`users/${uid}`, "fcmTokens", dead);
   return results.filter((r) => r === "ok").length;
 }
 
 // ---------- Firebase Cloud Messaging (HTTP v1) ----------
-// `canal: "notas"` manda el aviso al canal del maullido y
-// `canal: "recordatorio"` al de la alarma de maullidos.
-async function sendPush(sa, token, { title, body, canal }) {
+// Arma el mensaje de FCM. Un recordatorio para quien tiene la app nueva
+// (`comoAlarma`) va como datos: la app lo hace sonar como alarma (con
+// pantalla completa y sin parar hasta apagarla) y no lo repite si ese
+// celular ya tenía la alarma programada. En la web sale como aviso normal.
+export function mensajeFcm(token, { title, body, canal, nota, cuando, comoAlarma }) {
+  if (canal === "recordatorio" && comoAlarma) {
+    return {
+      token,
+      data: {
+        tipo: "recordatorio",
+        title,
+        body,
+        nota: nota || "",
+        cuando: cuando == null ? "" : String(cuando),
+      },
+      android: { priority: "HIGH", ttl: "86400s" },
+      webpush: {
+        headers: { Urgency: "high", TTL: "86400" },
+        notification: { title, body },
+      },
+    };
+  }
   const [canalAndroid, sonido] =
     canal === "recordatorio" ? [CANAL_RECORDATORIOS, "maullido_alarma"]
     : canal === "notas" ? [CANAL_NOTAS, "maullido"]
     : [ANDROID_CHANNEL, null];
+  return {
+    token,
+    notification: { title, body },
+    // Que llegue al instante aunque el celular esté en reposo:
+    // prioridad alta y el canal "Mimos de tu pareja" (importancia
+    // alta, lo crea la app). Sin canal, Android usaba el canal
+    // "Varios" de Firebase, que no avisa enseguida ni suena.
+    android: {
+      priority: "HIGH",
+      ttl: "86400s",
+      notification: {
+        channel_id: canalAndroid,
+        icon: "ic_notificacion",
+        notification_priority: "PRIORITY_MAX",
+        // En Android 8+ manda el sonido del canal; esto es para los
+        // celulares más viejos.
+        ...(sonido ? { sound: sonido } : { default_sound: true }),
+        default_vibrate_timings: true,
+        visibility: "PUBLIC",
+      },
+    },
+    // En la web (navegador): mensaje urgente.
+    webpush: { headers: { Urgency: "high", TTL: "86400" } },
+  };
+}
+
+// `canal: "notas"` manda el aviso al canal del maullido y
+// `canal: "recordatorio"` al de la alarma de maullidos.
+async function sendPush(sa, token, msg) {
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
     {
@@ -635,32 +686,7 @@ async function sendPush(sa, token, { title, body, canal }) {
         Authorization: `Bearer ${await googleAccessToken(sa)}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: { title, body },
-          // Que llegue al instante aunque el celular esté en reposo:
-          // prioridad alta y el canal "Mimos de tu pareja" (importancia
-          // alta, lo crea la app). Sin canal, Android usaba el canal
-          // "Varios" de Firebase, que no avisa enseguida ni suena.
-          android: {
-            priority: "HIGH",
-            ttl: "86400s",
-            notification: {
-              channel_id: canalAndroid,
-              icon: "ic_notificacion",
-              notification_priority: "PRIORITY_MAX",
-              // En Android 8+ manda el sonido del canal; esto es para los
-              // celulares más viejos.
-              ...(sonido ? { sound: sonido } : { default_sound: true }),
-              default_vibrate_timings: true,
-              visibility: "PUBLIC",
-            },
-          },
-          // En la web (navegador): mensaje urgente.
-          webpush: { headers: { Urgency: "high", TTL: "86400" } },
-        },
-      }),
+      body: JSON.stringify({ message: mensajeFcm(token, msg) }),
     },
   );
   if (res.ok) return "ok";

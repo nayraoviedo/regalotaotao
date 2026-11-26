@@ -4,8 +4,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+
+import 'alarma_recordatorios.dart';
 
 /// Maullido cuando termina un pomodoro (solo o en pareja).
 ///
@@ -56,12 +57,8 @@ class MaullidoService with WidgetsBindingObserver {
         estado == AppLifecycleState.hidden;
     if (!_android) return;
     try {
-      tzdata.initializeTimeZones();
-      await _notis.initialize(
-        settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@drawable/ic_notificacion'),
-        ),
-      );
+      // Las mismas notificaciones locales que la alarma de los recordatorios.
+      await AlarmaRecordatorios.preparar();
       await _notis
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin

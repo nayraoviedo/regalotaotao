@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,6 +16,7 @@ import '../together/elegir_gatito.dart';
 import 'datos_curiosos_screen.dart';
 import '../together/together_screen.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/permisos_alarma.dart';
 import '../../widgets/texto_doodle.dart';
 
 /// Perfil: foto (la que elijas, tu gatito o la de Google), nombre, código y
@@ -301,6 +303,19 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (!kIsWeb &&
+                      defaultTargetPlatform == TargetPlatform.android)
+                    Card(
+                      child: ListTile(
+                        leading: Doodle(Icons.alarm, color: AppTheme.azul),
+                        title: const Text('Alarma de los recordatorios'),
+                        subtitle: const Text(
+                          'Permisos, sonido y una alarma de prueba',
+                        ),
+                        trailing: const Doodle(Icons.chevron_right),
+                        onTap: () => PermisosDeAlarma.abrir(context),
+                      ),
+                    ),
                   Card(
                     child: ListTile(
                       leading: Doodle(
