@@ -123,8 +123,7 @@ class _PermisosDeAlarmaState extends State<PermisosDeAlarma>
                 titulo: 'Notificaciones',
                 texto: 'Para que te lleguen los avisos',
                 listo: e.notificaciones,
-                onPedir: () =>
-                    _pedir(AlarmaRecordatorios.pedirNotificaciones),
+                onPedir: () => _pedir(AlarmaRecordatorios.pedirNotificaciones),
               ),
               _Permiso(
                 titulo: 'Alarmas a la hora exacta',
@@ -188,7 +187,9 @@ class _Permiso extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: Doodle(
-          listo ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          listo
+              ? Icons.check_circle_rounded
+              : Icons.radio_button_unchecked_rounded,
           color: AppTheme.azul,
         ),
         title: Text(titulo),

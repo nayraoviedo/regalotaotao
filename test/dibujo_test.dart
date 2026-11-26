@@ -101,7 +101,10 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('Pingüino', findRichText: true), findsOneWidget);
+      expect(
+        find.textContaining('Pingüino', findRichText: true),
+        findsOneWidget,
+      );
       expect(find.byType(Herramientas), findsOneWidget);
       expect(find.textContaining('Borrar todo'), findsOneWidget);
     });
@@ -225,7 +228,10 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('memorama, rompecabezas y sudoku'), findsOneWidget);
+      expect(
+        find.textContaining('teléfono descompuesto, memorama'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('la sección muestra el juego de dibujar', (t) async {
@@ -237,6 +243,7 @@ void main() {
             partnerName: 'Ana',
             ronda: ronda(),
             onDibujo: () {},
+            onTelefono: () {},
             onMemorama: () {},
             onRompecabezas: () {},
             onSudoku: () {},

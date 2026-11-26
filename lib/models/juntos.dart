@@ -225,7 +225,7 @@ class Rompecabezas {
   });
 
   /// Tamaños: 3 × 3 (fácil), 4 × 4 (medio), 5 × 5 (difícil).
-  static const lados = [3, 4, 5];
+  static const lados = [3, 4, 5, 6];
 
   final String id;
   final String por;

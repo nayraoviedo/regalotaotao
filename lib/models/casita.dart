@@ -2074,6 +2074,7 @@ class Movimiento {
   static const memorama = 'memorama';
   static const rompecabezas = 'rompe';
   static const sudoku = 'sudoku';
+  static const telefono = 'telefono';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';

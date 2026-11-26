@@ -3,9 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/juntos.dart';
+import 'package:taotao/models/dibujo.dart';
 import 'package:taotao/models/sudoku.dart';
+import 'package:taotao/models/telefono.dart';
 import 'package:taotao/screens/juegos_juntos/memorama_screen.dart';
 import 'package:taotao/screens/juegos_juntos/sudoku_screen.dart';
+import 'package:taotao/screens/juegos_juntos/telefono_screen.dart';
 
 Widget app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -184,6 +187,99 @@ void main() {
       expect(find.text('OFF'), findsOneWidget);
       await t.tap(find.text('7').last);
       expect(puestos, [7]);
+    });
+  });
+
+  group('Teléfono descompuesto', () {
+    test('cada turno espera a que la pareja haga el anterior', () {
+      const t0 = Telefono(id: 't', por: 'a');
+      expect(t0.puedeJugar('a', 'b'), isTrue);
+      expect(t0.puedeJugar('b', 'a'), isTrue);
+      const t1 = Telefono(id: 't', por: 'a', progreso: {'a': 1});
+      expect(t1.puedeJugar('a', 'b'), isFalse);
+      expect(t1.puedeJugar('b', 'a'), isTrue);
+      const t2 = Telefono(id: 't', por: 'a', progreso: {'a': 2, 'b': 2});
+      expect(t2.puedeJugar('a', 'b'), isTrue);
+      const fin = Telefono(
+        id: 't',
+        por: 'a',
+        progreso: {'a': 4, 'b': 4},
+        terminada: true,
+      );
+      expect(fin.puedeJugar('a', 'b'), isFalse);
+      expect(fin.listos('a', 'b'), isTrue);
+      expect(fin.puedeCobrar('a'), isTrue);
+      expect(
+        [for (var p = 0; p < 5; p++) Telefono.turnoDe(p)],
+        [0, 0, 1, 2, 3],
+      );
+      expect(Telefono.delDueno(2), isFalse);
+      expect(Telefono.idPaso('a', 3), 'a_3');
+    });
+
+    test('los pasos guardan frase o dibujo', () {
+      const frase = PasoTelefono(cadena: 'a', paso: 0, por: 'a', texto: 'Hola');
+      expect(frase.toMap(), {
+        'cadena': 'a',
+        'n': 0,
+        'por': 'a',
+        'texto': 'Hola',
+      });
+      const dibujo = PasoTelefono(
+        cadena: 'a',
+        paso: 1,
+        por: 'a',
+        trazos: [
+          Trazo(n: 0, puntos: [1, 2, 3, 4], color: 2, grosor: 6),
+        ],
+      );
+      expect(dibujo.toMap()['trazos'], [
+        {
+          'p': [1, 2, 3, 4],
+          'c': 2,
+          'g': 6,
+        },
+      ]);
+    });
+
+    testWidgets('al final muestra las dos cadenas', (t) async {
+      await t.binding.setSurfaceSize(const Size(400, 1600));
+      PasoTelefono texto(String c, int n, String por, String x) =>
+          PasoTelefono(cadena: c, paso: n, por: por, texto: x);
+      PasoTelefono dib(String c, int n, String por) => PasoTelefono(
+        cadena: c,
+        paso: n,
+        por: por,
+        trazos: const [
+          Trazo(n: 0, puntos: [10, 10, 500, 500], color: 0, grosor: 14),
+        ],
+      );
+      await t.pumpWidget(
+        app(
+          Revelacion(
+            pasos: [
+              texto('a', 0, 'a', 'Un gato astronauta'),
+              dib('a', 1, 'a'),
+              texto('a', 2, 'b', 'Un perro en la luna'),
+              dib('a', 3, 'a'),
+              texto('a', 4, 'b', 'Una pizza voladora'),
+              texto('b', 0, 'b', 'Un pulpo con guitarra'),
+            ],
+            uid: 'a',
+            partnerName: 'Beto',
+            premio: 'Ganaron 8 pescaditos cada uno',
+            onOtra: () {},
+          ),
+        ),
+      );
+      expect(find.text('Un gato astronauta'), findsOneWidget);
+      expect(find.text('Una pizza voladora'), findsOneWidget);
+      expect(find.text('Beto creyó que era'), findsNWidgets(2));
+      expect(find.text('Un pulpo con guitarra'), findsNothing);
+      await t.tap(find.text('La de Beto'));
+      await t.pumpAndSettle();
+      expect(find.text('Un pulpo con guitarra'), findsOneWidget);
+      expect(find.text('Beto escribió'), findsOneWidget);
     });
   });
 }

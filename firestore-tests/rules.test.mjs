@@ -422,6 +422,7 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
 
   // Rompecabezas.
   const R = 'couples/c1/rompecabezas/r1';
+  await ok('A hace uno de 6 × 6', setDoc(doc(db('A'),'couples/c1/rompecabezas/r6'),{por:'A',foto:'x',lado:6,orden:[...Array(36).keys()].reverse(),turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
   await ok('A empieza un rompecabezas', setDoc(doc(db('A'),R),{por:'A',foto:'asset:assets/images/inicio_cielo.png',lado:3,orden:[1,2,0,4,5,3,7,8,6],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
   await no('A no hace uno de 7 × 7', setDoc(doc(db('A'),'couples/c1/rompecabezas/r0'),{por:'A',foto:'x',lado:7,orden:[...Array(49).keys()],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
   await no('B no mueve en el turno de A', updateDoc(doc(db('B'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'A',movs:1}));
@@ -429,11 +430,11 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await ok('A cambia dos piezas', updateDoc(doc(db('A'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'B',movs:1}));
   await ok('B termina el rompecabezas', updateDoc(doc(db('B'),R),{orden:[0,1,2,3,4,5,6,7,8],turno:'B',movs:2,estado:'terminada',terminadaEn:serverTimestamp()}));
   const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data()?.pescaditos ?? 0;
-  const cobrar = (u, tipo, slot, cantidad, total, partida, extra={}) => {
+  const cobrar = (u, tipo, slot, cantidad, total, partida, extra={}, col='rompecabezas') => {
     const d = db(u); const b = writeBatch(d); const id = `${tipo}_${hoy}_${u}_${slot}`;
     b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo, cantidad, ref:hoy, slot, ...(partida?{partida}:{}), ...extra});
     b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
-    if (partida) b.update(doc(d,'couples/c1/rompecabezas',partida), {[`cobros.${u}`]:id});
+    if (partida) b.update(doc(d,'couples/c1/'+col,partida), {[`cobros.${u}`]:id});
     return b.commit();
   };
   await no('A no cobra 30 por el rompecabezas', cobrar('A','rompe',1,30,hay+30,'r1'));
@@ -443,6 +444,37 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await ok('A gana 12 por un sudoku difícil', cobrar('A','sudoku',1,12,hay+28,null,{nivel:'dificil'}));
   await no('A no cobra 15 por un sudoku fácil', cobrar('A','sudoku',2,15,hay+43,null,{nivel:'facil'}));
   await no('A no cobra un sudoku en un lugar 4', cobrar('A','sudoku',4,5,hay+33,null,{nivel:'facil'}));
+
+  // Teléfono descompuesto.
+  const T = 'couples/c1/telefonos/t1';
+  const traz = [{p:[1,2,3,4],c:0,g:14}];
+  const turno = (u, n, pasos, extra={}) => {
+    const d = db(u); const b = writeBatch(d);
+    for (const [cadena, paso, val] of pasos) {
+      b.set(doc(d,T+'/pasos/'+cadena+'_'+paso), {cadena, n:paso, por:u, ...(paso==1||paso==3 ? {trazos:val} : {texto:val})});
+    }
+    b.update(doc(d,T), {[`progreso.${u}`]:n, ...extra});
+    return b.commit();
+  };
+  await ok('A empieza un teléfono', setDoc(doc(db('A'),T),{por:'A',progreso:{},estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('A no sube su progreso sin pasos', updateDoc(doc(db('A'),T),{'progreso.A':1}));
+  await no('A no escribe en la cadena de B', turno('A',1,[['B',0,'hola'],['B',1,traz]]));
+  await ok('A escribe y dibuja su frase', turno('A',1,[['A',0,'Un gato astronauta'],['A',1,traz]]));
+  await no('A no sigue antes que B', turno('A',2,[['B',2,'un perro']]));
+  await no('B no adivina antes de dibujar lo suyo', turno('B',1,[['A',2,'un perro']]));
+  await no('B no escribe una frase larguísima', turno('B',1,[['B',0,'x'.repeat(81)],['B',1,traz]]));
+  await ok('B escribe y dibuja su frase', turno('B',1,[['B',0,'Un pulpo'],['B',1,traz]]));
+  await no('nadie cambia un paso ya hecho', setDoc(doc(db('A'),T+'/pasos/A_0'),{cadena:'A',n:0,por:'A',texto:'otra'}));
+  await ok('A adivina el dibujo de B', turno('A',2,[['B',2,'Un calamar']]));
+  await ok('B adivina el dibujo de A', turno('B',2,[['A',2,'Un perro en la luna']]));
+  await ok('A dibuja lo que B creyó', turno('A',3,[['A',3,traz]]));
+  await ok('B dibuja lo que A creyó', turno('B',3,[['B',3,traz]]));
+  await ok('A vuelve a adivinar', turno('A',4,[['B',4,'Un fantasma']]));
+  await no('B no termina sin cerrar la partida', turno('B',4,[['A',4,'Una pizza']]));
+  await ok('B vuelve a adivinar y termina', turno('B',4,[['A',4,'Una pizza']],{estado:'terminada',terminadaEn:serverTimestamp()}));
+  await no('A no juega un quinto turno', updateDoc(doc(db('A'),T),{'progreso.A':5}));
+  await ok('A gana 8 por el teléfono', cobrar('A','telefono',1,8,hay+36,'t1',{},'telefonos'));
+  await no('A no cobra el teléfono dos veces', cobrar('A','telefono',2,8,hay+44,'t1',{},'telefonos'));
 }
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));

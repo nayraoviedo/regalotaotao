@@ -71,6 +71,10 @@ beforeEach(() => {
     "couples/c1/dibujos/d2": { dibuja: "ana", palabra: "luna", clave: "luna", estado: "adivinada", mensajes: [] },
     "couples/c1/memoramas/m1": { por: "ana", estado: "jugando", cartas: [] },
     "couples/c1/rompecabezas/r1": { por: "ana", estado: "terminada", orden: [] },
+    "couples/c1/telefonos/t0": { por: "ana", estado: "jugando", progreso: {} },
+    "couples/c1/telefonos/t1": { por: "ana", estado: "jugando", progreso: { ana: 2, beto: 1 } },
+    "couples/c1/telefonos/t2": { por: "ana", estado: "jugando", progreso: { ana: 1, beto: 2 } },
+    "couples/c1/telefonos/t3": { por: "ana", estado: "terminada", progreso: { ana: 4, beto: 4 } },
     "couples/c1/juegos/j2": { juego: "adivina", por: "beto", terminada: true, preguntas: [1, 2, 3, 4, 5], respuestas: { beto: [0, 1, 2, 3, 0], ana: [0, 1, 3, 3, 1] } },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
@@ -218,6 +222,19 @@ test("memorama y rompecabezas: avisa al empezar", async () => {
   assert.equal((await call({ kind: "memorama", coupleId: "c1", docId: "m1" }, await idToken("beto"))).status, 403);
   // Uno ya terminado no avisa.
   assert.equal((await call({ kind: "rompecabezas", coupleId: "c1", docId: "r1" }, ana)).status, 403);
+});
+
+test("teléfono descompuesto: avisa al empezar, cuando te toca y al final", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t0" }, ana)).status, 200);
+  assert.match(sent[0].notification.body, /^Ana empezó una partida/);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t0" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t1" }, ana)).status, 200);
+  assert.match(sent[1].notification.body, /ya hizo su parte/);
+  // Beto va adelantado y espera a Ana: el turno de Ana no le cambia nada.
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t2" }, ana)).status, 403);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t3" }, ana)).status, 200);
+  assert.match(sent[2].notification.title, /sus frases/);
 });
 
 test("no se envía dos veces el mismo aviso", async () => {

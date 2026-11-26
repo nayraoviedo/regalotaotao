@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/app_user.dart';
@@ -10,6 +12,7 @@ import 'dibujo_screen.dart';
 import 'fotos_juegos_screen.dart';
 import 'memorama_screen.dart';
 import 'rompecabezas_screen.dart';
+import 'telefono_screen.dart';
 import 'sudoku_screen.dart';
 
 /// "Juegos juntos": juegos para pasar el rato (aparte de los juegos de
@@ -40,27 +43,35 @@ class JuegosJuntosScreen extends StatelessWidget {
           stream: svc.watchMemorama(couple.id),
           builder: (context, m) => StreamBuilder<Rompecabezas?>(
             stream: svc.watchRompecabezas(couple.id),
-            builder: (context, r) => JuegosJuntosVista(
-              uid: me.uid,
-              partnerName: partnerName,
-              ronda: d.data,
-              memorama: m.data,
-              rompecabezas: r.data,
-              onDibujo: () =>
-                  abrir(DibujoScreen(me: me, couple: couple, partner: partner)),
-              onMemorama: () => abrir(
-                MemoramaScreen(me: me, couple: couple, partner: partner),
-              ),
-              onRompecabezas: () => abrir(
-                RompecabezasScreen(me: me, couple: couple, partner: partner),
-              ),
-              onSudoku: () =>
-                  abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
-              onFotos: () => abrir(
-                FotosJuegosScreen(
-                  coupleId: couple.id,
-                  uid: me.uid,
-                  partnerName: partnerName,
+            builder: (context, r) => StreamBuilder<Telefono?>(
+              stream: svc.watchTelefono(couple.id),
+              builder: (context, t) => JuegosJuntosVista(
+                uid: me.uid,
+                partnerName: partnerName,
+                ronda: d.data,
+                memorama: m.data,
+                rompecabezas: r.data,
+                telefono: t.data,
+                onDibujo: () => abrir(
+                  DibujoScreen(me: me, couple: couple, partner: partner),
+                ),
+                onTelefono: () => abrir(
+                  TelefonoScreen(me: me, couple: couple, partner: partner),
+                ),
+                onMemorama: () => abrir(
+                  MemoramaScreen(me: me, couple: couple, partner: partner),
+                ),
+                onRompecabezas: () => abrir(
+                  RompecabezasScreen(me: me, couple: couple, partner: partner),
+                ),
+                onSudoku: () =>
+                    abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
+                onFotos: () => abrir(
+                  FotosJuegosScreen(
+                    coupleId: couple.id,
+                    uid: me.uid,
+                    partnerName: partnerName,
+                  ),
                 ),
               ),
             ),
@@ -78,6 +89,7 @@ class JuegosJuntosVista extends StatelessWidget {
     required this.uid,
     required this.partnerName,
     required this.onDibujo,
+    required this.onTelefono,
     required this.onMemorama,
     required this.onRompecabezas,
     required this.onSudoku,
@@ -85,6 +97,7 @@ class JuegosJuntosVista extends StatelessWidget {
     this.ronda,
     this.memorama,
     this.rompecabezas,
+    this.telefono,
   });
 
   final String uid;
@@ -92,7 +105,9 @@ class JuegosJuntosVista extends StatelessWidget {
   final Ronda? ronda;
   final Memorama? memorama;
   final Rompecabezas? rompecabezas;
+  final Telefono? telefono;
   final VoidCallback onDibujo;
+  final VoidCallback onTelefono;
   final VoidCallback onMemorama;
   final VoidCallback onRompecabezas;
   final VoidCallback onSudoku;
@@ -107,6 +122,17 @@ class JuegosJuntosVista extends StatelessWidget {
     final mEnJuego = m != null && !m.terminada;
     final rc = rompecabezas;
     final rEnJuego = rc != null && !rc.terminada;
+    final tel = telefono;
+    final tHechos = tel?.hechos(uid) ?? 0;
+    final tOtro = [
+      for (final e in tel?.progreso.entries ?? <MapEntry<String, int>>[])
+        if (e.key != uid) e.value,
+    ].fold(0, math.max);
+    final tEnJuego = tel != null && !tel.terminada;
+    final tTeToca =
+        tEnJuego &&
+        tHechos < Telefono.turnos &&
+        (tHechos == 0 || tOtro >= tHechos);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
       children: [
@@ -132,6 +158,24 @@ class JuegosJuntosVista extends StatelessWidget {
               ? 'Seguir dibujando'
               : 'Jugar',
           onTap: onDibujo,
+        ),
+        const SizedBox(height: 14),
+        TarjetaJuegoJuntos(
+          titulo: 'Teléfono descompuesto',
+          dibujo: JuegosJuntos.dibujoTelefono,
+          descripcion: tTeToca
+              ? '¡Te toca! Vas en el turno ${tHechos + 1} de '
+                    '${Telefono.turnos}.'
+              : tEnJuego && tHechos >= Telefono.turnos
+              ? 'Ya hiciste tu parte. Cuando $partnerName termine, verán '
+                    'cómo cambiaron sus frases.'
+              : tEnJuego
+              ? 'Le toca a $partnerName. Te avisamos cuando sea tu turno.'
+              : 'Escriban una frase secreta y dibújenla; el otro adivina, '
+                    'y así. Al final ven cuánto cambió.',
+          aviso: tTeToca,
+          boton: tTeToca ? '¡Te toca!' : (tEnJuego ? 'Ver partida' : 'Jugar'),
+          onTap: onTelefono,
         ),
         const SizedBox(height: 14),
         TarjetaJuegoJuntos(
@@ -198,6 +242,7 @@ class JuegosJuntosVista extends StatelessWidget {
 class JuegosJuntos {
   JuegosJuntos._();
   static const dibujoMemorama = 'assets/images/juego_memorama.png';
+  static const dibujoTelefono = 'assets/images/juego_telefono.png';
   static const dibujoRompecabezas = 'assets/images/juego_rompecabezas.png';
   static const dibujoSudoku = 'assets/images/juego_sudoku.png';
 }
@@ -379,7 +424,7 @@ class TarjetaJuntos extends StatelessWidget {
                       aviso
                           ? '¡$partnerName está dibujando para ti! '
                                 'Ven a adivinar'
-                          : 'Dibuja y adivina, memorama, rompecabezas y sudoku',
+                          : 'Dibuja y adivina, teléfono descompuesto, memorama y más',
                       style: TextStyle(
                         color: aviso ? AppTheme.crema : AppTheme.gris,
                         fontSize: 13,

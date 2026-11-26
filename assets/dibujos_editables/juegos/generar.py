@@ -13,6 +13,8 @@ Luego se exportan a PNG (1350x840) en assets/images/ con:  node exportar.mjs
   juego_memorama.png   memorama: cartas boca abajo y una pareja de corazones
   juego_rompecabezas.png  rompecabezas: los dos ponen la última pieza
   juego_sudoku.png     sudoku: el blanco piensa con su lápiz frente a un tablero
+  juego_telefono.png   teléfono descompuesto: hablan por un teléfono de latitas
+                       y por el hilo viaja un dibujito que va cambiando
   juego_resultado.png  resultados: chocan las patitas, con corazones y un
                        pescadito
 
@@ -282,10 +284,47 @@ def sudoku():
                  g.sombra(450, 330), tablero, b)
 
 
+def latita(x, y, s=1.0, rot=0):
+    """Una latita del teléfono de hilo."""
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-26" y="-34" width="52" height="68" rx="8" fill="#F4C95D" '
+            f'stroke="{AZUL}" stroke-width="6"/>'
+            f'<path d="M-26 -14 L26 -14 M-26 14 L26 14" stroke="{AZUL}" stroke-width="4"/>'
+            '</g>')
+
+
+def papelito(x, y, s=1.0, rot=0, dentro=""):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-48" y="-40" width="96" height="80" rx="10" fill="#FFFFFF" '
+            f'stroke="{AZUL}" stroke-width="5"/>{dentro}</g>')
+
+
+def telefono():
+    # Cada uno con su latita; por el hilo viaja un pescadito que al llegar
+    # ya parece otra cosa.
+    a = g.gatito("naranja", 210, 282, rot=-3, lado_cola=-1, cab_rot=10,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (96, -60), (100, 20))])
+    b = g.gatito("blanco", 700, 282, rot=3, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-52, 56), (-96, -60), (-100, 20))])
+    hilo = (f'<path d="M310 222 Q455 330 600 222" fill="none" stroke="{AZUL}" '
+            'stroke-width="4" stroke-linecap="round"/>')
+    extras = (hilo + latita(298, 212, 0.85, -25) + latita(612, 212, 0.85, 25)
+              + papelito(395, 130, 0.85, -8, pescadito(0, 0, 0.75))
+              + papelito(520, 130, 0.85, 8, pregunta(0, -2, 0.75, 6, CORAL))
+              + estela("M445 130 L470 130")
+              + g.chispa(455, 40, 1.0) + g.chispa(120, 110, 0.9, CELESTE)
+              + g.corazon(780, 70, 0.5, ROSA, 12))
+    return g.svg("Teléfono descompuesto: los gatitos hablan por un teléfono de latitas",
+                 g.sombra(455, 330), a, b, extras)
+
+
 if __name__ == "__main__":
     for nombre, f in [("probable", probable), ("adivina", adivina),
                       ("esperando", esperando), ("resultado", resultado),
                       ("dibujo", dibujo), ("memorama", memorama),
-                      ("rompecabezas", rompecabezas), ("sudoku", sudoku)]:
+                      ("rompecabezas", rompecabezas), ("sudoku", sudoku),
+                      ("telefono", telefono)]:
         (AQUI / f"juego_{nombre}.svg").write_text(f())
     print("listo")

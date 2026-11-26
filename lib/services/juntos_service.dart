@@ -4,11 +4,13 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/juntos.dart';
+import '../models/telefono.dart';
 import 'db.dart';
 import 'notify_service.dart';
 import 'pescaditos_service.dart';
 
 export '../models/juntos.dart';
+export '../models/telefono.dart';
 
 /// Fotos para los juegos, memorama y rompecabezas.
 ///
@@ -201,5 +203,88 @@ class JuntosService {
         coleccion: 'rompecabezas',
         partidaId: id,
         motivo: 'por armar un rompecabezas juntos',
+      );
+
+  // ---- Teléfono descompuesto ----
+
+  CollectionReference<Map<String, dynamic>> _tel(String c) =>
+      Db.coupleSub(c, 'telefonos');
+
+  Stream<Telefono?> watchTelefono(String coupleId) =>
+      _tel(coupleId)
+          .orderBy('creadaEn', descending: true)
+          .limit(1)
+          .snapshots()
+          .map((q) => q.docs.isEmpty ? null : Telefono.fromDoc(q.docs.first));
+
+  Future<String> empezarTelefono(String coupleId, String uid) async {
+    final ref = _tel(coupleId).doc();
+    await ref.set({
+      'por': uid,
+      'progreso': <String, int>{},
+      'estado': 'jugando',
+      'creadaEn': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.telefono, coupleId, ref.id);
+    return ref.id;
+  }
+
+  /// Lee un paso (una frase o un dibujo) de una cadena.
+  Future<PasoTelefono?> paso(
+    String coupleId,
+    String telefonoId,
+    String cadena,
+    int n,
+  ) async {
+    final d = await _tel(coupleId)
+        .doc(telefonoId)
+        .collection('pasos')
+        .doc(Telefono.idPaso(cadena, n))
+        .get();
+    return PasoTelefono.fromDoc(d);
+  }
+
+  Future<List<PasoTelefono>> pasos(String coupleId, String telefonoId) async {
+    final q = await _tel(coupleId).doc(telefonoId).collection('pasos').get();
+    return [for (final d in q.docs) ?PasoTelefono.fromDoc(d)];
+  }
+
+  /// Guarda los pasos de un turno y suma uno al progreso de [uid]. Si con
+  /// esto los dos terminaron, la partida queda terminada.
+  Future<void> jugarTurno(
+    String coupleId,
+    Telefono t,
+    String uid,
+    String otro,
+    List<PasoTelefono> nuevos,
+  ) async {
+    final ref = _tel(coupleId).doc(t.id);
+    final b = Db.instance.batch();
+    for (final p in nuevos) {
+      b.set(
+        ref.collection('pasos').doc(Telefono.idPaso(p.cadena, p.paso)),
+        p.toMap(),
+      );
+    }
+    final hechos = t.hechos(uid) + 1;
+    b.update(ref, {
+      'progreso.$uid': hechos,
+      if (hechos >= Telefono.turnos && t.hechos(otro) >= Telefono.turnos) ...{
+        'estado': 'terminada',
+        'terminadaEn': FieldValue.serverTimestamp(),
+      },
+    });
+    await b.commit();
+    NotifyService.instance.send(NotifyKind.telefono, coupleId, t.id);
+  }
+
+  Future<int> cobrarTelefono(String coupleId, String uid, String id) =>
+      PescaditosService.instance.ganarJuntos(
+        coupleId,
+        uid,
+        tipo: Movimiento.telefono,
+        coleccion: 'telefonos',
+        partidaId: id,
+        motivo: 'por jugar al teléfono descompuesto',
       );
 }
