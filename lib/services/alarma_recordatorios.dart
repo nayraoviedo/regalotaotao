@@ -71,8 +71,7 @@ class AlarmaRecordatorios {
     android: AndroidNotificationDetails(
       canalId,
       'Recordatorios de tus notas',
-      channelDescription:
-          'Suena como alarma con maullidos cuando llega la hora',
+      channelDescription: 'Suena como alarma con maullidos cuando llega la hora',
       importance: Importance.max,
       priority: Priority.max,
       playSound: true,
@@ -365,7 +364,8 @@ class AlarmaDeNota {
 /// Un recordatorio que todavía no suena, o que sonó hace menos de un día
 /// (se sigue recordando para no repetirlo cuando llegue la push).
 bool _vigente(DateTime? c) =>
-    c != null && c.isAfter(DateTime.now().subtract(const Duration(days: 1)));
+    c != null &&
+    c.isAfter(DateTime.now().subtract(const Duration(days: 1)));
 
 /// Alarma de una nota privada propia: solo si me avisa a mí (o a los dos)
 /// y no está compartida (si se compartió, avisa su copia de los dos).
