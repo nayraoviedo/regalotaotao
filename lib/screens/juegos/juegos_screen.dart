@@ -111,7 +111,7 @@ class _JuegosScreenState extends State<JuegosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Juegos de pareja')),
+      appBar: AppBar(title: const Text('Juegos de preguntas')),
       body: StreamBuilder<List<Partida>>(
         stream: _partidas,
         builder: (context, s) {
@@ -637,7 +637,7 @@ class TarjetaJuegos extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Juegos de pareja',
+                      'Juegos de preguntas',
                       style: TextStyle(
                         color: aviso ? AppTheme.amarillo : AppTheme.azul,
                         fontSize: 17,

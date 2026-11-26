@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "notaLeida" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -462,6 +462,16 @@ const KINDS = {
           : `${name} ya jugó: pensaron igual en ${n} de 5. Mira y gana pescaditos 🐟`,
       };
     },
+  },
+  // Dibuja y adivina: la pareja empezó a dibujar para ti.
+  dibujo: {
+    collection: "dibujos",
+    check: (d, uid) => d.dibuja === uid && d.estado === "dibujando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🎨 ¡Ven a adivinar!",
+      body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
+    }),
   },
   // Tu pareja abrió la nota privada que le compartiste. Aquí quien llama
   // es quien la leyó, y el aviso va para quien la escribió.

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/carta.dart';
 import '../models/casita.dart';
+import '../models/dibujo.dart';
 import '../models/juegos.dart';
 import 'db.dart';
 import 'notify_service.dart';
@@ -171,6 +172,64 @@ class PescaditosService {
     });
     if (ganado > 0) {
       ultimaGanancia.value = Ganancia(ganado, 'por jugar juntos');
+    }
+    return ganado;
+  }
+
+  /// Ronda adivinada de "Dibuja y adivina": quien dibujó y quien adivinó
+  /// ganan [Dibujos.premio] cada uno, en las primeras
+  /// [Dibujos.rondasConPremio] rondas del día (lugares
+  /// `dibujo_{día}_{uid}_{1..3}`). Devuelve cuánto se ganó.
+  Future<int> ganarDibujo(String coupleId, String uid, String rondaId) async {
+    final hoy = dia();
+    final estadoRef = _estado(coupleId);
+    final rondaRef = Db.coupleSub(coupleId, 'dibujos').doc(rondaId);
+    final lugares = [
+      for (var i = 1; i <= Dibujos.rondasConPremio; i++)
+        _movs(coupleId).doc('dibujo_${hoy}_${uid}_$i'),
+    ];
+    final ganado = await Db.instance.runTransaction<int>((tx) async {
+      final ronda = Ronda.fromDoc(await tx.get(rondaRef));
+      if (ronda == null || !ronda.puedeCobrar(uid)) return 0;
+      final estado = await tx.get(estadoRef);
+      DocumentReference<Map<String, dynamic>>? libre;
+      var slot = 0;
+      for (var i = 0; i < lugares.length; i++) {
+        if (!(await tx.get(lugares[i])).exists) {
+          libre = lugares[i];
+          slot = i + 1;
+          break;
+        }
+      }
+      if (libre == null) {
+        tx.update(rondaRef, {'cobros.$uid': Ronda.sinPremio});
+        return 0;
+      }
+      const cantidad = Dibujos.premio;
+      tx.set(libre, {
+        'tipo': Movimiento.dibujo,
+        'uid': uid,
+        'cantidad': cantidad,
+        'ref': hoy,
+        'ronda': rondaId,
+        'slot': slot,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      final cambios = <String, Object?>{
+        'pescaditos':
+            ((estado.data()?['pescaditos'] as num?)?.toInt() ?? 0) + cantidad,
+        'ultimoMov': libre.id,
+      };
+      if (estado.exists) {
+        tx.update(estadoRef, cambios);
+      } else {
+        tx.set(estadoRef, cambios);
+      }
+      tx.update(rondaRef, {'cobros.$uid': libre.id});
+      return cantidad;
+    });
+    if (ganado > 0) {
+      ultimaGanancia.value = Ganancia(ganado, 'por dibujar y adivinar juntos');
     }
     return ganado;
   }

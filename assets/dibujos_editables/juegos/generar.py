@@ -8,6 +8,8 @@ Luego se exportan a PNG (1350x840) en assets/images/ con:  node exportar.mjs
                        naranja esconde su tarjeta con la respuesta
   juego_esperando.png  ya jugaste: los gatitos despiden al avioncito que
                        le lleva el turno a tu pareja
+  juego_dibujo.png     "Dibuja y adivina": el naranja pinta un pescadito en
+                       su caballete y el blanco piensa qué es
   juego_resultado.png  resultados: chocan las patitas, con corazones y un
                        pescadito
 
@@ -151,8 +153,55 @@ def resultado():
                  g.sombra(450, 300), extras, a, b)
 
 
+def caballete(x, y, s=1.0):
+    """Caballete de madera con un pescadito pintado (a medio terminar)."""
+    MADERA, BORDE = "#D9A46C", "#8A5A35"
+    return (f'<g transform="translate({x} {y}) scale({s})">'
+            f'<path d="M-70 120 L-20 -110 M70 120 L20 -110 M0 -110 L0 130" '
+            f'stroke="{BORDE}" stroke-width="16" stroke-linecap="round"/>'
+            f'<path d="M-70 120 L-20 -110 M70 120 L20 -110 M0 -110 L0 130" '
+            f'stroke="{MADERA}" stroke-width="9" stroke-linecap="round"/>'
+            f'<rect x="-96" y="-120" width="192" height="150" rx="10" fill="{CREMA}" '
+            f'stroke="{AZUL}" stroke-width="6"/>'
+            f'<rect x="-104" y="30" width="208" height="16" rx="6" fill="{MADERA}" '
+            f'stroke="{BORDE}" stroke-width="4"/>'
+            # el pescadito pintado con trazos de pincel
+            f'<path d="M-52 -46 Q-10 -96 36 -46 Q-10 4 -52 -46Z" fill="none" '
+            f'stroke="{CORAL}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<path d="M36 -46 L66 -70 M36 -46 L64 -24" fill="none" stroke="{CORAL}" '
+            'stroke-width="9" stroke-linecap="round"/>'
+            f'<circle cx="-30" cy="-50" r="6" fill="{AZUL}"/>'
+            f'<path d="M-70 -92 Q-60 -100 -48 -96" fill="none" stroke="{CELESTE}" '
+            'stroke-width="6" stroke-linecap="round"/></g>')
+
+
+def pincel(x, y, s=1.0, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-6" y="-70" width="12" height="80" rx="6" fill="{AMARILLO}" '
+            f'stroke="{AZUL}" stroke-width="4"/>'
+            f'<rect x="-8" y="-82" width="16" height="16" fill="#C9D7EE" stroke="{AZUL}" stroke-width="4"/>'
+            f'<path d="M-8 -82 Q0 -116 8 -82Z" fill="{CORAL}" stroke="{AZUL}" '
+            'stroke-width="4" stroke-linejoin="round"/></g>')
+
+
+def dibujo():
+    # El naranja pinta en el caballete; el blanco piensa qué será.
+    a = g.gatito("naranja", 250, 282, rot=-3, lado_cola=-1, cab_rot=8,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (150, -40), (120, 30))])
+    b = g.gatito("blanco", 680, 282, rot=3, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-40, 64), (-34, -10), (-80, 30))])
+    extras = (caballete(450, 175, 0.95) + nube_pensar(800, 62, 0.56)
+              + g.chispa(120, 110, 1.2) + g.chispa(560, 40, 0.9, CELESTE)
+              + g.corazon(340, 60, 0.5, ROSA, -12))
+    return g.svg("Dibuja y adivina: el naranja pinta un pescadito y el blanco adivina",
+                 g.sombra(450, 330), extras, a, b, pincel(376, 236, 0.9, 38))
+
+
 if __name__ == "__main__":
     for nombre, f in [("probable", probable), ("adivina", adivina),
-                      ("esperando", esperando), ("resultado", resultado)]:
+                      ("esperando", esperando), ("resultado", resultado),
+                      ("dibujo", dibujo)]:
         (AQUI / f"juego_{nombre}.svg").write_text(f())
     print("listo")

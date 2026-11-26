@@ -18,6 +18,7 @@ enum NotifyKind {
   compra,
   propuesta,
   juego,
+  dibujo,
   notaLeida,
 }
 

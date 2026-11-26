@@ -67,6 +67,8 @@ beforeEach(() => {
     "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
     "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
     "couples/c1/juegos/j1": { juego: "probable", por: "ana", terminada: false, preguntas: [1, 2, 3, 4, 5], respuestas: { ana: ["ana", "beto", "ana", "ana", "beto"] } },
+    "couples/c1/dibujos/d1": { dibuja: "ana", palabra: "gato", clave: "gato", estado: "dibujando", mensajes: [] },
+    "couples/c1/dibujos/d2": { dibuja: "ana", palabra: "luna", clave: "luna", estado: "adivinada", mensajes: [] },
     "couples/c1/juegos/j2": { juego: "adivina", por: "beto", terminada: true, preguntas: [1, 2, 3, 4, 5], respuestas: { beto: [0, 1, 2, 3, 0], ana: [0, 1, 3, 3, 1] } },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
@@ -195,6 +197,16 @@ test("juegos: avisa que le toca y luego los resultados", async () => {
   assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, ana)).status, 200);
   assert.equal(sent[1].notification.body, "Ana adivinó 3 de 5 de tus respuestas. Mira y gana pescaditos 🐟");
   assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, await idToken("beto"))).status, 403);
+});
+
+test("dibujo: avisa que la pareja está dibujando (sin decir la palabra)", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d1" }, ana)).status, 200);
+  assert.equal(sent[0].notification.title, "🎨 ¡Ven a adivinar!");
+  assert.doesNotMatch(sent[0].notification.body, /gato/);
+  // Beto no dibuja: no puede avisar. Una ronda terminada tampoco avisa.
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d1" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d2" }, ana)).status, 403);
 });
 
 test("no se envía dos veces el mismo aviso", async () => {

@@ -649,6 +649,116 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ---------- Juegos juntos: Dibuja y adivina ----------
+      // dibujos/{ronda}: quien dibuja la crea con su palabra; los dos
+      // escriben en el chat (mensajes); quien adivina la termina al acertar
+      // (o se rinde); quien dibuja puede terminarla. Cada trazo es un
+      // documento chiquito en dibujos/{ronda}/trazos/{n} que solo escribe
+      // quien dibuja mientras la ronda sigue.
+      match /dibujos/{rondaId} {
+        function cambia() {
+          return request.resource.data.diff(resource.data).affectedKeys();
+        }
+        function enJuego() {
+          return resource.data.estado == 'dibujando';
+        }
+        function nuevoMensaje() {
+          let antes = resource.data.mensajes;
+          let ahora = request.resource.data.mensajes;
+          let m = ahora[ahora.size() - 1];
+          return ahora is list
+            && ahora.size() == antes.size() + 1
+            && ahora.size() <= 150
+            && m.u == me()
+            && m.t is string && m.t.size() > 0 && m.t.size() <= 60;
+        }
+        // Un mensaje del chat (de cualquiera de los dos).
+        function chatea() {
+          return enJuego()
+            && cambia().hasOnly(['mensajes'])
+            && nuevoMensaje()
+            && request.resource.data.mensajes[request.resource.data.mensajes.size() - 1]
+                 .get('a', false) == false;
+        }
+        // Quien adivina acierta: su mensaje termina la ronda.
+        function adivina() {
+          return enJuego()
+            && resource.data.dibuja != me()
+            && cambia().hasOnly(['mensajes', 'estado', 'acierto', 'adivinadaPor', 'terminadaEn'])
+            && nuevoMensaje()
+            && request.resource.data.estado == 'adivinada'
+            && request.resource.data.acierto == resource.data.clave
+            && request.resource.data.adivinadaPor == me()
+            && request.resource.data.terminadaEn == request.time;
+        }
+        function termina() {
+          return enJuego()
+            && cambia().hasOnly(['estado', 'terminadaEn'])
+            && request.resource.data.terminadaEn == request.time
+            && request.resource.data.estado
+                 == (resource.data.dibuja == me() ? 'cancelada' : 'rendida');
+        }
+        // "Borrar todo" de quien dibuja.
+        function limpia() {
+          return enJuego()
+            && resource.data.dibuja == me()
+            && cambia().hasOnly(['borradoHasta'])
+            && request.resource.data.borradoHasta is int;
+        }
+        function mira() {
+          return cambia().hasOnly(['viendo'])
+            && request.resource.data.viendo.diff(resource.data.get('viendo', {}))
+                 .affectedKeys().hasOnly([me()]);
+        }
+        function cobra() {
+          let antes = resource.data.get('cobros', {});
+          return resource.data.estado == 'adivinada'
+            && (resource.data.dibuja == me() || resource.data.adivinadaPor == me())
+            && !(me() in antes)
+            && cambia().hasOnly(['cobros'])
+            && request.resource.data.cobros.diff(antes).affectedKeys().hasOnly([me()])
+            && request.resource.data.cobros[me()] is string;
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['dibuja', 'palabra', 'clave', 'estado', 'mensajes', 'borradoHasta', 'creadaEn'])
+          && request.resource.data.dibuja == me()
+          && request.resource.data.palabra is string
+          && request.resource.data.palabra.size() > 0
+          && request.resource.data.palabra.size() <= 30
+          && request.resource.data.clave is string
+          && request.resource.data.clave.size() > 0
+          && request.resource.data.clave.size() <= 30
+          && request.resource.data.estado == 'dibujando'
+          && request.resource.data.mensajes == []
+          && request.resource.data.borradoHasta == 0
+          && request.resource.data.creadaEn == request.time;
+        allow update: if isMember(coupleId)
+          && (chatea() || adivina() || termina() || limpia() || mira() || cobra());
+        allow delete: if false;
+
+        match /trazos/{trazoId} {
+          function ronda() {
+            return get(/databases/$(database)/documents/couples/$(coupleId)/dibujos/$(rondaId)).data;
+          }
+          function trazoValido() {
+            let t = request.resource.data;
+            return t.keys().hasOnly(['n', 'p', 'c', 'g', 'listo', 'por'])
+              && t.por == me()
+              && t.n is int && t.n >= 0 && t.n < 400
+              && t.p is list && t.p.size() <= 600
+              && t.c is int && t.g is int && t.g > 0 && t.g <= 60
+              && t.listo is bool;
+          }
+          allow read: if isMember(coupleId);
+          allow create, update, delete: if isMember(coupleId)
+            && ronda().dibuja == me()
+            && ronda().estado == 'dibujando'
+            && (request.method == 'delete' || trazoValido());
+        }
+      }
+
       // ---------- Casita de los gatitos y pescaditos ----------
       // casita/estado: monedero compartido (pescaditos), lo que compraron
       // (tenemos), lo que está puesto (puestos) y la ropita (ropa).
@@ -752,6 +862,16 @@ service cloud.firestore {
               && diaReciente(d.ref)
               && d.partida is string
               && juegoCobrable(d))
+            // Dibuja y adivina: 6 para quien dibujó y 6 para quien adivinó,
+            // en uno de los 3 lugares del día de cada persona.
+            || (d.tipo == 'dibujo'
+              && d.cantidad == 6
+              && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && d.slot is int && d.slot >= 1 && d.slot <= 3
+              && movId == 'dibujo_' + d.ref + '_' + me() + '_' + string(d.slot)
+              && diaReciente(d.ref)
+              && d.ronda is string
+              && dibujoCobrable(d))
             || (d.tipo == 'pomodoro'
               && d.ref is string
               && movId == 'pomodoro_' + d.ref
@@ -784,6 +904,14 @@ service cloud.firestore {
             && a.size() == 5 && b.size() == 5
             && d.cantidad == 4 + 2 * (igual(a, b, 0) + igual(a, b, 1) + igual(a, b, 2)
                                       + igual(a, b, 3) + igual(a, b, 4));
+        }
+        function dibujoCobrable(d) {
+          let path = /databases/$(database)/documents/couples/$(coupleId)/dibujos/$(d.ronda);
+          let antes = get(path).data;
+          return antes.estado == 'adivinada'
+            && (antes.dibuja == me() || antes.adivinadaPor == me())
+            && !(me() in antes.get('cobros', {}))
+            && getAfter(path).data.get('cobros', {}).get(me(), '') == movId;
         }
         // Una compra de más de 100 pescaditos la aprueba la pareja: tiene
         // que haber una propuesta de esa cosa hecha por el otro. Los
