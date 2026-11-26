@@ -190,6 +190,97 @@ void main() {
     });
   });
 
+  group('Sudoku en pareja', () {
+    SudokuPareja nuevo([Map<String, Object?> cambios = const {}]) {
+      final s = Sudoku.nuevo(NivelSudoku.facil, math.Random(7));
+      final valores = (cambios['valores'] as List<int>?) ?? s.inicial;
+      return SudokuPareja(
+        id: 's1',
+        por: (cambios['por'] as String?) ?? 'A',
+        nivel: NivelSudoku.facil,
+        inicial: s.inicial,
+        solucion: s.solucion,
+        valores: valores,
+        de: (cambios['de'] as Map<int, String>?) ?? const {},
+        errores: (cambios['errores'] as int?) ?? 0,
+        sugerencias: (cambios['sugerencias'] as int?) ?? 3,
+        estado: (cambios['estado'] as String?) ?? 'jugando',
+        creadaEn: DateTime(2026, 11, 26, 10),
+      );
+    }
+
+    test('poner bien anota quién fue; poner mal cuenta un error', () {
+      final p = nuevo();
+      final i = p.inicial.indexOf(0);
+      final bien = p.poner('B', i, p.solucion[i])!;
+      expect(bien['de.$i'], 'B');
+      expect((bien['valores'] as List)[i], p.solucion[i]);
+      expect(bien.containsKey('errores'), isFalse);
+      final malo = p.solucion[i] % 9 + 1;
+      final mal = p.poner('A', i, malo)!;
+      expect(mal['errores'], 1);
+      expect(mal.containsKey('de.$i'), isFalse);
+      // Una celda que ya vino puesta no cambia.
+      expect(p.poner('A', p.inicial.indexWhere((v) => v != 0), 1), isNull);
+    });
+
+    test('al tercer error se pierde y al llenar todo se termina', () {
+      final i = nuevo().inicial.indexOf(0);
+      final p = nuevo({'errores': 2});
+      final malo = p.solucion[i] % 9 + 1;
+      expect(p.poner('A', i, malo)!['estado'], 'perdida');
+      final casi = [...p.solucion]..[i] = 0;
+      final q = nuevo({'valores': casi});
+      final fin = q.poner('B', i, q.solucion[i])!;
+      expect(fin['estado'], 'terminada');
+      expect(fin['valores'], q.solucion);
+    });
+
+    test('sugerir gasta una sugerencia y borrar no quita números buenos', () {
+      final p = nuevo();
+      final (celda, cambios) = p.sugerir('A', null, math.Random(1))!;
+      expect(cambios['sugerencias'], 2);
+      expect(cambios['de.$celda'], 'A');
+      expect(nuevo({'sugerencias': 0}).sugerir('A', null), isNull);
+      final bien = [...p.valores]..[celda] = p.solucion[celda];
+      expect(nuevo({'valores': bien}).borrar(celda), isNull);
+    });
+
+    test('cuenta los números de cada uno y cuáles son de la pareja', () {
+      final p = nuevo({
+        'de': {3: 'A', 4: 'B', 5: 'B'},
+      });
+      expect(p.puestosPor('A'), 1);
+      expect(p.puestosPor('B'), 2);
+      expect(p.dePareja('A'), {4, 5});
+      final s = p.comoSudoku(List.generate(81, (_) => <int>{}));
+      expect(s.nivel, NivelSudoku.facil);
+      expect(s.puedeDeshacer, isFalse);
+    });
+
+    testWidgets('antes de empezar se elige: en pareja o a solas', (t) async {
+      await t.binding.setSurfaceSize(const Size(412, 900));
+      var modo = '';
+      await t.pumpWidget(
+        app(
+          ElegirModoSudoku(
+            partnerName: 'Beto',
+            uid: 'A',
+            enPareja: nuevo({'por': 'B'}),
+            onSolo: () => modo = 'solo',
+            onPareja: () => modo = 'pareja',
+          ),
+        ),
+      );
+      expect(find.text('¿Cómo quieres jugar?'), findsOneWidget);
+      expect(find.textContaining('¡Beto empezó un sudoku'), findsOneWidget);
+      await t.tap(find.text('Jugar a solas'));
+      expect(modo, 'solo');
+      await t.tap(find.text('Seguir juntos'));
+      expect(modo, 'pareja');
+    });
+  });
+
   group('Teléfono descompuesto', () {
     test('cada turno espera a que la pareja haga el anterior', () {
       const t0 = Telefono(id: 't', por: 'a');

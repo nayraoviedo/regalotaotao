@@ -487,6 +487,7 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no cobra 15 por un sudoku fácil', cobrar('A','sudoku',2,15,hay+43,null,{nivel:'facil'}));
   await no('A no cobra un sudoku en un lugar 4', cobrar('A','sudoku',4,5,hay+33,null,{nivel:'facil'}));
 
+
   // Teléfono descompuesto.
   const T = 'couples/c1/telefonos/t1';
   const traz = [{p:[1,2,3,4],c:0,g:14}];
@@ -544,6 +545,32 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no cobra 50 por 3 días', racha('A',3,50,hay+86));
   await ok('A llega a 3 días y gana 10', racha('A',3,10,hay+46));
   await no('nadie cambia el día anotado', updateDoc(doc(db('A'),RJ(hoy)),{dias:4}));
+  // Sudoku en pareja: un tablero para los dos.
+  const hs = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data()?.pescaditos ?? 0;
+  const S = 'couples/c1/sudokus/s1';
+  const sol = [...Array(81).keys()].map(i => i % 9 + 1);
+  const ini = sol.map((v, i) => i < 2 ? 0 : v);
+  const nuevoSudoku = (u, extra={}) => ({por:u,nivel:'facil',inicial:ini,solucion:sol,valores:ini,de:{},errores:0,sugerencias:3,estado:'jugando',creadaEn:serverTimestamp(),...extra});
+  await no('A no empieza un sudoku a nombre de B', setDoc(doc(db('A'),S),nuevoSudoku('B')));
+  await no('A no empieza un sudoku ya lleno', setDoc(doc(db('A'),S),nuevoSudoku('A',{valores:sol})));
+  await no('C no empieza un sudoku de la pareja', setDoc(doc(db('C'),S),nuevoSudoku('C')));
+  await ok('A empieza un sudoku en pareja', setDoc(doc(db('A'),S),nuevoSudoku('A')));
+  const con = (cambios) => [...ini].map((v, i) => i in cambios ? cambios[i] : v);
+  await no('A no se pone un número a nombre de B', updateDoc(doc(db('A'),S),{valores:con({0:1}),'de.0':'B'}));
+  await no('A no termina un sudoku incompleto', updateDoc(doc(db('A'),S),{valores:con({0:1}),'de.0':'A',estado:'terminada',terminadaEn:serverTimestamp()}));
+  await ok('B se equivoca (cuenta un error)', updateDoc(doc(db('B'),S),{valores:con({0:5}),errores:1}));
+  await no('B no se salta errores', updateDoc(doc(db('B'),S),{errores:0}));
+  await no('B no pierde con 1 error', updateDoc(doc(db('B'),S),{estado:'perdida',terminadaEn:serverTimestamp()}));
+  await ok('B lo borra', updateDoc(doc(db('B'),S),{valores:ini}));
+  await ok('B pone uno bien', updateDoc(doc(db('B'),S),{valores:con({0:1}),'de.0':'B'}));
+  await no('A no le quita el número a B', updateDoc(doc(db('A'),S),{'de.0':'A'}));
+  await no('A no cobra un sudoku sin terminar', cobrar('A','sudoku',2,5,hs+5,'s1',{nivel:'facil'},'sudokus'));
+  await ok('A pide una sugerencia y lo terminan', updateDoc(doc(db('A'),S),{valores:sol,'de.1':'A',sugerencias:2,estado:'terminada',terminadaEn:serverTimestamp()}));
+  await no('A no juega en un sudoku terminado', updateDoc(doc(db('A'),S),{valores:ini}));
+  await no('A no cobra 15 por un sudoku fácil en pareja', cobrar('A','sudoku',2,15,hs+15,'s1',{nivel:'experto'},'sudokus'));
+  await ok('A gana 5 por el sudoku en pareja', cobrar('A','sudoku',2,5,hs+5,'s1',{nivel:'facil'},'sudokus'));
+  await no('A no lo cobra dos veces', cobrar('A','sudoku',3,5,hs+10,'s1',{nivel:'facil'},'sudokus'));
+  await ok('B también gana 5', cobrar('B','sudoku',1,5,hs+10,'s1',{nivel:'facil'},'sudokus'));
 }
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));

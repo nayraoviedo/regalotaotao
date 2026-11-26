@@ -89,8 +89,13 @@ class JuegosJuntosScreen extends StatelessWidget {
                       partner: partner,
                     ),
                   ),
-                  onSudoku: () =>
-                      abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
+                  onSudoku: () => abrir(
+                    SudokuScreen(
+                      coupleId: couple.id,
+                      uid: me.uid,
+                      partnerName: partnerName,
+                    ),
+                  ),
                   onFotos: () => abrir(
                     FotosJuegosScreen(
                       coupleId: couple.id,
@@ -254,8 +259,8 @@ class JuegosJuntosVista extends StatelessWidget {
           titulo: 'Sudoku',
           dibujo: JuegosJuntos.dibujoSudoku,
           descripcion:
-              'Para jugar a solas un ratito: nivel al azar, notas y '
-              'sugerencias. Completarlo también da pescaditos.',
+              'En pareja (un tablero para los dos, en vivo) o a solas un '
+              'ratito. Completarlo también da pescaditos.',
           boton: 'Jugar',
           onTap: onSudoku,
         ),

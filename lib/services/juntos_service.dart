@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/juntos.dart';
+import '../models/sudoku.dart';
 import '../models/telefono.dart';
 import 'db.dart';
 import 'notify_service.dart';
@@ -17,6 +18,7 @@ export '../models/telefono.dart';
 /// `couples/{id}/fotosJuegos/{id}`   fotos que suben los dos (JPG chiquito)
 /// `couples/{id}/memoramas/{id}`     partidas de memorama
 /// `couples/{id}/rompecabezas/{id}`  partidas de rompecabezas
+/// `couples/{id}/sudokus/{id}`       sudokus en pareja (un tablero para 2)
 class JuntosService {
   JuntosService._();
   static final instance = JuntosService._();
@@ -27,6 +29,8 @@ class JuntosService {
       Db.coupleSub(c, 'memoramas');
   CollectionReference<Map<String, dynamic>> _rompe(String c) =>
       Db.coupleSub(c, 'rompecabezas');
+  CollectionReference<Map<String, dynamic>> _sudokus(String c) =>
+      Db.coupleSub(c, 'sudokus');
 
   // ---- Fotos ----
 
@@ -286,5 +290,72 @@ class JuntosService {
         coleccion: 'telefonos',
         partidaId: id,
         motivo: 'por jugar al teléfono descompuesto',
+      );
+
+  // ---- Sudoku en pareja ----
+
+  Stream<SudokuPareja?> watchSudoku(String coupleId) => _sudokus(coupleId)
+      .orderBy('creadaEn', descending: true)
+      .limit(1)
+      .snapshots()
+      .map((q) => q.docs.isEmpty ? null : SudokuPareja.fromDoc(q.docs.first));
+
+  /// Empieza un sudoku para los dos. Con [inicial] y [solucion] repite uno
+  /// (para reintentar el mismo tablero).
+  Future<String> empezarSudoku(
+    String coupleId,
+    String uid,
+    NivelSudoku nivel, {
+    List<int>? inicial,
+    List<int>? solucion,
+  }) async {
+    var t = inicial, s = solucion;
+    if (t == null || s == null) (t, s) = GeneradorSudoku().generar(nivel);
+    final ref = _sudokus(coupleId).doc();
+    await ref.set({
+      'por': uid,
+      'nivel': nivel.name,
+      'inicial': t,
+      'solucion': s,
+      'valores': t,
+      'de': <String, String>{},
+      'errores': 0,
+      'sugerencias': Sudoku.maxSugerencias,
+      'estado': 'jugando',
+      'creadaEn': FieldValue.serverTimestamp(),
+    });
+    NotifyService.instance.send(NotifyKind.sudoku, coupleId, ref.id);
+    return ref.id;
+  }
+
+  /// Hace una jugada sobre el tablero más reciente (en una transacción,
+  /// por si los dos ponen números a la vez). [jugada] devuelve los
+  /// cambios, o null si no hay nada que cambiar.
+  Future<SudokuPareja?> jugarSudoku(
+    String coupleId,
+    String id,
+    Map<String, Object>? Function(SudokuPareja s) jugada,
+  ) {
+    final ref = _sudokus(coupleId).doc(id);
+    return Db.instance.runTransaction<SudokuPareja?>((tx) async {
+      final s = SudokuPareja.fromDoc(await tx.get(ref));
+      if (s == null) return null;
+      final cambios = jugada(s);
+      if (cambios == null) return s;
+      tx.update(ref, cambios);
+      return s;
+    });
+  }
+
+  Future<int> cobrarSudoku(String coupleId, String uid, SudokuPareja s) =>
+      PescaditosService.instance.ganarJuntos(
+        coupleId,
+        uid,
+        tipo: Movimiento.sudoku,
+        coleccion: 'sudokus',
+        partidaId: s.id,
+        motivo: 'por completar un sudoku juntos',
+        cantidad: s.nivel.premio,
+        extra: {'nivel': s.nivel.name},
       );
 }

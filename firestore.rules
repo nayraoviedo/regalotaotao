@@ -953,6 +953,55 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // sudokus/{id}: un sudoku en pareja (un solo tablero para los dos).
+      // Cualquiera pone números cuando quiera; los errores (3) y las
+      // sugerencias (3) son de los dos. Se termina solo si el tablero quedó
+      // igual a la solución, y se pierde al llegar a 3 errores.
+      match /sudokus/{partidaId} {
+        function juega() {
+          let a = resource.data;
+          let d = request.resource.data;
+          let cambioDe = d.de.diff(a.de);
+          return a.estado == 'jugando'
+            && d.diff(a).affectedKeys()
+                 .hasOnly(['valores', 'de', 'errores', 'sugerencias', 'estado', 'terminadaEn'])
+            && d.valores is list && d.valores.size() == 81
+            // Solo se agrega una celda a "de" (quién la llenó), y a tu nombre.
+            && d.de is map
+            && cambioDe.addedKeys().size() <= 1
+            && cambioDe.changedKeys().size() == 0
+            && cambioDe.removedKeys().size() == 0
+            && d.de.values().removeAll([me()]).size() == a.de.values().removeAll([me()]).size()
+            && (d.errores == a.errores || d.errores == a.errores + 1)
+            && d.errores <= 3
+            && (d.sugerencias == a.sugerencias
+                || (d.sugerencias == a.sugerencias - 1 && d.sugerencias >= 0))
+            && (d.estado == 'jugando'
+                || (d.estado == 'terminada' && d.valores == a.solucion)
+                || (d.estado == 'perdida' && d.errores >= 3))
+            && (d.estado == 'jugando' || d.terminadaEn == request.time);
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['por', 'nivel', 'inicial', 'solucion', 'valores', 'de',
+                         'errores', 'sugerencias', 'estado', 'creadaEn'])
+          && request.resource.data.por == me()
+          && request.resource.data.nivel in ['facil', 'medio', 'dificil', 'experto']
+          && request.resource.data.inicial is list
+          && request.resource.data.inicial.size() == 81
+          && request.resource.data.solucion is list
+          && request.resource.data.solucion.size() == 81
+          && request.resource.data.valores == request.resource.data.inicial
+          && request.resource.data.de == {}
+          && request.resource.data.errores == 0
+          && request.resource.data.sugerencias == 3
+          && request.resource.data.estado == 'jugando'
+          && request.resource.data.creadaEn == request.time;
+        allow update: if isMember(coupleId) && (juega() || cobraPartida());
+        allow delete: if false;
+      }
+
       // telefonos/{id}: teléfono descompuesto para dos. Cada uno juega 4
       // turnos (progreso[uid]); para el turno t la pareja ya tiene que haber
       // hecho t. Cada turno guarda sus pasos en pasos/{cadena}_{n} en el mismo
@@ -1187,15 +1236,17 @@ service cloud.firestore {
               && d.cantidad > 0
               && d.cantidad == {'3': 10, '7': 30, '14': 50, '30': 100}
                    .get(string(getAfter(/databases/$(database)/documents/couples/$(coupleId)/rachaJuegos/$(d.ref)).data.dias), 0))
-            // Sudoku completado (se juega en el celular): según el nivel,
-            // 3 al día.
+            // Sudoku completado (a solas en el celular, o en pareja con
+            // partida): según el nivel, 3 al día.
             || (d.tipo == 'sudoku'
               && d.nivel in ['facil', 'medio', 'dificil', 'experto']
               && d.cantidad == {'facil': 5, 'medio': 8, 'dificil': 12, 'experto': 15}[d.nivel]
               && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
               && d.slot is int && d.slot >= 1 && d.slot <= 3
               && movId == 'sudoku_' + d.ref + '_' + me() + '_' + string(d.slot)
-              && diaReciente(d.ref))
+              && diaReciente(d.ref)
+              // En pareja: un sudoku terminado que todavía no cobraste.
+              && (!('partida' in d) || sudokuCobrable(d)))
             || (d.tipo == 'pomodoro'
               && d.ref is string
               && movId == 'pomodoro_' + d.ref
@@ -1235,6 +1286,15 @@ service cloud.firestore {
           let path = /databases/$(database)/documents/couples/$(coupleId)/$(col)/$(d.partida);
           let antes = get(path).data;
           return antes.estado == 'terminada'
+            && !(me() in antes.get('cobros', {}))
+            && getAfter(path).data.get('cobros', {}).get(me(), '') == movId;
+        }
+        function sudokuCobrable(d) {
+          let path = /databases/$(database)/documents/couples/$(coupleId)/sudokus/$(d.partida);
+          let antes = get(path).data;
+          return d.partida is string
+            && antes.estado == 'terminada'
+            && antes.nivel == d.nivel
             && !(me() in antes.get('cobros', {}))
             && getAfter(path).data.get('cobros', {}).get(me(), '') == movId;
         }
