@@ -293,6 +293,9 @@ enum Ingrediente {
 /// se identifica por la fecha de su lunes ("2026-11-23") y se guarda en
 /// `estado.reparto` cuando la pareja recibe la caja.
 abstract final class Repartidor {
+  /// Lo que se le paga por la caja (pescaditos del monedero de los dos).
+  static const precio = 60;
+
   /// El lunes de la semana de [hoy], como "yyyy-MM-dd".
   static String semana(DateTime hoy) {
     final lunes = DateTime(hoy.year, hoy.month, hoy.day - (hoy.weekday - 1));
@@ -2838,7 +2841,8 @@ class Propuesta {
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
 /// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `respira_{día}_{uid}`,
 /// `pomodoro_{logro}`, `juego_{día}_{uid}_{1..3}`,
-/// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
+/// `racha{meta}_{inicio}`, `compra_{cosa}`, `carta_{carta}` y
+/// `reparto_{lunes}`.
 class Movimiento {
   const Movimiento({
     required this.id,
@@ -2863,6 +2867,7 @@ class Movimiento {
   static const racha = 'racha';
   static const compra = 'compra';
   static const carta = 'carta';
+  static const reparto = 'reparto';
 
   final String id;
   final String tipo;
@@ -2908,6 +2913,7 @@ class Movimiento {
       null => 'compró algo',
     },
     carta => 'mandó una carta sorpresa',
+    reparto => 'le pagó al repartidor la caja de la semana',
     _ => '',
   };
 }

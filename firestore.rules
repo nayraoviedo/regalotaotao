@@ -1147,6 +1147,12 @@ service cloud.firestore {
           // La semana (su lunes, yyyy-MM-dd) en que recibieron la caja del
           // repartidor con lo básico.
           && request.resource.data.get('reparto', '') is string
+          // La caja solo se recibe pagándole al repartidor (movimiento
+          // reparto_{lunes} en la misma escritura).
+          && (request.resource.data.get('reparto', '') == antes('reparto', '')
+              || (request.resource.data.reparto is string
+                  && request.resource.data.get('ultimoMov', null)
+                       == 'reparto_' + request.resource.data.reparto))
           // Nombres de los gatitos bebés: {color: nombre}.
           && request.resource.data.get('bebes', {}) is map
           // Regalos sorpresa envueltos y la meta de la alcancía.
@@ -1301,6 +1307,15 @@ service cloud.firestore {
         }
         // Una carta sorpresa animada: 30 pescaditos por carta, y la carta
         // (de esta persona, marcada como sorpresa) se crea a la vez.
+        // La caja del repartidor de la semana: 60 pescaditos, una vez por
+        // semana (el id lleva el lunes) y la casita la recibe a la vez.
+        function reparto(d) {
+          return d.tipo == 'reparto'
+            && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+            && movId == 'reparto_' + d.ref
+            && d.cantidad == -60
+            && getAfter(estadoPath()).data.get('reparto', '') == d.ref;
+        }
         function carta(d) {
           let c = getAfter(/databases/$(database)/documents/couples/$(coupleId)/letters/$(d.ref));
           return d.tipo == 'carta'
@@ -1316,7 +1331,7 @@ service cloud.firestore {
           && request.resource.data.creadoEn == request.time
           && getAfter(estadoPath()).data.get('ultimoMov', null) == movId
           && (ganancia(request.resource.data) || compra(request.resource.data)
-              || carta(request.resource.data));
+              || carta(request.resource.data) || reparto(request.resource.data));
         // Nadie los cambia ni los borra (el Worker marca el aviso con su
         // propia cuenta de servicio).
         allow update, delete: if false;

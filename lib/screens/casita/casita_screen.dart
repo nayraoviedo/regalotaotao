@@ -77,7 +77,7 @@ class CasitaScreen extends StatelessWidget {
               servicio.nombrarBebe(coupleId, bebe, nombre),
           onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
           onCocinar: (receta) => servicio.cocinar(coupleId, receta),
-          onRecibirReparto: () => servicio.recibirReparto(coupleId),
+          onRecibirReparto: () => servicio.recibirReparto(coupleId, me.uid),
           onCartaSorpresa: partner == null
               ? null
               : () => Navigator.of(context).push(
@@ -455,6 +455,11 @@ class _CasitaViewState extends State<CasitaView> {
                   '¡A cocinar!'
             : 'Tu pareja ya recibió la caja de esta semana. Está en la '
                   'despensa.',
+      );
+    } on SinPescaditos catch (e) {
+      _aviso(
+        'Les faltan ${e.faltan} 🐟 para pagarle al repartidor. '
+        'Jueguen juntos y vuelvan: los espera toda la semana.',
       );
     } catch (_) {
       _aviso('No se pudo recibir la caja. Prueba otra vez.');
@@ -1011,7 +1016,11 @@ class _CasitaViewState extends State<CasitaView> {
               ),
           if (widget.onRecibirReparto != null &&
               _estado.repartidorEsperando(_hoy))
-            AvisoRepartidor(ocupado: _ocupado, onRecibir: _recibirReparto),
+            AvisoRepartidor(
+              ocupado: _ocupado,
+              pescaditos: _estado.pescaditos,
+              onRecibir: _recibirReparto,
+            ),
           if (_estado.pendiente case final p? when widget.onAprobar != null)
             _AvisoPropuesta(
               propuesta: p,
@@ -1794,10 +1803,14 @@ class AvisoRepartidor extends StatelessWidget {
   const AvisoRepartidor({
     super.key,
     required this.ocupado,
+    required this.pescaditos,
     required this.onRecibir,
   });
 
   final bool ocupado;
+
+  /// Los que tienen en el monedero (para saber si alcanza).
+  final int pescaditos;
   final VoidCallback onRecibir;
 
   @override
@@ -1832,7 +1845,8 @@ class AvisoRepartidor extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         'Cada lunes les trae lo básico para cocinar las '
-                        'recetas.',
+                        'recetas. La caja cuesta ${Repartidor.precio} '
+                        'pescaditos.',
                         style: TextStyle(
                           fontSize: 13,
                           color: AppTheme.azul.withValues(alpha: 0.7),
@@ -1851,10 +1865,27 @@ class AvisoRepartidor extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             FilledButton(
-              onPressed: ocupado ? null : onRecibir,
+              onPressed: ocupado || pescaditos < Repartidor.precio
+                  ? null
+                  : onRecibir,
               style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
-              child: const Text('Recibir la caja'),
+              child: TextoDoodle(
+                'Pagar ${Repartidor.precio} 🐟 y recibir la caja',
+              ),
             ),
+            if (pescaditos < Repartidor.precio) ...[
+              const SizedBox(height: 6),
+              TextoDoodle(
+                'Les faltan ${Repartidor.precio - pescaditos} 🐟. Jueguen '
+                'juntos, respondan la pregunta del día o hagan un pomodoro: '
+                'el repartidor los espera toda la semana.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.azul.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
           ],
         ),
       ),

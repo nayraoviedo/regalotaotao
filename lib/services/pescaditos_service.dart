@@ -604,15 +604,34 @@ class PescaditosService {
     });
   }
 
-  /// Reciben la caja de la semana del repartidor: lo básico va a la
-  /// despensa. Devuelve false si la pareja ya la había recibido.
-  Future<bool> recibirReparto(String coupleId, {DateTime? hoy}) async {
+  /// Le pagan al repartidor ([Repartidor.precio] pescaditos) y lo básico
+  /// va a la despensa. Devuelve false si la pareja ya la había recibido;
+  /// lanza [SinPescaditos] si no alcanza.
+  Future<bool> recibirReparto(
+    String coupleId,
+    String uid, {
+    DateTime? hoy,
+  }) async {
     final ref = _estado(coupleId);
     final semana = Repartidor.semana(hoy ?? DateTime.now());
+    final movRef = _movs(coupleId).doc('reparto_$semana');
     return Db.instance.runTransaction((tx) async {
       final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
       if (estado.reparto == semana) return false;
+      const precio = Repartidor.precio;
+      if (estado.pescaditos < precio) {
+        throw SinPescaditos(precio - estado.pescaditos);
+      }
+      tx.set(movRef, {
+        'tipo': Movimiento.reparto,
+        'uid': uid,
+        'cantidad': -precio,
+        'ref': semana,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
       tx.set(ref, {
+        'pescaditos': estado.pescaditos - precio,
+        'ultimoMov': movRef.id,
         'despensa': {
           for (final e in Repartidor.caja.entries)
             e.key.name: estado.hay(e.key) + e.value,

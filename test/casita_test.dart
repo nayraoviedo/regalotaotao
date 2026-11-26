@@ -1275,11 +1275,12 @@ void main() {
       expect(compras.single.$1.id, 'cuarto_cocina');
     });
 
-    testWidgets('el repartidor toca la puerta y se recibe la caja', (t) async {
+    testWidgets('al repartidor se le paga la caja con pescaditos', (t) async {
       var recibidas = 0;
-      Widget vista(String? reparto) => MaterialApp(
+      Widget vista(String? reparto, int pescaditos) => MaterialApp(
         home: CasitaView(
           estado: EstadoCasita(
+            pescaditos: pescaditos,
             tenemos: const {'cuarto_cocina'},
             reparto: reparto,
           ),
@@ -1296,9 +1297,22 @@ void main() {
           hoy: DateTime(2026, 11, 26, 10),
         ),
       );
-      await t.pumpWidget(vista(null));
+      final pagar = textoDoodle('Pagar 60 🐟 y recibir la caja');
+      // Sin pescaditos suficientes no se puede: hay que jugar primero.
+      await t.pumpWidget(vista(null, 45));
       expect(find.text('¡Toc, toc! Llegó el repartidor'), findsOneWidget);
-      await t.tap(find.text('Recibir la caja'));
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is TextoDoodle && w.texto.startsWith('Les faltan 15 🐟'),
+        ),
+        findsOneWidget,
+      );
+      await t.tap(pagar);
+      await t.pump();
+      expect(recibidas, 0);
+      // Con 60 o más, se paga y se recibe.
+      await t.pumpWidget(vista(null, 80));
+      await t.tap(pagar);
       await t.pump();
       expect(recibidas, 1);
       expect(
@@ -1306,7 +1320,7 @@ void main() {
         findsOneWidget,
       );
       // Ya la recibieron esta semana: no vuelve hasta el lunes.
-      await t.pumpWidget(vista('2026-11-23'));
+      await t.pumpWidget(vista('2026-11-23', 20));
       await t.pumpAndSettle();
       expect(find.text('¡Toc, toc! Llegó el repartidor'), findsNothing);
     });
