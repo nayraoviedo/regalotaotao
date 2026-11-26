@@ -15,9 +15,14 @@ enum NotifyKind {
   letter,
   hug,
   kiss,
+  bell,
   compra,
   propuesta,
   juego,
+  dibujo,
+  memorama,
+  rompecabezas,
+  telefono,
   notaLeida,
 }
 

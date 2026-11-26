@@ -21,10 +21,12 @@ extension IconoMimo on Mimo {
     Mimo.teExtrano => Icons.favorite,
     Mimo.beso => Icons.favorite_border,
     Mimo.abrazo => Icons.volunteer_activism,
+    Mimo.cascabel => Icons.notifications_active,
   };
 }
 
-/// Fila de tres botones en una sola pastilla azul: te extraño, beso y abrazo.
+/// Fila de botones en una sola pastilla azul: te extraño, beso, abrazo y
+/// cascabel. Con los cuatro, el dibujito va arriba y el texto abajo.
 ///
 /// Si no hay [onMimo] solo aparece "Te extraño".
 class BotonMimos extends StatelessWidget {
@@ -41,7 +43,7 @@ class BotonMimos extends StatelessWidget {
       shape: StadiumBorder(),
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
-        height: 58,
+        height: mimos.length > 1 ? 64 : 58,
         child: Row(
           children: [
             for (final (i, m) in mimos.indexed) ...[
@@ -56,6 +58,7 @@ class BotonMimos extends StatelessWidget {
                 flex: m == Mimo.teExtrano ? 4 : 3,
                 child: _Segmento(
                   mimo: m,
+                  apilado: mimos.length > 1,
                   onTap: m == Mimo.teExtrano ? onTeExtrano : () => onMimo!(m),
                 ),
               ),
@@ -68,55 +71,79 @@ class BotonMimos extends StatelessWidget {
 }
 
 class _Segmento extends StatelessWidget {
-  const _Segmento({required this.mimo, required this.onTap});
+  const _Segmento({
+    required this.mimo,
+    required this.onTap,
+    this.apilado = false,
+  });
   final Mimo mimo;
   final VoidCallback onTap;
+
+  /// Dibujito arriba y texto abajo (cuando caben los cuatro botones).
+  final bool apilado;
+
+  /// Los que tienen doodle propio en assets/doodles/.
+  static const _doodles = {
+    Mimo.teExtrano: 'te_extrano',
+    Mimo.cascabel: 'cascabel',
+  };
 
   @override
   Widget build(BuildContext context) {
     final principal = mimo == Mimo.teExtrano;
+    final tam = apilado ? 24.0 : 26.0;
+    final Widget icono = switch (_doodles[mimo]) {
+      final nombre? => Doodle(
+        mimo.iconoRespaldo,
+        nombre: nombre,
+        color: AppTheme.amarillo,
+        // El cascabel tiene más aire alrededor: un poquito más grande.
+        size: mimo == Mimo.cascabel
+            ? tam + 4
+            : (principal && !apilado ? 20 : tam - 2),
+      ),
+      null => Image.asset(
+        mimo.icono,
+        width: tam,
+        height: tam,
+        errorBuilder: (_, _, _) =>
+            Doodle(mimo.iconoRespaldo, color: AppTheme.amarillo, size: 20),
+      ),
+    };
+    final texto = Text(
+      mimo.boton,
+      maxLines: 1,
+      overflow: TextOverflow.fade,
+      softWrap: false,
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: apilado ? (principal ? 14 : 13) : (principal ? 17 : 15),
+        fontWeight: FontWeight.w600,
+        height: 1.1,
+      ),
+    );
     return InkWell(
       onTap: onTap,
       child: Semantics(
         button: true,
-        label: mimo == Mimo.teExtrano ? null : 'Mandar un ${mimo.boton}',
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (principal)
-              Doodle(
-                Icons.favorite,
-                nombre: 'te_extrano',
-                color: AppTheme.amarillo,
-                size: 20,
+        label: principal ? null : 'Mandar ${mimo.boton.toLowerCase()}',
+        child: apilado
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icono,
+                  SizedBox(height: 3),
+                  FittedBox(fit: BoxFit.scaleDown, child: texto),
+                ],
               )
-            else
-              Image.asset(
-                mimo.icono,
-                width: 26,
-                height: 26,
-                errorBuilder: (_, _, _) => Doodle(
-                  mimo.iconoRespaldo,
-                  color: AppTheme.amarillo,
-                  size: 20,
-                ),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icono,
+                  SizedBox(width: 6),
+                  Flexible(child: texto),
+                ],
               ),
-            SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                mimo.boton,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: principal ? 17 : 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -221,10 +248,15 @@ class _AnimacionMimoState extends State<AnimacionMimo>
   ///
   /// Beso: va y viene entre los cuadros (tirar besos) y termina en el último.
   /// Abrazo: avanza una vez y se queda abrazando.
+  /// Cascabel: lo sacude rapidito (tilín, tilín) y termina en el último.
   static int cuadroEn(Mimo mimo, int total, double t) {
     if (total <= 1) return 0;
     if (mimo == Mimo.abrazo) {
       return min((t / 0.3 * (total - 1)).floor(), total - 1);
+    }
+    if (mimo == Mimo.cascabel) {
+      if (t >= 0.8) return total - 1;
+      return (t / 0.08).floor() % total;
     }
     if (t >= 0.85) return total - 1;
     final paso = 0.14;
@@ -247,6 +279,10 @@ class _AnimacionMimoState extends State<AnimacionMimo>
             dibujo = _Respaldo(
               manda: widget.manda,
               abrazo: widget.mimo == Mimo.abrazo,
+              // Sin dibujos, el que manda se mece como si sonara el cascabel.
+              meneo: widget.mimo == Mimo.cascabel && t < 0.8
+                  ? sin(t * pi * 14) * 0.08
+                  : 0,
             );
           } else {
             final i = cuadroEn(widget.mimo, cuadros.length, t);
@@ -269,10 +305,9 @@ class _AnimacionMimoState extends State<AnimacionMimo>
             children: [
               dibujo,
               CustomPaint(
-                painter: _Corazones(
-                  t,
-                  desdeIzquierda: widget.mimo == Mimo.beso,
-                ),
+                painter: widget.mimo == Mimo.cascabel
+                    ? _Notitas(t)
+                    : _Corazones(t, desdeIzquierda: widget.mimo == Mimo.beso),
               ),
             ],
           );
@@ -284,9 +319,10 @@ class _AnimacionMimoState extends State<AnimacionMimo>
 
 /// Si faltan los PNG: los dos gatitos juntitos.
 class _Respaldo extends StatelessWidget {
-  const _Respaldo({required this.manda, required this.abrazo});
+  const _Respaldo({required this.manda, required this.abrazo, this.meneo = 0});
   final Gatito manda;
   final bool abrazo;
+  final double meneo;
 
   @override
   Widget build(BuildContext context) {
@@ -297,7 +333,10 @@ class _Respaldo extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Transform.rotate(angle: 0.12, child: GatitoImagen(manda, size: s)),
+            Transform.rotate(
+              angle: 0.12 + meneo,
+              child: GatitoImagen(manda, size: s),
+            ),
             SizedBox(width: abrazo ? 0 : s * 0.2),
             Transform.rotate(
               angle: -0.08,
@@ -372,6 +411,64 @@ class _Corazones extends CustomPainter {
 
   @override
   bool shouldRepaint(_Corazones old) => old.t != t;
+}
+
+/// Notitas musicales y chispitas que salen del cascabel del gatito que
+/// manda (en el cuello, a la izquierda) y vuelan hacia el otro.
+class _Notitas extends CustomPainter {
+  _Notitas(this.t);
+  final double t;
+
+  static final _colores = [
+    AppTheme.amarillo,
+    Color(0xFFE8735A),
+    Color(0xFF9CC3E6),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var i = 0; i < 8; i++) {
+      final inicio = 0.04 + i * 0.09;
+      final p = (t - inicio) / 0.5;
+      if (p <= 0 || p >= 1) continue;
+      final x = 0.4 + p * (0.16 + (i % 3) * 0.05);
+      final y = 0.5 - p * (0.28 + (i % 2) * 0.1) + sin(p * pi * 3 + i) * 0.03;
+      final o = Offset(x * size.width, y * size.height);
+      final r = size.height * 0.026 * (0.7 + p * 0.5);
+      final paint = Paint()
+        ..color = _colores[i % 3].withValues(alpha: (1 - p) * 0.95);
+      if (i % 3 == 2) {
+        // Chispita de cuatro puntas.
+        canvas.drawPath(_chispa(o, r * 1.3), paint);
+      } else {
+        // Notita: bolita, palito y banderita.
+        canvas.drawOval(
+          Rect.fromCenter(center: o, width: r * 2.4, height: r * 1.8),
+          paint,
+        );
+        final palo = Paint()
+          ..color = paint.color
+          ..strokeWidth = r * 0.45
+          ..strokeCap = StrokeCap.round;
+        final arriba = o + Offset(r * 1.05, -r * 3.2);
+        canvas.drawLine(o + Offset(r * 1.05, 0), arriba, palo);
+        canvas.drawLine(arriba, arriba + Offset(r * 1.2, r * 0.9), palo);
+      }
+    }
+  }
+
+  static Path _chispa(Offset c, double r) {
+    return Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..quadraticBezierTo(c.dx + r * 0.12, c.dy - r * 0.12, c.dx + r, c.dy)
+      ..quadraticBezierTo(c.dx + r * 0.12, c.dy + r * 0.12, c.dx, c.dy + r)
+      ..quadraticBezierTo(c.dx - r * 0.12, c.dy + r * 0.12, c.dx - r, c.dy)
+      ..quadraticBezierTo(c.dx - r * 0.12, c.dy - r * 0.12, c.dx, c.dy - r)
+      ..close();
+  }
+
+  @override
+  bool shouldRepaint(_Notitas old) => old.t != t;
 }
 
 /// Muestra la animación en grande. Para quien recibe hay un botón para
@@ -501,7 +598,7 @@ class _VentanaMimoState extends State<_VentanaMimo> {
 // Al recibir
 // ---------------------------------------------------------------------------
 
-/// Escucha los besos y abrazos que llegan y muestra la animación una vez.
+/// Escucha los besos, abrazos y cascabeles que llegan y muestra la animación una vez.
 ///
 /// Solo se anuncian los que llegaron en las últimas 12 horas, y se recuerda
 /// en el teléfono cuáles ya se vieron.
@@ -561,7 +658,7 @@ class _LlegadaDeMimosState extends State<LlegadaDeMimos> {
   @override
   void initState() {
     super.initState();
-    for (final m in [Mimo.beso, Mimo.abrazo]) {
+    for (final m in [Mimo.beso, Mimo.abrazo, Mimo.cascabel]) {
       _subs.add(
         TogetherService.instance.watchMimos(widget.coupleId, m).listen((l) {
           _ultimos[m] = l;
@@ -607,7 +704,7 @@ class _LlegadaDeMimosState extends State<LlegadaDeMimos> {
       mimo: m.mimo,
       manda: widget.suGatito,
       titulo: m.mimo.recibido(widget.partnerName),
-      devolver: m.mimo == Mimo.beso ? 'Devolver el beso' : 'Devolver el abrazo',
+      devolver: m.mimo.devolver,
     );
     _mostrando = false;
     if (devolver && mounted) {

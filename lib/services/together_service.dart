@@ -357,7 +357,21 @@ class TogetherService {
     NotifyService.instance.send(NotifyKind.kiss, coupleId, ref.id);
   }
 
-  /// Los últimos besos o abrazos de la pareja (de los dos), para mostrar la
+  /// Cascabel para la pareja, en `couples/{id}/cascabeles`: un tilín para
+  /// llamar su atención.
+  Future<void> sendBell(
+    String coupleId, {
+    required String from,
+    required String to,
+  }) async {
+    final ref = await Db.coupleSub(
+      coupleId,
+      'cascabeles',
+    ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
+    NotifyService.instance.send(NotifyKind.bell, coupleId, ref.id);
+  }
+
+  /// Los últimos besos, abrazos o cascabeles de la pareja (de los dos), para mostrar la
   /// animación al que los recibe. Solo 5, para leer poquito.
   Stream<List<MimoRecibido>> watchMimos(String coupleId, Mimo mimo) =>
       Db.coupleSub(coupleId, mimo.coleccion)

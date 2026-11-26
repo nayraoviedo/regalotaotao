@@ -52,6 +52,7 @@ beforeEach(() => {
     "couples/c1/pomodoros/p1": { invitedBy: "ana", invitee: "beto", minutes: 50, status: "pending" },
     "couples/c1/achievements/a1": { uid: "ana", kind: "tarea", rewardId: "r1", rewardTitle: "Un helado" },
     "couples/c1/besos/b1": { from: "ana", to: "beto" },
+    "couples/c1/cascabeles/k1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -67,6 +68,14 @@ beforeEach(() => {
     "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
     "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
     "couples/c1/juegos/j1": { juego: "probable", por: "ana", terminada: false, preguntas: [1, 2, 3, 4, 5], respuestas: { ana: ["ana", "beto", "ana", "ana", "beto"] } },
+    "couples/c1/dibujos/d1": { dibuja: "ana", palabra: "gato", clave: "gato", estado: "dibujando", mensajes: [] },
+    "couples/c1/dibujos/d2": { dibuja: "ana", palabra: "luna", clave: "luna", estado: "adivinada", mensajes: [] },
+    "couples/c1/memoramas/m1": { por: "ana", estado: "jugando", cartas: [] },
+    "couples/c1/rompecabezas/r1": { por: "ana", estado: "terminada", orden: [] },
+    "couples/c1/telefonos/t0": { por: "ana", estado: "jugando", progreso: {} },
+    "couples/c1/telefonos/t1": { por: "ana", estado: "jugando", progreso: { ana: 2, beto: 1 } },
+    "couples/c1/telefonos/t2": { por: "ana", estado: "jugando", progreso: { ana: 1, beto: 2 } },
+    "couples/c1/telefonos/t3": { por: "ana", estado: "terminada", progreso: { ana: 4, beto: 4 } },
     "couples/c1/juegos/j2": { juego: "adivina", por: "beto", terminada: true, preguntas: [1, 2, 3, 4, 5], respuestas: { beto: [0, 1, 2, 3, 0], ana: [0, 1, 3, 3, 1] } },
   };
   for (const k of Object.keys(docs)) docs[k] = { data: docs[k], updateTime: stamp() };
@@ -153,17 +162,19 @@ test("te extraño llega a la pareja y borra el token viejo", async () => {
   assert.deepEqual(docs["users/beto"].data.fcmTokens, ["tok-bueno"]);
 });
 
-test("besos y abrazos llegan con su texto", async () => {
+test("besos, abrazos y cascabel llegan con su texto", async () => {
   const t = await idToken("ana");
-  for (const [kind, docId] of [["kiss", "b1"], ["hug", "h1"], ["hug", "h2"]]) {
+  for (const [kind, docId] of [["kiss", "b1"], ["hug", "h1"], ["hug", "h2"], ["bell", "k1"]]) {
     assert.equal((await call({ kind, coupleId: "c1", docId }, t)).status, 200);
   }
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te mandó un beso",
     "Ana te manda un abrazo apretado",
     "Ana vio cómo te sientes y te manda un abrazo apretado",
+    "Ana hizo sonar su cascabel para ti",
   ]);
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "bell", coupleId: "c1", docId: "k1" }, await idToken("beto"))).status, 403);
 });
 
 test("compras de la casita avisan a la pareja", async () => {
@@ -195,6 +206,38 @@ test("juegos: avisa que le toca y luego los resultados", async () => {
   assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, ana)).status, 200);
   assert.equal(sent[1].notification.body, "Ana adivinó 3 de 5 de tus respuestas. Mira y gana pescaditos 🐟");
   assert.equal((await call({ kind: "juego", coupleId: "c1", docId: "j2" }, await idToken("beto"))).status, 403);
+});
+
+test("dibujo: avisa que la pareja está dibujando (sin decir la palabra)", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d1" }, ana)).status, 200);
+  assert.equal(sent[0].notification.title, "🎨 ¡Ven a adivinar!");
+  assert.doesNotMatch(sent[0].notification.body, /gato/);
+  // Beto no dibuja: no puede avisar. Una ronda terminada tampoco avisa.
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d1" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "dibujo", coupleId: "c1", docId: "d2" }, ana)).status, 403);
+});
+
+test("memorama y rompecabezas: avisa al empezar", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "memorama", coupleId: "c1", docId: "m1" }, ana)).status, 200);
+  assert.match(sent[0].notification.body, /^Ana empezó un memorama/);
+  assert.equal((await call({ kind: "memorama", coupleId: "c1", docId: "m1" }, await idToken("beto"))).status, 403);
+  // Uno ya terminado no avisa.
+  assert.equal((await call({ kind: "rompecabezas", coupleId: "c1", docId: "r1" }, ana)).status, 403);
+});
+
+test("teléfono descompuesto: avisa al empezar, cuando te toca y al final", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t0" }, ana)).status, 200);
+  assert.match(sent[0].notification.body, /^Ana empezó una partida/);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t0" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t1" }, ana)).status, 200);
+  assert.match(sent[1].notification.body, /ya hizo su parte/);
+  // Beto va adelantado y espera a Ana: el turno de Ana no le cambia nada.
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t2" }, ana)).status, 403);
+  assert.equal((await call({ kind: "telefono", coupleId: "c1", docId: "t3" }, ana)).status, 200);
+  assert.match(sent[2].notification.title, /sus frases/);
 });
 
 test("no se envía dos veces el mismo aviso", async () => {

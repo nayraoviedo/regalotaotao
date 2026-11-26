@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "notaLeida" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "memorama" | "rompecabezas" | "telefono" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -441,6 +441,12 @@ const KINDS = {
     dedupeKey: () => "enviado",
     message: (name) => ({ title: "😘 Un beso para ti", body: `${name} te mandó un beso` }),
   },
+  bell: {
+    collection: "cascabeles",
+    check: (d, uid, partner) => d.from === uid && d.to === partner,
+    dedupeKey: () => "enviado",
+    message: (name) => ({ title: "🔔 ¡Tilín, tilín!", body: `${name} hizo sonar su cascabel para ti` }),
+  },
   compra: {
     collection: "casitaMovs",
     check: (d, uid) => d.uid === uid && d.tipo === "compra",
@@ -498,6 +504,66 @@ const KINDS = {
           : `${name} ya jugó: pensaron igual en ${n} de 5. Mira y gana pescaditos 🐟`,
       };
     },
+  },
+  // Dibuja y adivina: la pareja empezó a dibujar para ti.
+  dibujo: {
+    collection: "dibujos",
+    check: (d, uid) => d.dibuja === uid && d.estado === "dibujando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🎨 ¡Ven a adivinar!",
+      body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
+    }),
+  },
+  // Memorama y rompecabezas: la pareja empezó una partida.
+  memorama: {
+    collection: "memoramas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🃏 ¿Un memorama?",
+      body: `${name} empezó un memorama con sus fotos. Entra a jugar por turnos`,
+    }),
+  },
+  rompecabezas: {
+    collection: "rompecabezas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🧩 Armemos un rompecabezas",
+      body: `${name} empezó un rompecabezas para los dos. Entra a poner tus piezas`,
+    }),
+  },
+  // Teléfono descompuesto: avisa al empezar, cuando a la pareja le toca
+  // su siguiente turno y cuando ya pueden ver cómo cambiaron las frases.
+  telefono: {
+    collection: "telefonos",
+    check: (d, uid, partner) => {
+      const p = d.progreso || {};
+      const yo = p[uid] || 0;
+      const otro = p[partner] || 0;
+      if (yo === 0) return d.por === uid && otro === 0 && d.estado === "jugando";
+      if (d.estado === "terminada") return true;
+      return otro < 4 && (otro === 0 || yo >= otro);
+    },
+    dedupeKey: (d) => `${d.estado}-${JSON.stringify(
+      Object.entries(d.progreso || {}).sort(([a], [b]) => (a < b ? -1 : 1)),
+    )}`,
+    message: (name, d) =>
+      d.estado === "terminada"
+        ? {
+            title: "📞 ¡Ya pueden ver sus frases!",
+            body: `${name} terminó el teléfono descompuesto. Entra a ver cuánto cambiaron`,
+          }
+        : Object.keys(d.progreso || {}).length === 0
+          ? {
+              title: "📞 ¿Un teléfono descompuesto?",
+              body: `${name} empezó una partida. Escribe una frase secreta y dibújala`,
+            }
+          : {
+              title: "📞 ¡Te toca!",
+              body: `${name} ya hizo su parte del teléfono descompuesto`,
+            },
   },
   // Tu pareja abrió la nota privada que le compartiste. Aquí quien llama
   // es quien la leyó, y el aviso va para quien la escribió.
