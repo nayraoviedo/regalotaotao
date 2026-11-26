@@ -587,7 +587,7 @@ class _CasitaViewState extends State<CasitaView> {
     }
     if (cosa.especial == Especial.tema) return _usarTema(cosa);
     if (cosa.especial == Especial.recetario) {
-      _aviso('Sus recetas nuevas ya están en la cocina 🎄');
+      _aviso('Sus recetas nuevas ya están en la cocina 📖');
       return;
     }
     if (cosa.esBebe) return _nombrar(cosa);
@@ -781,8 +781,8 @@ class _CasitaViewState extends State<CasitaView> {
       }
       if (cosa.especial == Especial.recetario) {
         _aviso(
-          '🎄 ¡Ya tienen el ${cosa.nombre}! Las recetas nuevas están en '
-          'la cocina.',
+          '${cosa.fiesta?.emoji ?? '📖'} ¡Ya tienen el ${cosa.nombre}! Las '
+          'recetas nuevas están en la cocina.',
         );
         return;
       }
@@ -2651,11 +2651,11 @@ class _Despensa extends StatelessWidget {
   Widget build(BuildContext context) {
     final recetas = Receta.values.where((r) => r.disponible(estado, ahora));
     // En diciembre, si todavía no compraron el recetario de Navidad.
-    final recetario = Catalogo.porId('recetario_navidad');
-    final sinRecetario =
-        recetario != null &&
-        recetario.aLaVenta(ahora) &&
-        !estado.tiene(recetario);
+    // Los recetarios de la fiesta de ahora que todavía no compraron.
+    final sinComprar = [
+      for (final c in Catalogo.recetarios)
+        if (c.aLaVenta(ahora) && !estado.tiene(c)) c,
+    ];
     final hay = [
       for (final i in Ingrediente.values)
         if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
@@ -2714,11 +2714,11 @@ class _Despensa extends StatelessWidget {
               ],
             ),
           ],
-          if (sinRecetario) ...[
+          for (final c in sinComprar) ...[
             const SizedBox(height: 8),
             TextoDoodle(
-              '🎄 En la tienda (De temporada) está el Recetario de Navidad: '
-              'galletas de jengibre, tronco de Navidad, ponche y más.',
+              '${c.fiesta?.emoji ?? '📖'} En la tienda (De temporada) está '
+              'el ${c.nombre}: ${Catalogo.recetasDe(c).map((r) => r.nombre).join(', ')}.',
               style: const TextStyle(color: AppTheme.gris, fontSize: 13),
             ),
           ],
