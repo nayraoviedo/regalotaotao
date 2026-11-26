@@ -238,7 +238,8 @@ class PescaditosService {
 
   /// Terminaron juntos un memorama o un rompecabezas ([tipo] es
   /// [Movimiento.memorama] o [Movimiento.rompecabezas], y [coleccion] donde
-  /// está la partida): cada uno gana [Juntos.premio], en las primeras
+  /// está la partida): cada uno gana [cantidad] (por defecto
+  /// [Juntos.premio]), en las primeras
   /// [Juntos.partidasConPremio] del día (`{tipo}_{día}_{uid}_{1..3}`).
   Future<int> ganarJuntos(
     String coupleId,
@@ -247,6 +248,8 @@ class PescaditosService {
     required String coleccion,
     required String partidaId,
     required String motivo,
+    int cantidad = Juntos.premio,
+    Map<String, Object?> extra = const {},
   }) async {
     final hoy = dia();
     final estadoRef = _estado(coupleId);
@@ -276,7 +279,6 @@ class PescaditosService {
         tx.update(partidaRef, {'cobros.$uid': 'tope'});
         return 0;
       }
-      const cantidad = Juntos.premio;
       tx.set(libre, {
         'tipo': tipo,
         'uid': uid,
@@ -284,6 +286,7 @@ class PescaditosService {
         'ref': hoy,
         'partida': partidaId,
         'slot': slot,
+        ...extra,
         'creadoEn': FieldValue.serverTimestamp(),
       });
       final cambios = <String, Object?>{

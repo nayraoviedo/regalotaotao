@@ -24,6 +24,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   juegos/{id}                     partidas de los juegos de pareja
 ///   dibujos/{id}                    rondas de "Dibuja y adivina"
 ///   dibujos/{id}/trazos/{n}         cada trazo del dibujo (en vivo)
+///   sudokus/{id}                    sudokus en pareja (un tablero para 2)
 ///   musica/sala                     música juntos (lo que suena, cola, 3-2-1)
 ///   capsulas/{id}                   cápsulas del tiempo (cuándo se abren)
 ///   capsulas/{id}/cosas/{id}        lo guardado (se lee desde que se abre)
