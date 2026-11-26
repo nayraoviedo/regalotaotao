@@ -229,10 +229,10 @@ void main() {
     );
     await t.tap(find.text('abrir'));
     await t.pumpAndSettle();
-    expect(find.textContaining('capítulos tiene'), findsOneWidget);
+    expect(find.textContaining('capítulo van'), findsOneWidget);
     await t.tap(find.text('Película'));
     await t.pump();
-    expect(find.textContaining('capítulos tiene'), findsNothing);
+    expect(find.textContaining('capítulo van'), findsNothing);
     await t.enterText(find.byType(TextField).first, 'Chihiro');
     await t.pump();
     await t.tap(find.text('Agregar a nuestra lista'));
@@ -240,5 +240,37 @@ void main() {
     expect(res?.titulo, 'Chihiro');
     expect(res?.tipo, TipoPeli.pelicula);
     expect(res?.estado, EstadoPeli.viendo);
+  });
+
+  testWidgets('formulario: se pone en qué capítulo van, también en Por ver', (
+    t,
+  ) async {
+    Peli? res;
+    await t.pumpWidget(
+      app(
+        Builder(
+          builder: (c) => TextButton(
+            onPressed: () async => res = await showPeliForm(
+              c,
+              uid: 'a',
+              estado: EstadoPeli.porVer,
+            ),
+            child: const Text('abrir'),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('abrir'));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField).first, 'Hidden Love');
+    await t.enterText(find.byKey(const ValueKey('capitulo')), '7');
+    await t.enterText(find.byKey(const ValueKey('capitulos')), '25');
+    await t.pump();
+    await t.tap(find.text('Agregar a nuestra lista'));
+    await t.pumpAndSettle();
+    expect(res?.estado, EstadoPeli.porVer);
+    expect(res?.capitulo, 7);
+    expect(res?.capitulos, 25);
+    expect(res?.progreso, 'Cap. 7 de 25');
   });
 }
