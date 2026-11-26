@@ -925,6 +925,76 @@ void main() {
       }
     });
 
+    test('el recetario de Navidad abre recetas en diciembre', () {
+      final recetario = Catalogo.porId('recetario_navidad')!;
+      expect(recetario.especial, Especial.recetario);
+      // Se vende solo en Navidad y no sale en Especiales.
+      expect(recetario.aLaVenta(DateTime(2026, 11, 26)), isFalse);
+      expect(recetario.aLaVenta(DateTime(2026, 12, 10)), isTrue);
+      expect(Catalogo.especiales, isNot(contains(recetario)));
+
+      final diciembre = DateTime(2026, 12, 10);
+      final navidenas = Receta.values.where(
+        (r) => r.recetario == 'recetario_navidad',
+      );
+      expect(navidenas.length, greaterThanOrEqualTo(5));
+      expect(navidenas, contains(Receta.galletasJengibre));
+      final sin = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina'],
+      });
+      final con = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', 'recetario_navidad'],
+      });
+      for (final r in navidenas) {
+        expect(r.disponible(sin, diciembre), isFalse, reason: r.name);
+        expect(r.disponible(con, diciembre), isTrue, reason: r.name);
+        // Fuera de Navidad no se cocinan aunque tengan el recetario.
+        expect(r.disponible(con, DateTime(2027, 3, 1)), isFalse);
+      }
+      // Las de siempre no piden recetario.
+      expect(Receta.galletas.disponible(sin, DateTime(2027, 3, 1)), isTrue);
+    });
+
+    test('recetarios de las fiestas chinas, en su fecha lunar', () {
+      final ids = Catalogo.recetarios.map((c) => c.id);
+      expect(
+        ids,
+        containsAll([
+          'recetario_navidad',
+          'recetario_anio_nuevo_chino',
+          'recetario_bote_dragon',
+          'recetario_medio_otono',
+        ]),
+      );
+      for (final c in Catalogo.recetarios) {
+        final recetas = Catalogo.recetasDe(c);
+        expect(recetas.length, greaterThanOrEqualTo(3), reason: c.id);
+        for (final r in recetas) {
+          // Se cocinan en la misma fiesta en que se vende el recetario.
+          expect(r.fiestas, {c.fiesta}, reason: r.name);
+        }
+      }
+      final chino = Catalogo.porId('recetario_anio_nuevo_chino')!;
+      final dragon = Catalogo.porId('recetario_bote_dragon')!;
+      final luna = Catalogo.porId('recetario_medio_otono')!;
+      // 2027: Año Nuevo chino el 6 de febrero, Bote del Dragón el 9 de
+      // junio y Medio Otoño el 15 de septiembre.
+      expect(chino.aLaVenta(DateTime(2027, 2, 6)), isTrue);
+      expect(chino.aLaVenta(DateTime(2027, 4, 1)), isFalse);
+      expect(dragon.aLaVenta(DateTime(2027, 6, 9)), isTrue);
+      expect(dragon.aLaVenta(DateTime(2027, 7, 20)), isFalse);
+      expect(luna.aLaVenta(DateTime(2027, 9, 15)), isTrue);
+      expect(luna.aLaVenta(DateTime(2027, 11, 1)), isFalse);
+      final con = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', 'recetario_medio_otono'],
+      });
+      expect(
+        Receta.pastelesLuna.disponible(con, DateTime(2027, 9, 15)),
+        isTrue,
+      );
+      expect(Receta.zongziDulce.disponible(con, DateTime(2027, 6, 9)), isFalse);
+    });
+
     test('los cuartos nuevos se abren comprándolos', () {
       const cerrado = EstadoCasita.vacio;
       expect(cerrado.abierto(Cuarto.sala), isTrue);
