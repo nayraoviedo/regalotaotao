@@ -183,22 +183,62 @@ class _Permiso extends StatelessWidget {
   final bool listo;
   final VoidCallback onPedir;
 
+  // Sin ListTile: el tema les da a los botones un ancho mínimo infinito
+  // (Size.fromHeight), y en el "trailing" de un ListTile el botón se comía
+  // toda la fila y el texto salía una letra por renglón. Ahora el texto
+  // ocupa todo el ancho y "Permitir" va debajo, a lo ancho de la tarjeta.
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: Doodle(
-          listo ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-          color: AppTheme.azul,
-        ),
-        title: Text(titulo),
-        subtitle: Text(texto),
-        trailing: listo
-            ? const Text('Listo', style: TextStyle(color: AppTheme.gris))
-            : FilledButton.tonal(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Doodle(
+                  listo
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: AppTheme.azul,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        titulo,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        texto,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                if (listo) ...[
+                  const SizedBox(width: 8),
+                  const Text('Listo', style: TextStyle(color: AppTheme.gris)),
+                ],
+              ],
+            ),
+            if (!listo) ...[
+              const SizedBox(height: 10),
+              FilledButton.tonal(
                 onPressed: onPedir,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                ),
                 child: const Text('Permitir'),
               ),
+            ],
+          ],
+        ),
       ),
     );
   }
