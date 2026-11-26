@@ -40,6 +40,7 @@ import '../../widgets/doodle.dart';
 import 'mimos.dart';
 import 'saludos.dart';
 import '../capsula/capsula_inicio.dart';
+import '../pelis/pelis_inicio.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
@@ -525,6 +526,11 @@ class _HomeBodyState extends State<_HomeBody> {
               coupleId: couple.id,
               uid: me.uid,
               partnerUid: partnerUid,
+              partnerName: partnerName,
+            ),
+            pelis: PelisInicio(
+              coupleId: couple.id,
+              uid: me.uid,
               partnerName: partnerName,
             ),
             recomendacion: RecomendacionInicio(

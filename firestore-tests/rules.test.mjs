@@ -144,6 +144,23 @@ await ok('B lo marca hecho', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{
 await ok('A reseña el picnic', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:5,texto:'Lo mejor'}}));
 await ok('B reseña el picnic', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:4,texto:''}}));
 await no('B no cambia la reseña de A', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.A':{estrellas:1,texto:''}}));
+// Dramas y pelis.
+const peli = {titulo:'Love Between Fairy and Devil',tipo:'drama',estado:'viendo',capitulo:0,capitulos:36,donde:'Viki',addedBy:'A'};
+await ok('A agrega un drama', setDoc(doc(db('A'),'couples/c1/pelis/p1'),peli));
+await no('A no agrega a nombre de B', setDoc(doc(db('A'),'couples/c1/pelis/p2'),{...peli,addedBy:'B'}));
+await no('no se agrega con tipo raro', setDoc(doc(db('A'),'couples/c1/pelis/p3'),{...peli,tipo:'novela'}));
+await no('no se agrega con reseñas', setDoc(doc(db('A'),'couples/c1/pelis/p4'),{...peli,resenas:{A:{estrellas:5,texto:''}}}));
+await ok('una peli sin capítulos', setDoc(doc(db('B'),'couples/c1/pelis/p5'),{...peli,tipo:'pelicula',capitulos:null,addedBy:'B'}));
+await ok('B suma un capítulo', updateDoc(doc(db('B'),'couples/c1/pelis/p1'),{capitulo:1,estado:'viendo'}));
+await no('capítulo negativo', updateDoc(doc(db('B'),'couples/c1/pelis/p1'),{capitulo:-1}));
+await no('B no cambia quién lo agregó', updateDoc(doc(db('B'),'couples/c1/pelis/p1'),{addedBy:'B'}));
+await ok('A lo termina', updateDoc(doc(db('A'),'couples/c1/pelis/p1'),{capitulo:36,estado:'vista',terminadaEn:new Date()}));
+await ok('A reseña el drama', updateDoc(doc(db('A'),'couples/c1/pelis/p1'),{'resenas.A':{estrellas:5,texto:'Lloré'},updatedAt:new Date()}));
+await ok('B reseña el drama', updateDoc(doc(db('B'),'couples/c1/pelis/p1'),{'resenas.B':{estrellas:4,texto:''}}));
+await no('B no cambia la reseña de A del drama', updateDoc(doc(db('B'),'couples/c1/pelis/p1'),{'resenas.A':{estrellas:1,texto:''}}));
+await no('6 estrellas no', updateDoc(doc(db('A'),'couples/c1/pelis/p1'),{'resenas.A':{estrellas:6,texto:''}}));
+await no('C no ve sus pelis', getDoc(doc(db('C'),'couples/c1/pelis/p1')));
+await ok('B borra la peli', deleteDoc(doc(db('B'),'couples/c1/pelis/p5')));
 await no('B no pone 0 estrellas', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:0,texto:''}}));
 await no('C no reseña', updateDoc(doc(db('C'),'couples/c1/bucketList/b1'),{'resenas.C':{estrellas:3,texto:''}}));
 await ok('A lo desmarca y las reseñas se quedan', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{done:false}));
