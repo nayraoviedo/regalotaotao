@@ -63,7 +63,7 @@ void main() {
     for (var i = 2; i < total; i++) {
       await tester.tap(find.text('Siguiente'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
     }
     expect(find.text('¡Eso es todo!'), findsOneWidget);
     await tester.tap(find.text('¡A jugar!'));
