@@ -8,6 +8,13 @@ Luego se exportan a PNG (1350x840) en assets/images/ con:  node exportar.mjs
                        naranja esconde su tarjeta con la respuesta
   juego_esperando.png  ya jugaste: los gatitos despiden al avioncito que
                        le lleva el turno a tu pareja
+  juego_dibujo.png     "Dibuja y adivina": el naranja pinta un pescadito en
+                       su caballete y el blanco piensa qué es
+  juego_memorama.png   memorama: cartas boca abajo y una pareja de corazones
+  juego_rompecabezas.png  rompecabezas: los dos ponen la última pieza
+  juego_sudoku.png     sudoku: el blanco piensa con su lápiz frente a un tablero
+  juego_telefono.png   teléfono descompuesto: hablan por un teléfono de latitas
+                       y por el hilo viaja un dibujito que va cambiando
   juego_resultado.png  resultados: chocan las patitas, con corazones y un
                        pescadito
 
@@ -151,8 +158,173 @@ def resultado():
                  g.sombra(450, 300), extras, a, b)
 
 
+def caballete(x, y, s=1.0):
+    """Caballete de madera con un pescadito pintado (a medio terminar)."""
+    MADERA, BORDE = "#D9A46C", "#8A5A35"
+    return (f'<g transform="translate({x} {y}) scale({s})">'
+            f'<path d="M-70 120 L-20 -110 M70 120 L20 -110 M0 -110 L0 130" '
+            f'stroke="{BORDE}" stroke-width="16" stroke-linecap="round"/>'
+            f'<path d="M-70 120 L-20 -110 M70 120 L20 -110 M0 -110 L0 130" '
+            f'stroke="{MADERA}" stroke-width="9" stroke-linecap="round"/>'
+            f'<rect x="-96" y="-120" width="192" height="150" rx="10" fill="{CREMA}" '
+            f'stroke="{AZUL}" stroke-width="6"/>'
+            f'<rect x="-104" y="30" width="208" height="16" rx="6" fill="{MADERA}" '
+            f'stroke="{BORDE}" stroke-width="4"/>'
+            # el pescadito pintado con trazos de pincel
+            f'<path d="M-52 -46 Q-10 -96 36 -46 Q-10 4 -52 -46Z" fill="none" '
+            f'stroke="{CORAL}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<path d="M36 -46 L66 -70 M36 -46 L64 -24" fill="none" stroke="{CORAL}" '
+            'stroke-width="9" stroke-linecap="round"/>'
+            f'<circle cx="-30" cy="-50" r="6" fill="{AZUL}"/>'
+            f'<path d="M-70 -92 Q-60 -100 -48 -96" fill="none" stroke="{CELESTE}" '
+            'stroke-width="6" stroke-linecap="round"/></g>')
+
+
+def pincel(x, y, s=1.0, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-6" y="-70" width="12" height="80" rx="6" fill="{AMARILLO}" '
+            f'stroke="{AZUL}" stroke-width="4"/>'
+            f'<rect x="-8" y="-82" width="16" height="16" fill="#C9D7EE" stroke="{AZUL}" stroke-width="4"/>'
+            f'<path d="M-8 -82 Q0 -116 8 -82Z" fill="{CORAL}" stroke="{AZUL}" '
+            'stroke-width="4" stroke-linejoin="round"/></g>')
+
+
+def dibujo():
+    # El naranja pinta en el caballete; el blanco piensa qué será.
+    a = g.gatito("naranja", 250, 282, rot=-3, lado_cola=-1, cab_rot=8,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (150, -40), (120, 30))])
+    b = g.gatito("blanco", 680, 282, rot=3, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-40, 64), (-34, -10), (-80, 30))])
+    extras = (caballete(450, 175, 0.95) + nube_pensar(800, 62, 0.56)
+              + g.chispa(120, 110, 1.2) + g.chispa(560, 40, 0.9, CELESTE)
+              + g.corazon(340, 60, 0.5, ROSA, -12))
+    return g.svg("Dibuja y adivina: el naranja pinta un pescadito y el blanco adivina",
+                 g.sombra(450, 330), extras, a, b, pincel(376, 236, 0.9, 38))
+
+
+def carta_dorso(x, y, s=1.0, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-40" y="-54" width="80" height="108" rx="12" fill="{AZUL}" '
+            f'stroke="{AMARILLO}" stroke-width="5"/>'
+            f'<path d="M8 -20 A22 22 0 1 0 8 20 A17 17 0 1 1 8 -20Z" fill="{CREMA}"/>'
+            + g.chispa(20, -28, 0.5) + '</g>')
+
+
+def carta_frente(x, y, s=1.0, rot=0, color=CORAL):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-40" y="-54" width="80" height="108" rx="12" fill="{CREMA}" '
+            f'stroke="{AZUL}" stroke-width="5"/>'
+            + g.corazon(0, -2, 0.75, color) + '</g>')
+
+
+def memorama():
+    a = g.gatito("naranja", 250, 282, rot=-3, lado_cola=-1, cab_rot=6,
+                 cab=dict(ojo="felices", bocam="feliz", sonrojo=1.3),
+                 brazos=[((52, 60), (130, -20), (104, 50))])
+    b = g.gatito("blanco", 660, 282, rot=3, lado_cola=1, cab_rot=-6,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.1),
+                 brazos=[((-52, 60), (-130, -20), (-104, 50))])
+    cartas = (carta_dorso(400, 250, 0.9, -8) + carta_dorso(500, 255, 0.9, 6)
+              + carta_frente(380, 120, 0.95, -12) + carta_frente(525, 115, 0.95, 10)
+              + g.chispa(452, 70, 1.2) + g.chispa(300, 60, 0.8, CELESTE)
+              + g.chispa(620, 60, 0.9))
+    return g.svg("Memorama: los gatitos encuentran una pareja de corazones",
+                 g.sombra(450, 330), a, b, cartas)
+
+
+def pieza(x, y, s=1.0, rot=0, color=CELESTE, borde=AZUL):
+    d = ("M-40 -40 L-12 -40 Q-14 -58 0 -58 Q14 -58 12 -40 L40 -40 L40 -12 "
+         "Q58 -14 58 0 Q58 14 40 12 L40 40 L-40 40 Z")
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<path d="{d}" fill="{color}" stroke="{borde}" stroke-width="6" '
+            'stroke-linejoin="round"/></g>')
+
+
+def rompecabezas():
+    a = g.gatito("naranja", 250, 282, rot=-2, lado_cola=-1, cab_rot=8,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (140, -30), (110, 30))])
+    b = g.gatito("blanco", 660, 282, rot=2, lado_cola=1, cab_rot=-8,
+                 cab=dict(ojo="felices", bocam="feliz", sonrojo=1.3),
+                 brazos=[((-52, 56), (-140, -30), (-110, 30))])
+    tablero = (f'<rect x="355" y="130" width="190" height="190" rx="16" fill="{CREMA}" '
+               f'stroke="{AZUL}" stroke-width="6"/>'
+               + pieza(400, 175, 0.95, 0, "#F4C95D") + pieza(500, 175, 0.95, 90, ROSA)
+               + pieza(400, 275, 0.95, -90, "#7BBF8E")
+               + pieza(505, 268, 0.95, 12, CELESTE)
+               + g.chispa(560, 110, 1.1) + g.corazon(450, 80, 0.6, CORAL)
+               + g.chispa(330, 100, 0.8, CELESTE))
+    return g.svg("Rompecabezas: los gatitos ponen la última pieza juntos",
+                 g.sombra(450, 330), tablero, a, b)
+
+
+def sudoku():
+    b = g.gatito("blanco", 640, 282, rot=2, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-40, 64), (-34, -10), (-80, 30))])
+    celdas = []
+    nums = {(0, 0): 5, (1, 2): 3, (2, 1): 8, (0, 2): 1, (2, 2): 9, (1, 0): 7}
+    for f in range(3):
+        for c in range(3):
+            x, y = 250 + c * 70, 70 + f * 70
+            celdas.append(f'<rect x="{x}" y="{y}" width="70" height="70" fill="none" '
+                          f'stroke="#C9D7EE" stroke-width="3"/>')
+            if (f, c) in nums:
+                celdas.append(f'<text x="{x + 35}" y="{y + 50}" text-anchor="middle" '
+                              f'font-family="Nunito, Arial" font-weight="700" font-size="44" '
+                              f'fill="{AZUL if (f + c) % 2 else "#3B6FD6"}">{nums[(f, c)]}</text>')
+    tablero = (f'<rect x="240" y="60" width="230" height="230" rx="14" fill="#FFFFFF" '
+               f'stroke="{AZUL}" stroke-width="6"/>' + "".join(celdas)
+               + f'<rect x="250" y="70" width="210" height="210" fill="none" stroke="{AZUL}" stroke-width="5"/>'
+               + g.chispa(200, 90, 1.2) + g.corazon(520, 120, 0.55, ROSA, 12)
+               + g.chispa(500, 50, 0.8, CELESTE))
+    return g.svg("Sudoku: el gatito blanco piensa frente al tablero",
+                 g.sombra(450, 330), tablero, b)
+
+
+def latita(x, y, s=1.0, rot=0):
+    """Una latita del teléfono de hilo."""
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-26" y="-34" width="52" height="68" rx="8" fill="#F4C95D" '
+            f'stroke="{AZUL}" stroke-width="6"/>'
+            f'<path d="M-26 -14 L26 -14 M-26 14 L26 14" stroke="{AZUL}" stroke-width="4"/>'
+            '</g>')
+
+
+def papelito(x, y, s=1.0, rot=0, dentro=""):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-48" y="-40" width="96" height="80" rx="10" fill="#FFFFFF" '
+            f'stroke="{AZUL}" stroke-width="5"/>{dentro}</g>')
+
+
+def telefono():
+    # Cada uno con su latita; por el hilo viaja un pescadito que al llegar
+    # ya parece otra cosa.
+    a = g.gatito("naranja", 210, 282, rot=-3, lado_cola=-1, cab_rot=10,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (96, -60), (100, 20))])
+    b = g.gatito("blanco", 700, 282, rot=3, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-52, 56), (-96, -60), (-100, 20))])
+    hilo = (f'<path d="M310 222 Q455 330 600 222" fill="none" stroke="{AZUL}" '
+            'stroke-width="4" stroke-linecap="round"/>')
+    extras = (hilo + latita(298, 212, 0.85, -25) + latita(612, 212, 0.85, 25)
+              + papelito(395, 130, 0.85, -8, pescadito(0, 0, 0.75))
+              + papelito(520, 130, 0.85, 8, pregunta(0, -2, 0.75, 6, CORAL))
+              + estela("M445 130 L470 130")
+              + g.chispa(455, 40, 1.0) + g.chispa(120, 110, 0.9, CELESTE)
+              + g.corazon(780, 70, 0.5, ROSA, 12))
+    return g.svg("Teléfono descompuesto: los gatitos hablan por un teléfono de latitas",
+                 g.sombra(455, 330), a, b, extras)
+
+
 if __name__ == "__main__":
     for nombre, f in [("probable", probable), ("adivina", adivina),
-                      ("esperando", esperando), ("resultado", resultado)]:
+                      ("esperando", esperando), ("resultado", resultado),
+                      ("dibujo", dibujo), ("memorama", memorama),
+                      ("rompecabezas", rompecabezas), ("sudoku", sudoku),
+                      ("telefono", telefono)]:
         (AQUI / f"juego_{nombre}.svg").write_text(f())
     print("listo")

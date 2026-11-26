@@ -337,6 +337,172 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('C no ve los movimientos', getDocs(collection(db('C'),'couples/c1/casitaMovs')));
 }
 await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples','c1'),{endedAt:serverTimestamp(),endedBy:'B'}));
+// Juegos juntos: Dibuja y adivina.
+{
+  const h = new Date();
+  const hoy = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  const R = 'couples/c1/dibujos/r1';
+  const ronda = (u, id, extra={}) => setDoc(doc(db(u),'couples/c1/dibujos',id),{dibuja:u,palabra:'Pingüino',clave:'pinguino',estado:'dibujando',mensajes:[],borradoHasta:0,creadaEn:serverTimestamp(),...extra});
+  const trazo = (u, n, extra={}) => setDoc(doc(db(u),`${R}/trazos`,String(n).padStart(4,'0')),{n,p:[1,2,3,4],c:0,g:14,listo:false,por:u,...extra});
+  const msj = (u, t, extra={}) => ({u, t, en: Date.now(), ...extra});
+  const { arrayUnion } = await import('firebase/firestore');
+  await no('C no empieza una ronda', ronda('C','r0'));
+  await no('A no empieza a nombre de B', ronda('A','r0',{dibuja:'B'}));
+  await no('A no empieza con el chat lleno', ronda('A','r0',{mensajes:[msj('A','hola')]}));
+  await ok('A empieza a dibujar', ronda('A','r1'));
+  await ok('A dibuja un trazo', trazo('A',0));
+  await ok('A sigue el mismo trazo', trazo('A',0,{p:[1,2,3,4,5,6],listo:true}));
+  await no('B no dibuja en el turno de A', trazo('B',1));
+  await no('A no hace un trazo gigante', trazo('A',1,{p:new Array(700).fill(1)}));
+  await ok('B ve el dibujo en vivo', getDoc(doc(db('B'),`${R}/trazos/0000`)));
+  await no('C no ve el dibujo', getDoc(doc(db('C'),`${R}/trazos/0000`)));
+  await ok('A deshace su trazo', deleteDoc(doc(db('A'),`${R}/trazos/0000`)));
+  await ok('B avisa que está mirando', updateDoc(doc(db('B'),R),{'viendo.B':serverTimestamp()}));
+  await no('B no marca que A mira', updateDoc(doc(db('B'),R),{'viendo.A':serverTimestamp()}));
+  await ok('B escribe un intento', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','pato'))}));
+  await ok('A le da una pista', updateDoc(doc(db('A'),R),{mensajes:arrayUnion(msj('A','vive en el frío'))}));
+  await no('B no escribe a nombre de A', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('A','x'))}));
+  await no('B no borra el chat', updateDoc(doc(db('B'),R),{mensajes:[]}));
+  await no('B no limpia el dibujo de A', updateDoc(doc(db('B'),R),{borradoHasta:3}));
+  await ok('A borra todo', updateDoc(doc(db('A'),R),{borradoHasta:1}));
+  await no('A no adivina su propio dibujo', updateDoc(doc(db('A'),R),{mensajes:arrayUnion(msj('A','pinguino',{a:true})),estado:'adivinada',acierto:'pinguino',adivinadaPor:'A',terminadaEn:serverTimestamp()}));
+  await no('B no adivina con otra palabra', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','gato',{a:true})),estado:'adivinada',acierto:'gato',adivinadaPor:'B',terminadaEn:serverTimestamp()}));
+  const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data()?.pescaditos ?? 0;
+  const cobrar = (u, slot, cantidad, total, dia=hoy, ronda='r1') => {
+    const d = db(u); const b = writeBatch(d); const id = `dibujo_${dia}_${u}_${slot}`;
+    b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo:'dibujo', cantidad, ref:dia, ronda, slot});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    b.update(doc(d,'couples/c1/dibujos',ronda), {[`cobros.${u}`]:id});
+    return b.commit();
+  };
+  await no('B no cobra antes de adivinar', cobrar('B',1,6,hay+6));
+  await ok('B adivina', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','pingüinos',{a:true})),estado:'adivinada',acierto:'pinguino',adivinadaPor:'B',terminadaEn:serverTimestamp()}));
+  await no('A ya no dibuja en la ronda terminada', trazo('A',2));
+  await no('B no escribe en la ronda terminada', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','otra'))}));
+  await no('B no cobra 20', cobrar('B',1,20,hay+20));
+  await no('B no cobra en un lugar 4', cobrar('B',4,6,hay+6));
+  await ok('B gana 6', cobrar('B',1,6,hay+6));
+  await no('B no cobra dos veces', cobrar('B',2,6,hay+12));
+  await ok('A (que dibujó) también gana 6', cobrar('A',1,6,hay+12));
+  await ok('B empieza a dibujar', ronda('B','r2'));
+  await ok('A se rinde', updateDoc(doc(db('A'),'couples/c1/dibujos/r2'),{estado:'rendida',terminadaEn:serverTimestamp()}));
+  await no('A no cobra una ronda rendida', cobrar('A',2,6,hay+18,hoy,'r2'));
+  await ok('A empieza otra', ronda('A','r3'));
+  await no('A no la marca como rendida', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'rendida',terminadaEn:serverTimestamp()}));
+  await ok('A la termina', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'cancelada',terminadaEn:serverTimestamp()}));
+}
+// Juegos juntos: fotos, memorama, rompecabezas y sudoku.
+{
+  const h = new Date();
+  const hoy = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  await ok('A sube una foto para jugar', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f1'),{por:'A',jpg:'abc',creadaEn:serverTimestamp()}));
+  await no('A no sube una foto a nombre de B', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f2'),{por:'B',jpg:'abc',creadaEn:serverTimestamp()}));
+  await no('A no sube una foto gigante', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f2'),{por:'A',jpg:'x'.repeat(200001),creadaEn:serverTimestamp()}));
+  await no('C no ve las fotos', getDoc(doc(db('C'),'couples/c1/fotosJuegos/f1')));
+  await no('B no borra la foto de A', deleteDoc(doc(db('B'),'couples/c1/fotosJuegos/f1')));
+  await ok('A borra su foto', deleteDoc(doc(db('A'),'couples/c1/fotosJuegos/f1')));
+
+  // Memorama: cartas 0-7 y 8-15 son las mismas.
+  const cartas = [...Array(8).keys(), ...Array(8).keys()].map(i => 'sticker_' + i);
+  const M = 'couples/c1/memoramas/m1';
+  await ok('A empieza un memorama', setDoc(doc(db('A'),M),{por:'A',cartas,turno:'A',abiertas:[],parejas:{},estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('B no voltea en el turno de A', updateDoc(doc(db('B'),M),{abiertas:[0]}));
+  await ok('A voltea una', updateDoc(doc(db('A'),M),{abiertas:[0]}));
+  await ok('A voltea otra (no es pareja)', updateDoc(doc(db('A'),M),{abiertas:[0,1]}));
+  await no('A no voltea una tercera', updateDoc(doc(db('A'),M),{abiertas:[0,1,2]}));
+  await no('no se quedan con cartas que no son pareja', updateDoc(doc(db('A'),M),{abiertas:[],'parejas.0':'A','parejas.1':'A'}));
+  await no('A no sigue si falló', updateDoc(doc(db('A'),M),{abiertas:[],turno:'A'}));
+  await ok('B cierra las cartas y le toca', updateDoc(doc(db('B'),M),{abiertas:[],turno:'B'}));
+  await ok('B voltea 2', updateDoc(doc(db('B'),M),{abiertas:[2]}));
+  await ok('B voltea 10', updateDoc(doc(db('B'),M),{abiertas:[2,10]}));
+  await no('B no se las da a A', updateDoc(doc(db('B'),M),{abiertas:[],'parejas.2':'A','parejas.10':'A'}));
+  await ok('B se queda la pareja', updateDoc(doc(db('B'),M),{abiertas:[],'parejas.2':'B','parejas.10':'B'}));
+  await no('B no voltea una encontrada', updateDoc(doc(db('B'),M),{abiertas:[2]}));
+  await no('A no cobra un memorama sin terminar', updateDoc(doc(db('A'),M),{'cobros.A':'x'}));
+
+  // Rompecabezas.
+  const R = 'couples/c1/rompecabezas/r1';
+  await ok('A hace uno de 6 × 6', setDoc(doc(db('A'),'couples/c1/rompecabezas/r6'),{por:'A',foto:'x',lado:6,orden:[...Array(36).keys()].reverse(),turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
+  await ok('A empieza un rompecabezas', setDoc(doc(db('A'),R),{por:'A',foto:'asset:assets/images/inicio_cielo.png',lado:3,orden:[1,2,0,4,5,3,7,8,6],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('A no hace uno de 7 × 7', setDoc(doc(db('A'),'couples/c1/rompecabezas/r0'),{por:'A',foto:'x',lado:7,orden:[...Array(49).keys()],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('B no mueve en el turno de A', updateDoc(doc(db('B'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'A',movs:1}));
+  await no('A no se inventa piezas', updateDoc(doc(db('A'),R),{orden:[0,0,0,4,5,3,7,8,6],turno:'B',movs:1}));
+  await ok('A cambia dos piezas', updateDoc(doc(db('A'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'B',movs:1}));
+  await ok('B termina el rompecabezas', updateDoc(doc(db('B'),R),{orden:[0,1,2,3,4,5,6,7,8],turno:'B',movs:2,estado:'terminada',terminadaEn:serverTimestamp()}));
+  const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data()?.pescaditos ?? 0;
+  const cobrar = (u, tipo, slot, cantidad, total, partida, extra={}, col='rompecabezas') => {
+    const d = db(u); const b = writeBatch(d); const id = `${tipo}_${hoy}_${u}_${slot}`;
+    b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo, cantidad, ref:hoy, slot, ...(partida?{partida}:{}), ...extra});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    if (partida) b.update(doc(d,'couples/c1/'+col,partida), {[`cobros.${u}`]:id});
+    return b.commit();
+  };
+  await no('A no cobra 30 por el rompecabezas', cobrar('A','rompe',1,30,hay+30,'r1'));
+  await ok('A gana 8 por el rompecabezas', cobrar('A','rompe',1,8,hay+8,'r1'));
+  await no('A no cobra el rompecabezas dos veces', cobrar('A','rompe',2,8,hay+16,'r1'));
+  await ok('B también gana 8', cobrar('B','rompe',1,8,hay+16,'r1'));
+  await ok('A gana 12 por un sudoku difícil', cobrar('A','sudoku',1,12,hay+28,null,{nivel:'dificil'}));
+  await no('A no cobra 15 por un sudoku fácil', cobrar('A','sudoku',2,15,hay+43,null,{nivel:'facil'}));
+  await no('A no cobra un sudoku en un lugar 4', cobrar('A','sudoku',4,5,hay+33,null,{nivel:'facil'}));
+
+  // Teléfono descompuesto.
+  const T = 'couples/c1/telefonos/t1';
+  const traz = [{p:[1,2,3,4],c:0,g:14}];
+  const turno = (u, n, pasos, extra={}) => {
+    const d = db(u); const b = writeBatch(d);
+    for (const [cadena, paso, val] of pasos) {
+      b.set(doc(d,T+'/pasos/'+cadena+'_'+paso), {cadena, n:paso, por:u, ...(paso==1||paso==3 ? {trazos:val} : {texto:val})});
+    }
+    b.update(doc(d,T), {[`progreso.${u}`]:n, ...extra});
+    return b.commit();
+  };
+  await ok('A empieza un teléfono', setDoc(doc(db('A'),T),{por:'A',progreso:{},estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('A no sube su progreso sin pasos', updateDoc(doc(db('A'),T),{'progreso.A':1}));
+  await no('A no escribe en la cadena de B', turno('A',1,[['B',0,'hola'],['B',1,traz]]));
+  await ok('A escribe y dibuja su frase', turno('A',1,[['A',0,'Un gato astronauta'],['A',1,traz]]));
+  await no('A no sigue antes que B', turno('A',2,[['B',2,'un perro']]));
+  await no('B no adivina antes de dibujar lo suyo', turno('B',1,[['A',2,'un perro']]));
+  await no('B no escribe una frase larguísima', turno('B',1,[['B',0,'x'.repeat(81)],['B',1,traz]]));
+  await ok('B escribe y dibuja su frase', turno('B',1,[['B',0,'Un pulpo'],['B',1,traz]]));
+  await no('nadie cambia un paso ya hecho', setDoc(doc(db('A'),T+'/pasos/A_0'),{cadena:'A',n:0,por:'A',texto:'otra'}));
+  await ok('A adivina el dibujo de B', turno('A',2,[['B',2,'Un calamar']]));
+  await ok('B adivina el dibujo de A', turno('B',2,[['A',2,'Un perro en la luna']]));
+  await ok('A dibuja lo que B creyó', turno('A',3,[['A',3,traz]]));
+  await ok('B dibuja lo que A creyó', turno('B',3,[['B',3,traz]]));
+  await ok('A vuelve a adivinar', turno('A',4,[['B',4,'Un fantasma']]));
+  await no('B no termina sin cerrar la partida', turno('B',4,[['A',4,'Una pizza']]));
+  await ok('B vuelve a adivinar y termina', turno('B',4,[['A',4,'Una pizza']],{estado:'terminada',terminadaEn:serverTimestamp()}));
+  await no('A no juega un quinto turno', updateDoc(doc(db('A'),T),{'progreso.A':5}));
+  await ok('A gana 8 por el teléfono', cobrar('A','telefono',1,8,hay+36,'t1',{},'telefonos'));
+  await no('A no cobra el teléfono dos veces', cobrar('A','telefono',2,8,hay+44,'t1',{},'telefonos'));
+  await ok('B guarda el teléfono en favoritas', updateDoc(doc(db('B'),T),{favorita:true}));
+  await no('B no cambia otra cosa al guardar', updateDoc(doc(db('B'),T),{favorita:false,por:'B'}));
+
+  // Racha de días jugando juntos.
+  const f = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const dias = (n) => f(new Date(h.getTime() + n*86400000));
+  const RJ = (d) => 'couples/c1/rachaJuegos/'+d;
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), RJ(dias(-1))), {dias:2, ayer:dias(-2), creadoEn:serverTimestamp()});
+  });
+  await no('C no anota la racha', setDoc(doc(db('C'),RJ(hoy)),{dias:3,ayer:dias(-1),creadoEn:serverTimestamp()}));
+  await no('A no se inventa más días', setDoc(doc(db('A'),RJ(hoy)),{dias:9,ayer:dias(-1),creadoEn:serverTimestamp()}));
+  await no('A no pone un ayer que no es ayer', setDoc(doc(db('A'),RJ(hoy)),{dias:3,ayer:dias(-3),creadoEn:serverTimestamp()}));
+  await no('B no anota un día que no jugó', setDoc(doc(db('B'),RJ(dias(1))),{dias:1,ayer:hoy,creadoEn:serverTimestamp()}));
+  const racha = (u, n, premio, total) => {
+    const d = db(u); const b = writeBatch(d);
+    b.set(doc(d,RJ(hoy)), {dias:n, ayer:dias(-1), creadoEn:serverTimestamp()});
+    if (premio) {
+      const id = 'rachajuegos_'+hoy;
+      b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo:'rachajuegos', cantidad:premio, ref:hoy});
+      b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    }
+    return b.commit();
+  };
+  await no('A no cobra 50 por 3 días', racha('A',3,50,hay+86));
+  await ok('A llega a 3 días y gana 10', racha('A',3,10,hay+46));
+  await no('nadie cambia el día anotado', updateDoc(doc(db('A'),RJ(hoy)),{dias:4}));
+}
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));
 await no('A ya no lee el perfil de B', getDoc(doc(db('A'),'users','B')));

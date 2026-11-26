@@ -18,6 +18,10 @@ enum NotifyKind {
   compra,
   propuesta,
   juego,
+  dibujo,
+  memorama,
+  rompecabezas,
+  telefono,
   notaLeida,
 }
 

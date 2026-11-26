@@ -43,6 +43,7 @@ import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
 import '../casita/casa_en_corte.dart';
 import '../juegos/juegos_screen.dart';
+import '../juegos_juntos/juegos_juntos_screen.dart';
 import '../../widgets/texto_doodle.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -503,6 +504,14 @@ class _HomeBodyState extends State<_HomeBody> {
               partnerName: partnerName,
               onTap: () =>
                   _open(JuegosScreen(me: me, couple: couple, partner: partner)),
+            ),
+            juegosJuntos: JuntosInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerName: partnerName,
+              onTap: () => _open(
+                JuegosJuntosScreen(me: me, couple: couple, partner: partner),
+              ),
             ),
             musica: MusicaInicio(
               coupleId: couple.id,
