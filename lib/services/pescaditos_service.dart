@@ -604,6 +604,25 @@ class PescaditosService {
     });
   }
 
+  /// Reciben la caja de la semana del repartidor: lo básico va a la
+  /// despensa. Devuelve false si la pareja ya la había recibido.
+  Future<bool> recibirReparto(String coupleId, {DateTime? hoy}) async {
+    final ref = _estado(coupleId);
+    final semana = Repartidor.semana(hoy ?? DateTime.now());
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      if (estado.reparto == semana) return false;
+      tx.set(ref, {
+        'despensa': {
+          for (final e in Repartidor.caja.entries)
+            e.key.name: estado.hay(e.key) + e.value,
+        },
+        'reparto': semana,
+      }, SetOptions(merge: true));
+      return true;
+    });
+  }
+
   /// Cocinan [receta] con lo de la despensa. Devuelve false si ya no
   /// alcanza (por ejemplo, la pareja cocinó otra cosa justo antes).
   Future<bool> cocinar(String coupleId, Receta receta) async {

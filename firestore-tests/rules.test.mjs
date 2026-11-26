@@ -320,6 +320,9 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('recogen lo del huerto a la despensa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:{tomate:3},sembrado:{tomatera:1764000000000}},{merge:true}));
   await ok('cocinan con lo de la despensa', setDoc(doc(db('B'),'couples/c1/casita/estado'),{despensa:{tomate:1},cocinado:{receta:'sopaTomate',en:1764000000000}},{merge:true}));
   await no('la despensa es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:'mucho'},{merge:true}));
+  await ok('reciben la caja del repartidor', setDoc(doc(db('B'),'couples/c1/casita/estado'),{despensa:{sal:4,leche:4,queso:5},reparto:'2026-11-23'},{merge:true}));
+  await no('la semana del repartidor es un texto', setDoc(doc(db('A'),'couples/c1/casita/estado'),{reparto:20261123},{merge:true}));
+  await no('C no recibe la caja de otra pareja', setDoc(doc(db('C'),'couples/c1/casita/estado'),{reparto:'2026-11-23'},{merge:true}));
   await no('C no cocina en su casita', setDoc(doc(db('C'),'couples/c1/casita/estado'),{cocinado:{receta:'ensalada',en:1}},{merge:true}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
   // Foto de perfil (JPG en base64, o su gatito).

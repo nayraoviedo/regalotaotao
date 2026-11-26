@@ -77,6 +77,7 @@ class CasitaScreen extends StatelessWidget {
               servicio.nombrarBebe(coupleId, bebe, nombre),
           onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
           onCocinar: (receta) => servicio.cocinar(coupleId, receta),
+          onRecibirReparto: () => servicio.recibirReparto(coupleId),
           onCartaSorpresa: partner == null
               ? null
               : () => Navigator.of(context).push(
@@ -117,6 +118,7 @@ class CasitaView extends StatefulWidget {
     this.onNombrar,
     this.onRecoger,
     this.onCocinar,
+    this.onRecibirReparto,
     this.categoriaInicial,
     this.cuartoInicial,
     this.inicioPareja,
@@ -158,6 +160,9 @@ class CasitaView extends StatefulWidget {
 
   /// Cocinar una receta con lo de la despensa.
   final Future<bool> Function(Receta receta)? onCocinar;
+
+  /// Recibir la caja de la semana del repartidor (va a la despensa).
+  final Future<bool> Function()? onRecibirReparto;
 
   /// Categoría elegida al abrir (ver [_CasitaViewState._categoriasDe]).
   final String? categoriaInicial;
@@ -435,6 +440,24 @@ class _CasitaViewState extends State<CasitaView> {
       );
     } catch (_) {
       _aviso('No se pudo cocinar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _recibirReparto() async {
+    setState(() => _ocupado = true);
+    try {
+      final listo = await widget.onRecibirReparto!();
+      _aviso(
+        listo
+            ? '📦 Guardaron la caja en la despensa: ${Repartidor.contenido}. '
+                  '¡A cocinar!'
+            : 'Tu pareja ya recibió la caja de esta semana. Está en la '
+                  'despensa.',
+      );
+    } catch (_) {
+      _aviso('No se pudo recibir la caja. Prueba otra vez.');
     } finally {
       if (mounted) setState(() => _ocupado = false);
     }
@@ -986,6 +1009,9 @@ class _CasitaViewState extends State<CasitaView> {
                 de: widget.partner?.name ?? 'Tu pareja',
                 onAbrir: () => _abrirRegalo(cosa, regalo),
               ),
+          if (widget.onRecibirReparto != null &&
+              _estado.repartidorEsperando(_hoy))
+            AvisoRepartidor(ocupado: _ocupado, onRecibir: _recibirReparto),
           if (_estado.pendiente case final p? when widget.onAprobar != null)
             _AvisoPropuesta(
               propuesta: p,
@@ -1763,6 +1789,79 @@ class _AvisoRegalo extends StatelessWidget {
   }
 }
 
+/// El repartidor de los lunes tocando la puerta con la caja de la semana.
+class AvisoRepartidor extends StatelessWidget {
+  const AvisoRepartidor({
+    super.key,
+    required this.ocupado,
+    required this.onRecibir,
+  });
+
+  final bool ocupado;
+  final VoidCallback onRecibir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFFFFF3DC),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Image.asset(
+                  Casita.asset('repartidor'),
+                  width: 64,
+                  height: 64,
+                  filterQuality: FilterQuality.none,
+                  excludeFromSemantics: true,
+                  errorBuilder: (_, _, _) => const EmojiDoodle('📦', size: 40),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '¡Toc, toc! Llegó el repartidor',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Cada lunes les trae lo básico para cocinar las '
+                        'recetas.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.azul.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextoDoodle(
+              Repartidor.contenido,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            FilledButton(
+              onPressed: ocupado ? null : onRecibir,
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
+              child: const Text('Recibir la caja'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Alcancía de pareja: para qué ahorran y cuánto les falta.
 class Alcancia extends StatelessWidget {
   const Alcancia({
@@ -2252,8 +2351,9 @@ class _Despensa extends StatelessWidget {
           const SizedBox(height: 4),
           TextoDoodle(
             hay.isEmpty
-                ? 'Está vacía. Recojan lo que crece en el huerto para '
-                      'cocinar con eso.'
+                ? 'Está vacía. Recojan lo que crece en el huerto, y cada '
+                      'lunes el repartidor les trae lo básico (sal, leche, '
+                      'queso…).'
                 : hay.join(' · '),
             style: const TextStyle(color: AppTheme.gris, fontSize: 13),
           ),
