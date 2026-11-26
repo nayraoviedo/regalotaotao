@@ -743,12 +743,28 @@ void main() {
       expect(activa(Festividad.carnaval, DateTime(2027, 2, 6)), isTrue);
       expect(activa(Festividad.aniversario, DateTime(2027, 3, 10)), isTrue);
       expect(activa(Festividad.primavera, DateTime(2027, 9, 21)), isTrue);
+      // Acción de Gracias: cuarto jueves de noviembre.
+      expect(Festividad.accionDeGraciasDe(2026), DateTime(2026, 11, 26));
+      expect(Festividad.accionDeGraciasDe(2027), DateTime(2027, 11, 25));
+      expect(activa(Festividad.accionGracias, DateTime(2026, 11, 26)), isTrue);
       final proximas = Festividad.proximas(DateTime(2026, 11, 23));
-      expect(proximas.first.$1, Festividad.navidad);
+      expect(proximas.first.$1, Festividad.accionGracias);
+      expect(proximas[1].$1, Festividad.navidad);
       // Cada festividad tiene cosas a la venta.
       for (final f in Festividad.values) {
         expect(Catalogo.cosas.where((c) => c.fiesta == f), isNotEmpty);
       }
+    });
+
+    test('la comida de fiesta solo se vende y se cocina en su fecha', () {
+      final pavo = Catalogo.cosas.firstWhere((c) => c.id == 'comida_pavo');
+      expect(pavo.aLaVenta(DateTime(2026, 11, 26)), isTrue);
+      expect(pavo.aLaVenta(DateTime(2026, 12, 20)), isTrue);
+      expect(pavo.aLaVenta(DateTime(2026, 11, 10)), isFalse);
+      expect(pavo.fiestasTexto, 'Acción de Gracias y Navidad');
+      expect(Receta.pavo.deTemporada(DateTime(2026, 12, 24)), isTrue);
+      expect(Receta.pavo.deTemporada(DateTime(2026, 7, 1)), isFalse);
+      expect(Receta.dumplings.deTemporada(DateTime(2026, 7, 1)), isTrue);
     });
 
     test('los cuartos nuevos se abren comprándolos', () {

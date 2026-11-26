@@ -526,7 +526,7 @@ def casita_pajaros():
 
 # ================================================================ ropita
 def ropa_gorra(c, x, y):
-    c.sprite(x + 4, y - 3, [
+    c.sprite(x + 4, y - 1, [
         "...rrrrrr...",
         "..rrrrwrrr..",
         ".rrrrrrrrrr.",
@@ -536,7 +536,7 @@ def ropa_gorra(c, x, y):
 
 
 def ropa_copa(c, x, y):
-    c.sprite(x + 5, y - 8, [
+    c.sprite(x + 5, y - 3, [
         ".kkkkkkkk.",
         ".kkkkkkkk.",
         ".kkkkkkkk.",

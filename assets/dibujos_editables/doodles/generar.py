@@ -159,6 +159,9 @@ D['camara'] = ambos('M12 32 L32 32 L38 22 L58 22 L64 32 L84 32 L84 78 L12 78 Z',
 # buscar la foto en los archivos del celular: carpetita abierta con una foto
 D['carpeta'] = ambos('M10 30 L10 80 L84 80 L84 36 L46 36 L40 26 L16 26 Z', AM) + ambos('M30 20 L66 20 L66 50 L30 50 Z', CE, 4) + relleno('M33 47 L44 34 L52 42 L56 38 L63 47 Z', VE, 0, 0) + ambos('M8 46 L88 46 L82 82 L12 82 Z', AM)
 
+# Acción de Gracias (casita): pavito con su cola de plumas en abanico
+D['pavo'] = ''.join(ambos(f'M48 56 L{48+36*c:.1f} {56-36*s:.1f} L{48+30*c2:.1f} {56-30*s2:.1f} Z', col, 4) for (c, s, c2, s2), col in [((-0.97, 0.26, -0.71, 0.71), TO), ((-0.71, 0.71, -0.26, 0.97), AM), ((-0.26, 0.97, 0.26, 0.97), TO), ((0.26, 0.97, 0.71, 0.71), AM), ((0.71, 0.71, 0.97, 0.26), TO)]) + ambos('M30 66 C30 50 38 42 48 42 C58 42 66 50 66 66 C66 80 58 86 48 86 C38 86 30 80 30 66 Z', '#C98A55') + ambos(CIRC(48, 42, 11), '#C98A55', 4.4) + punto(44, 40, 2.6) + punto(52, 40, 2.6) + ambos('M45 46 L51 46 L48 51 Z', AM, 3) + linea('M51 49 Q54 54 51 57', 3.4, TO)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')
