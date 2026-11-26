@@ -45,13 +45,19 @@ class Dibujos {
   static const opcionesPartida = <int>[4, 6, 8, 10];
   static const partidaPorDefecto = 6;
 
-  /// Puntos de quien adivina: 100 si adivina al toque, y baja 1 punto cada
-  /// 3 segundos hasta un mínimo de 20. Quien dibuja gana la mitad (por
+  /// Cada dibujo tiene 1 minuto: si nadie adivina, se acaba el tiempo y le
+  /// toca dibujar a la otra persona.
+  static const segundosPorDibujo = 60;
+
+  /// Puntos de quien adivina: 100 si adivina al toque, y bajan con el
+  /// minuto hasta 20 en el último segundo. Quien dibuja gana la mitad (por
   /// dibujar tan bonito que se entendió).
   static const puntosMax = 100;
   static const puntosMin = 20;
   static int puntosAdivinar(Duration tiempo) =>
-      (puntosMax - tiempo.inSeconds ~/ 3).clamp(puntosMin, puntosMax);
+      (puntosMax -
+              tiempo.inSeconds * (puntosMax - puntosMin) ~/ segundosPorDibujo)
+          .clamp(puntosMin, puntosMax);
   static int puntosDibujar(int adivinar) => (adivinar / 2).round();
 
   /// Respuestas rápidas del chat.
@@ -341,7 +347,10 @@ enum EstadoRonda {
   rendida('rendida'),
 
   /// Quien dibujaba la terminó sin que la adivinaran.
-  cancelada('cancelada');
+  cancelada('cancelada'),
+
+  /// Se acabó el minuto sin que la adivinaran.
+  agotada('agotada');
 
   const EstadoRonda(this.id);
   final String id;
@@ -405,6 +414,7 @@ class Ronda {
     this.partida,
     this.numero = 1,
     this.total = 0,
+    this.limite = 0,
   });
 
   final String id;
@@ -415,6 +425,9 @@ class Ronda {
   /// Qué dibujo de la partida es (1, 2…) y de cuántos.
   final int numero;
   final int total;
+
+  /// Segundos para adivinar (0 en las rondas de antes, sin reloj).
+  final int limite;
 
   /// uid de quien dibuja.
   final String dibuja;
@@ -445,6 +458,17 @@ class Ronda {
 
   /// Es el último dibujo de su partida.
   bool get ultima => enPartida && numero >= total;
+
+  bool get conReloj => limite > 0;
+
+  /// Cuánto tiempo le queda a la ronda a la hora [ahora] (null sin reloj).
+  /// [desde] reemplaza a [creadaEn] mientras el servidor no la confirma.
+  Duration? queda(DateTime ahora, {DateTime? desde}) {
+    final inicio = creadaEn ?? desde;
+    if (!conReloj || inicio == null) return null;
+    final q = inicio.add(Duration(seconds: limite)).difference(ahora);
+    return q.isNegative ? Duration.zero : q;
+  }
 
   /// Lo que tardó en adivinarse (null si no se sabe todavía).
   Duration? get tiempo {
@@ -515,6 +539,7 @@ class Ronda {
       partida: m['partida'] as String?,
       numero: (m['numero'] as num?)?.toInt() ?? 1,
       total: (m['total'] as num?)?.toInt() ?? 0,
+      limite: (m['limite'] as num?)?.toInt() ?? 0,
     );
   }
 }

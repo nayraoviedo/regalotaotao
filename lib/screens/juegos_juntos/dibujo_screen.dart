@@ -399,6 +399,13 @@ List<LineaChat> lineasRonda(Ronda r, String uid, String partnerName) {
             : 'Te rendiste. Era "${r.palabra}"',
       ),
     );
+  } else if (r.estado == EstadoRonda.agotada) {
+    fin.add(
+      LineaChat(
+        tipo: TipoLinea.aviso,
+        texto: '¡Se acabó el tiempo! Era "${r.palabra}"',
+      ),
+    );
   } else if (r.estado == EstadoRonda.cancelada) {
     fin.add(
       LineaChat(
@@ -460,7 +467,37 @@ class _EnVivoState extends State<_EnVivo> {
   int _color = 0;
   int _grosor = Dibujos.grosores[1];
 
+  /// Revisa cada segundo si se acabó el minuto.
+  Timer? _reloj;
+  final _abierta = DateTime.now();
+  DateTime? _intentoAgotar;
+
   Ronda get _r => widget.ronda;
+
+  @override
+  void initState() {
+    super.initState();
+    _reloj = Timer.periodic(const Duration(seconds: 1), (_) => _revisarReloj());
+  }
+
+  @override
+  void dispose() {
+    _reloj?.cancel();
+    super.dispose();
+  }
+
+  /// Se acabó el tiempo: cualquiera de los dos cierra la ronda (si el otro
+  /// ya la cerró, el cambio no pasa y no importa). Se reintenta cada pocos
+  /// segundos por si el reloj del celular va un poco adelantado.
+  void _revisarReloj() {
+    final r = _r;
+    final ahora = DateTime.now();
+    if (!r.enJuego || r.queda(ahora, desde: _abierta) != Duration.zero) return;
+    final antes = _intentoAgotar;
+    if (antes != null && ahora.difference(antes).inSeconds < 4) return;
+    _intentoAgotar = ahora;
+    unawaited(_svc.agotar(widget.coupleId, r).catchError((_) {}));
+  }
 
   Future<void> _mandar(String texto) async {
     final r = _r;
@@ -477,6 +514,9 @@ class _EnVivoState extends State<_EnVivo> {
     if (r.mensajes.length >= Dibujos.maxMensajes) {
       _aviso('El chat de esta ronda ya está lleno');
       return;
+    }
+    if (r.queda(DateTime.now(), desde: _abierta) == Duration.zero) {
+      _aviso('¡Se acabó el tiempo!');
     }
     try {
       await _svc.mandar(widget.coupleId, r, widget.uid, texto);
@@ -724,25 +764,27 @@ class BarraPartida extends StatelessWidget {
           )
         else
           const Spacer(),
-        if (ronda.enJuego && ronda.creadaEn != null)
-          _ValeAhora(desde: ronda.creadaEn!, dibujo: ronda.dibujo(uid)),
+        if (ronda.enJuego && (ronda.conReloj || ronda.creadaEn != null))
+          _Reloj(ronda: ronda, dibujo: ronda.dibujo(uid)),
       ],
     );
   }
 }
 
-/// Cuántos puntos da adivinar justo ahora (va bajando con el tiempo).
-class _ValeAhora extends StatefulWidget {
-  const _ValeAhora({required this.desde, required this.dibujo});
-  final DateTime desde;
+/// El reloj del dibujo: los segundos que quedan del minuto (con un
+/// circulito que se va vaciando) y cuántos puntos da adivinar ahora.
+class _Reloj extends StatefulWidget {
+  const _Reloj({required this.ronda, required this.dibujo});
+  final Ronda ronda;
   final bool dibujo;
 
   @override
-  State<_ValeAhora> createState() => _ValeAhoraState();
+  State<_Reloj> createState() => _RelojState();
 }
 
-class _ValeAhoraState extends State<_ValeAhora> {
+class _RelojState extends State<_Reloj> {
   Timer? _t;
+  final _abierto = DateTime.now();
 
   @override
   void initState() {
@@ -760,16 +802,22 @@ class _ValeAhoraState extends State<_ValeAhora> {
 
   @override
   Widget build(BuildContext context) {
-    var pasado = DateTime.now().difference(widget.desde);
+    final r = widget.ronda;
+    final ahora = DateTime.now();
+    final inicio = r.creadaEn ?? _abierto;
+    var pasado = ahora.difference(inicio);
     if (pasado.isNegative) pasado = Duration.zero;
     final vale = Dibujos.puntosAdivinar(pasado);
+    final queda = r.queda(ahora, desde: _abierto);
+    final apurado = queda != null && queda.inSeconds <= 10;
+    final color = apurado ? ColoresChat.pareja : AppTheme.azul;
     return Tooltip(
       message: widget.dibujo
           ? 'Si adivina ahora: $vale para tu pareja y '
                 '${Dibujos.puntosDibujar(vale)} para ti'
           : 'Si adivinas ahora ganas $vale puntos',
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
         decoration: BoxDecoration(
           color: AppTheme.amarillo.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(20),
@@ -777,8 +825,33 @@ class _ValeAhoraState extends State<_ValeAhora> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Doodle(Icons.timer_outlined, size: 16, color: AppTheme.azul),
-            const SizedBox(width: 4),
+            if (queda != null)
+              SizedBox(
+                width: 30,
+                height: 30,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: queda.inMilliseconds / (r.limite * 1000),
+                      strokeWidth: 3,
+                      color: color,
+                      backgroundColor: Colors.white,
+                    ),
+                    Text(
+                      '${queda.inSeconds}',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Doodle(Icons.timer_outlined, size: 16, color: AppTheme.azul),
+            const SizedBox(width: 6),
             Text(
               'vale $vale',
               style: TextStyle(
@@ -1186,8 +1259,9 @@ class _EntreRondasState extends State<EntreRondas> {
             ),
             const SizedBox(height: 4),
             const Text(
-              '¿Cuántos dibujos? Se turnan para dibujar y al final gana '
-              'quien junte más puntos (adivinar rápido da más).',
+              '¿Cuántos dibujos? Se turnan para dibujar, cada dibujo tiene '
+              '1 minuto y al final gana quien junte más puntos (adivinar '
+              'rápido da más).',
               style: TextStyle(color: AppTheme.gris, fontSize: 14),
             ),
             const SizedBox(height: 8),
@@ -1509,8 +1583,8 @@ class _Bienvenida extends StatelessWidget {
       const SizedBox(height: 8),
       Text(
         'Uno dibuja y $partnerName lo ve en vivo y adivina por el chat. '
-        'Cuando adivina, le toca dibujar. Al final de la partida, gana '
-        'quien junte más puntos.',
+        'Hay 1 minuto por dibujo: adivine o no, después le toca dibujar '
+        'al otro. Al final de la partida, gana quien junte más puntos.',
         textAlign: TextAlign.center,
         style: const TextStyle(color: AppTheme.gris, fontSize: 14.5),
       ),
@@ -1542,6 +1616,7 @@ class _ComoTermino extends StatelessWidget {
         yoDibuje ? '¡$partnerName adivinó!' : '¡Adivinaste!',
       EstadoRonda.rendida =>
         yoDibuje ? '$partnerName se rindió' : 'Te rendiste',
+      EstadoRonda.agotada => '¡Se acabó el tiempo!',
       _ => yoDibuje ? 'Terminaste la ronda' : '$partnerName terminó la ronda',
     };
     final cobro = r.cobros[uid];

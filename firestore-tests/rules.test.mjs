@@ -439,6 +439,23 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no hace una partida de 1 dibujo', ronda('A','r5',{partida:'p1',numero:1,total:1}));
   await no('A no hace una partida de 50 dibujos', ronda('A','r5',{partida:'p1',numero:1,total:50}));
   await no('A no pone el número como texto', ronda('A','r5',{partida:'p1',numero:'2',total:6}));
+  // Un minuto por dibujo.
+  await ok('A empieza un dibujo con 1 minuto', ronda('A','r6',{partida:'p1',numero:2,total:6,limite:60}));
+  await no('A no se pone 5 minutos', ronda('A','r9',{partida:'p1',numero:3,total:6,limite:300}));
+  await no('B no corta el minuto antes de tiempo', updateDoc(doc(db('B'),'couples/c1/dibujos/r6'),{estado:'agotada',terminadaEn:serverTimestamp()}));
+  await ok('B todavía adivina a tiempo', updateDoc(doc(db('B'),'couples/c1/dibujos/r6'),{mensajes:arrayUnion(msj('B','pingüino',{a:true})),estado:'adivinada',acierto:'pinguino',adivinadaPor:'B',terminadaEn:serverTimestamp()}));
+  const { Timestamp } = await import('firebase/firestore');
+  const hace = (s) => Timestamp.fromMillis(Date.now() - s*1000);
+  await env.withSecurityRulesDisabled(async (c) => {
+    const base = {dibuja:'A',palabra:'Pingüino',clave:'pinguino',estado:'dibujando',mensajes:[],borradoHasta:0,partida:'p1',total:6,limite:60};
+    await setDoc(doc(c.firestore(),'couples/c1/dibujos/r7'),{...base,numero:3,creadaEn:hace(62)});
+    await setDoc(doc(c.firestore(),'couples/c1/dibujos/r8'),{...base,numero:4,creadaEn:hace(90)});
+  });
+  await ok('B cierra el dibujo cuando se acaba el minuto', updateDoc(doc(db('B'),'couples/c1/dibujos/r7'),{estado:'agotada',terminadaEn:serverTimestamp()}));
+  await no('nadie lo vuelve a cerrar', updateDoc(doc(db('A'),'couples/c1/dibujos/r7'),{estado:'agotada',terminadaEn:serverTimestamp()}));
+  await no('B no adivina pasado el minuto', updateDoc(doc(db('B'),'couples/c1/dibujos/r8'),{mensajes:arrayUnion(msj('B','pingüino',{a:true})),estado:'adivinada',acierto:'pinguino',adivinadaPor:'B',terminadaEn:serverTimestamp()}));
+  await no('B no lo marca agotado con otros cambios', updateDoc(doc(db('B'),'couples/c1/dibujos/r8'),{estado:'agotada',terminadaEn:serverTimestamp(),borradoHasta:2}));
+  await ok('A (que dibuja) también puede cerrarlo', updateDoc(doc(db('A'),'couples/c1/dibujos/r8'),{estado:'agotada',terminadaEn:serverTimestamp()}));
 }
 // Juegos juntos: fotos, memorama, rompecabezas y sudoku.
 {

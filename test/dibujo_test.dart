@@ -178,7 +178,7 @@ void main() {
       final lineas = lineasRonda(r, 'a', 'Beto');
       expect(lineas.first.texto, 'Dibujo 2 de 6: tú dibujas ✍');
       expect(lineas.where((l) => l.tipo == TipoLinea.acierto), hasLength(1));
-      expect(lineas.last.texto, '+90 puntos para Beto y +45 para ti');
+      expect(lineas.last.texto, '+60 puntos para Beto y +30 para ti');
       // Si siguen conversando, los puntos quedan justo después del acierto.
       final despues = lineasRonda(
         ronda(
@@ -304,11 +304,11 @@ void main() {
         creadaEn: inicio,
         terminadaEn: inicio.add(Duration(seconds: segundos)),
       );
-      // b adivina en 60 s (80, y 40 para a) y a en 3 s (99, y 50 para b).
+      // b adivina en 60 s (20, y 10 para a) y a en 3 s (96, y 48 para b).
       final m = Marcador([r(1, 'a', 'b', 60), r(2, 'b', 'a', 3)], ['a', 'b']);
       expect(m.terminada, isTrue);
-      expect(m.puntos('a'), 99 + 40);
-      expect(m.puntos('b'), 80 + 50);
+      expect(m.puntos('a'), 96 + 10);
+      expect(m.puntos('b'), 20 + 48);
       expect(m.ganador, 'a');
       await t.pumpWidget(
         app(
@@ -324,8 +324,8 @@ void main() {
         ),
       );
       expect(find.text('¡Ganó Ana!'), findsOneWidget);
-      expect(find.text('139'), findsOneWidget);
-      expect(find.text('130'), findsOneWidget);
+      expect(find.text('106'), findsOneWidget);
+      expect(find.text('68'), findsOneWidget);
       expect(find.text('¿Otra partida?'), findsOneWidget);
     });
 
@@ -376,6 +376,35 @@ void main() {
       expect(
         find.textContaining('teléfono descompuesto, memorama'),
         findsOneWidget,
+      );
+    });
+
+    test('cada dibujo tiene 1 minuto', () {
+      final inicio = DateTime(2026, 11, 26, 10);
+      final r = Ronda(
+        id: 'r',
+        dibuja: 'a',
+        palabra: 'luna',
+        clave: 'luna',
+        limite: Dibujos.segundosPorDibujo,
+        creadaEn: inicio,
+      );
+      expect(
+        r.queda(inicio.add(const Duration(seconds: 20))),
+        const Duration(seconds: 40),
+      );
+      expect(r.queda(inicio.add(const Duration(minutes: 2))), Duration.zero);
+      expect(Dibujos.puntosAdivinar(Duration.zero), 100);
+      expect(Dibujos.puntosAdivinar(const Duration(seconds: 60)), 20);
+      // Las rondas de antes no tienen reloj.
+      expect(ronda().queda(inicio), isNull);
+      final agotada = ronda(estado: EstadoRonda.agotada);
+      expect(agotada.puntosDe('a'), 0);
+      expect(agotada.puntosDe('b'), 0);
+      expect(agotada.siguiente(['a', 'b']), 'b');
+      expect(
+        lineasRonda(agotada, 'b', 'Ana').last.texto,
+        '¡Se acabó el tiempo! Era "Pingüino"',
       );
     });
 
