@@ -149,12 +149,16 @@ class DibujoService {
 
   /// Se acabó el minuto: la ronda termina sin puntos y le toca dibujar a
   /// la otra persona. Lo puede marcar cualquiera de los dos.
-  Future<void> agotar(String coupleId, Ronda ronda) => _col(coupleId)
-      .doc(ronda.id)
-      .update({
-        'estado': EstadoRonda.agotada.id,
-        'terminadaEn': FieldValue.serverTimestamp(),
-      });
+  /// Si la cierra quien dibujaba, le avisa a la pareja que le toca.
+  Future<void> agotar(String coupleId, Ronda ronda, String uid) async {
+    await _col(coupleId).doc(ronda.id).update({
+      'estado': EstadoRonda.agotada.id,
+      'terminadaEn': FieldValue.serverTimestamp(),
+    });
+    if (ronda.dibujo(uid)) {
+      NotifyService.instance.send(NotifyKind.dibujo, coupleId, ronda.id);
+    }
+  }
 
   /// Avisa que [uid] está mirando la ronda (una sola vez por ronda).
   Future<void> estoyViendo(String coupleId, String rondaId, String uid) =>

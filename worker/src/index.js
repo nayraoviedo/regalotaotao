@@ -629,15 +629,22 @@ const KINDS = {
       };
     },
   },
-  // Dibuja y adivina: la pareja empezó a dibujar para ti.
+  // Dibuja y adivina: la pareja empezó a dibujar para ti, o se le acabó
+  // el minuto y ahora te toca dibujar a ti.
   dibujo: {
     collection: "dibujos",
-    check: (d, uid) => d.dibuja === uid && d.estado === "dibujando",
-    dedupeKey: () => "empezo",
-    message: (name) => ({
-      title: "🎨 ¡Ven a adivinar!",
-      body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
-    }),
+    check: (d, uid) => d.dibuja === uid && (d.estado === "dibujando" || d.estado === "agotada"),
+    dedupeKey: (d) => (d.estado === "agotada" ? "agotada" : "empezo"),
+    message: (name, d) =>
+      d.estado === "agotada"
+        ? {
+            title: "🎨 ¡Te toca dibujar!",
+            body: `Se acabó el minuto del dibujo de ${name}. Entra a elegir tu palabra`,
+          }
+        : {
+            title: "🎨 ¡Ven a adivinar!",
+            body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
+          },
   },
   // Memorama y rompecabezas: la pareja empezó una partida.
   memorama: {
