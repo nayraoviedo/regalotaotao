@@ -327,6 +327,66 @@ class _CasitaViewState extends State<CasitaView> {
   bool _banando = false;
   Timer? _finDelBano;
 
+  /// La comida que les estás dando (un ratito, después se la terminan).
+  Cosa? _comiendo;
+  Timer? _finDeComer;
+
+  /// Lo de comer que ya compraron (se lo pueden dar a los gatitos).
+  List<Cosa> get _comidas => [
+    for (final c in Catalogo.cosas)
+      if (c.lugar == Lugar.comida && _estado.tiene(c) && !_estado.envuelto(c))
+        c,
+  ];
+
+  Future<void> _darDeComer() async {
+    final elegida = await showModalBottomSheet<Cosa>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            children: [
+              Text(
+                '¿Qué les das de comer?',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.azul,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (final c in _comidas)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: SizedBox(
+                    width: 48,
+                    height: 42,
+                    child: RecorteCasita(
+                      capas: [c.asset],
+                      zona: Lugar.comida.zona,
+                    ),
+                  ),
+                  title: Text(c.nombre),
+                  onTap: () => Navigator.pop(context, c),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (elegida == null || !mounted) return;
+    setState(() => _comiendo = elegida);
+    _finDeComer?.cancel();
+    _finDeComer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _comiendo = null);
+    });
+  }
+
   void _banar() {
     setState(() => _banando = true);
     _finDelBano?.cancel();
@@ -338,6 +398,7 @@ class _CasitaViewState extends State<CasitaView> {
   @override
   void dispose() {
     _finDelBano?.cancel();
+    _finDeComer?.cancel();
     super.dispose();
   }
 
@@ -947,6 +1008,7 @@ class _CasitaViewState extends State<CasitaView> {
                       onToque: _elegir,
                       ahora: widget.hoy,
                       banando: _banando,
+                      comiendo: _comiendo,
                       onBebe: _tocarBebe,
                     )
                   : _CuartoCerrado(
@@ -1008,6 +1070,18 @@ class _CasitaViewState extends State<CasitaView> {
               ahora: _hoy,
               ocupado: _ocupado,
               onCocinar: _cocinar,
+            ),
+          ],
+          if (_estado.abierto(_cuarto) && _comidas.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: FilledButton.tonalIcon(
+                onPressed: _comiendo != null ? null : _darDeComer,
+                icon: const TextoDoodle('🎂'),
+                label: Text(
+                  _comiendo != null ? '¡Ñam! Les encantó' : 'Darles de comer',
+                ),
+              ),
             ),
           ],
           if (_estado.abierto(_cuarto) && _estado.sePuedenBanar(_cuarto)) ...[

@@ -133,6 +133,12 @@ enum Escena {
   pelotas(Cuarto.juegos, 'jugando con pelotitas'),
   huerto(Cuarto.huerto, 'regando el huerto'),
   besitos(Cuarto.sala, 'dándose besitos'),
+  pintar(Cuarto.huerto, 'pintando un cuadro'),
+  videojuegos(Cuarto.juegos, 'jugando videojuegos'),
+  galletas(Cuarto.cocina, 'horneando galletas'),
+
+  /// A las 21, en el jardín (si lo tienen; si no, siguen con su drama).
+  estrellas(Cuarto.jardin, 'viendo las estrellas', libre: false),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
   medianoche(Cuarto.cocina, 'comiendo a medianoche', libre: false),
@@ -876,6 +882,11 @@ class Cosa {
 
   /// PNG del mueble. La ropita tiene uno por gatito ([assetRopa]).
   String get asset => Casita.asset(id);
+
+  /// La comida delante de los gatitos, cuando tú les das de comer
+  /// (`delante_<comida>.png`, ver `generar_acciones.py`).
+  String get assetDelante =>
+      Casita.asset('delante_${id.substring('comida_'.length)}');
   String assetRopa(String gatito) => Casita.asset('ropa_${id}_$gatito');
 }
 
@@ -974,6 +985,23 @@ class Catalogo {
     Cosa('gorro_rana', 'Gorro de ranita', 50, parte: Parte.cabeza),
     Cosa('gorro_pompon', 'Gorrito con pompón', 45, parte: Parte.cabeza),
     Cosa('baberito', 'Baberito para comer', 30, parte: Parte.cuello),
+    // Ropa de pareja y accesorios
+    Cosa('sueter_corazon', 'Suéter con corazón', 120, parte: Parte.cuerpo),
+    Cosa('pijama_sol', 'Pijama de sol', 110, parte: Parte.cuerpo),
+    Cosa('pijama_luna', 'Pijama de luna', 110, parte: Parte.cuerpo),
+    Cosa('poleron_pareja', 'Polerón de pareja', 100, parte: Parte.cuerpo),
+    Cosa(
+      'sueter_navidad',
+      'Suéter navideño',
+      120,
+      parte: Parte.cuerpo,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa('alitas', 'Alitas de ángel', 250, parte: Parte.cuello),
+    Cosa('mochilita', 'Mochilita', 150, parte: Parte.cuello),
+    Cosa('collar_placa', 'Collar con placa', 90, parte: Parte.cuello),
+    Cosa('lacito', 'Lacito', 50, parte: Parte.cabeza),
+    Cosa('corona_oro', 'Corona de oro', 1500, parte: Parte.cabeza),
 
     // Cuartos nuevos
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
@@ -1335,6 +1363,138 @@ class Catalogo {
     Cosa('cielo_dia', 'Cielo de día', 0, lugar: Lugar.cielo),
     Cosa('cielo_atardecer', 'Atardecer', 80, lugar: Lugar.cielo),
     Cosa('cielo_noche', 'Noche estrellada', 80, lugar: Lugar.cielo),
+
+    // ---- Tienda grande (26-11-2026): para tener qué comprar un buen rato ----
+    // Sala
+    Cosa('pared_cielo', 'Pared celeste cielo', 70, lugar: Lugar.pared),
+    Cosa('pared_vainilla', 'Pared vainilla', 70, lugar: Lugar.pared),
+    Cosa('pared_corazones', 'Pared de corazoncitos', 90, lugar: Lugar.pared),
+    Cosa('pared_noche', 'Pared de noche estrellada', 110, lugar: Lugar.pared),
+    Cosa('piso_parquet', 'Piso de parquet', 90, lugar: Lugar.piso),
+    Cosa('piso_gris', 'Piso gris', 80, lugar: Lugar.piso),
+    Cosa('sofa_lila', 'Sofá lila', 160, lugar: Lugar.sofa),
+    Cosa('sofa_menta', 'Sofá menta', 160, lugar: Lugar.sofa),
+    Cosa('sofa_terracota', 'Sofá terracota', 170, lugar: Lugar.sofa),
+    Cosa('sofa_cielo', 'Sofá celeste', 160, lugar: Lugar.sofa),
+    Cosa('sofa_negro', 'Sofá negro', 200, lugar: Lugar.sofa),
+    Cosa('sofa_crema', 'Sofá crema', 180, lugar: Lugar.sofa),
+    Cosa('planta_helecho', 'Helecho', 70, lugar: Lugar.planta),
+    Cosa('planta_bonsai', 'Bonsái', 150, lugar: Lugar.planta),
+    Cosa('planta_girasol', 'Girasoles en maceta', 80, lugar: Lugar.planta),
+    // Cocina
+    Cosa('refri_lila', 'Refri lila', 140, lugar: Lugar.refri),
+    Cosa('refri_amarillo', 'Refri amarillo', 140, lugar: Lugar.refri),
+    Cosa('refri_negro', 'Refri negro', 180, lugar: Lugar.refri),
+    Cosa('refri_durazno', 'Refri durazno', 140, lugar: Lugar.refri),
+    Cosa('refri_celeste', 'Refri celeste', 140, lugar: Lugar.refri),
+    Cosa('estufa_rosa', 'Cocina rosada con tetera', 160, lugar: Lugar.estufa),
+    Cosa('estufa_menta', 'Cocina menta con sartén', 160, lugar: Lugar.estufa),
+    Cosa('estufa_roja', 'Cocina roja', 170, lugar: Lugar.estufa),
+    Cosa('cocina_lena', 'Cocina a leña', 260, lugar: Lugar.estufa),
+    Cosa('estufa_moderna', 'Cocina moderna', 300, lugar: Lugar.estufa),
+    Cosa('mesa_rosa', 'Mesa rosada', 90, lugar: Lugar.mesa),
+    Cosa('mesa_menta', 'Mesa menta', 90, lugar: Lugar.mesa),
+    Cosa('mesa_lila', 'Mesa lila', 90, lugar: Lugar.mesa),
+    Cosa('mesa_amarilla', 'Mesa amarilla', 90, lugar: Lugar.mesa),
+    Cosa('pared_cocina_lila', 'Azulejos lila', 70, lugar: Lugar.paredCocina),
+    Cosa(
+      'pared_cocina_durazno',
+      'Azulejos durazno',
+      70,
+      lugar: Lugar.paredCocina,
+    ),
+    Cosa('piso_cocina_celeste', 'Piso celeste', 70, lugar: Lugar.pisoCocina),
+    Cosa('piso_cocina_rosa', 'Piso rosado', 70, lugar: Lugar.pisoCocina),
+    Cosa('repisa_especias', 'Repisa de especias', 60, lugar: Lugar.repisa),
+    Cosa('repisa_plantitas', 'Repisa con plantitas', 70, lugar: Lugar.repisa),
+    Cosa(
+      'comedero_croquetas',
+      'Platito con croquetas',
+      50,
+      lugar: Lugar.comedero,
+    ),
+    Cosa('comedero_atun', 'Platito con atún', 60, lugar: Lugar.comedero),
+    Cosa('comedero_leche', 'Platito con leche', 40, lugar: Lugar.comedero),
+    Cosa(
+      'comedero_pasto',
+      'Platito con pasto para gatos',
+      40,
+      lugar: Lugar.comedero,
+    ),
+    // Dormitorio
+    Cosa('cama_lunas', 'Cama de lunas', 220, lugar: Lugar.cama),
+    Cosa('cama_nubes', 'Cama de nubes', 220, lugar: Lugar.cama),
+    Cosa('cama_flores', 'Cama de flores', 220, lugar: Lugar.cama),
+    Cosa('cama_cuadros', 'Cama a cuadros', 200, lugar: Lugar.cama),
+    Cosa('cama_huellitas', 'Cama de huellitas', 240, lugar: Lugar.cama),
+    Cosa('cama_lucecitas', 'Cama con lucecitas', 450, lugar: Lugar.cama),
+    Cosa('cama_dosel', 'Cama con dosel', 600, lugar: Lugar.cama),
+    Cosa('ropero_lila', 'Ropero lila', 180, lugar: Lugar.ropero),
+    Cosa('ropero_menta', 'Ropero menta', 180, lugar: Lugar.ropero),
+    Cosa('ropero_rosa', 'Ropero rosado', 180, lugar: Lugar.ropero),
+    Cosa('velador_lectura', 'Velador con libros', 90, lugar: Lugar.velador),
+    Cosa(
+      'velador_despertador',
+      'Velador con despertador',
+      70,
+      lugar: Lugar.velador,
+    ),
+    Cosa('velador_cactus', 'Velador con cactus', 60, lugar: Lugar.velador),
+    Cosa('pared_dorm_menta', 'Pared menta', 70, lugar: Lugar.paredDorm),
+    Cosa('pared_dorm_durazno', 'Pared durazno', 70, lugar: Lugar.paredDorm),
+    Cosa('piso_dorm_celeste', 'Alfombrado celeste', 80, lugar: Lugar.pisoDorm),
+    Cosa('piso_dorm_lila', 'Alfombrado lila', 80, lugar: Lugar.pisoDorm),
+    Cosa('cuadro_luna', 'Cuadro de la luna', 60, lugar: Lugar.cuadroCama),
+    Cosa(
+      'cuadro_gatitos',
+      'Cuadro de los gatitos',
+      80,
+      lugar: Lugar.cuadroCama,
+    ),
+    // Jardín
+    Cosa('arbol_naranjo', 'Naranjo', 200, lugar: Lugar.arbol),
+    Cosa('arbol_limonero', 'Limonero', 200, lugar: Lugar.arbol),
+    Cosa('arbol_durazno', 'Durazno', 220, lugar: Lugar.arbol),
+    Cosa('flores_hortensias', 'Hortensias', 60, lugar: Lugar.flores),
+    Cosa('flores_amapolas', 'Amapolas', 50, lugar: Lugar.flores),
+    // Baño
+    Cosa('tina_menta', 'Tina menta', 200, lugar: Lugar.tina),
+    Cosa('tina_lila', 'Tina lila', 200, lugar: Lugar.tina),
+    Cosa('tina_dorada', 'Tina dorada', 700, lugar: Lugar.tina),
+    Cosa(
+      'pared_bano_durazno',
+      'Pared de baño durazno',
+      60,
+      lugar: Lugar.paredBano,
+    ),
+    Cosa(
+      'pared_bano_cielo',
+      'Pared de baño celeste',
+      60,
+      lugar: Lugar.paredBano,
+    ),
+    Cosa('piso_bano_lila', 'Baldosas lila', 60, lugar: Lugar.pisoBano),
+    Cosa('piso_bano_menta', 'Baldosas menta', 60, lugar: Lugar.pisoBano),
+    // Cuarto de juegos
+    Cosa('piano', 'Piano', 900, lugar: Lugar.pelotero),
+    Cosa('bateria', 'Batería', 650, lugar: Lugar.pelotero),
+    Cosa('arpa', 'Arpa', 800, lugar: Lugar.pelotero),
+    Cosa('rincon_lectura', 'Rincón de lectura', 350, lugar: Lugar.pelotero),
+    Cosa('estante_libros', 'Estante de libros', 120, lugar: Lugar.estante),
+    Cosa(
+      'temporada_pesebre',
+      'Pesebre',
+      150,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'temporada_pinata',
+      'Piñata',
+      120,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.aniversario,
+    ),
 
     // ---- Especiales: temas de la app y stickers para las notas ----
     Cosa('tema_sakura', 'Tema rosa sakura', 100, especial: Especial.tema),
@@ -2178,7 +2338,8 @@ class EstadoCasita {
   /// - De 0 a 2 el naranja se levanta a comer a la cocina mientras el
   ///   blanco duerme (si hay cocina y dónde dormir). Hasta las 7 duermen.
   /// - 7 bañito, 8 desayuno, 9 besitos, 12 cocinan y 13 almuerzan, 14 y 15 siesta,
-  ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 y 21 ven su drama, y
+  ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 ven su drama, 21 ven las
+  ///   estrellas en el jardín (si no hay jardín, siguen con el drama), y
   ///   desde las 22 duermen.
   /// - En los ratos libres (o si no tienen el cuarto de la rutina) hacen
   ///   algo en el cuarto donde andan.
@@ -2191,6 +2352,7 @@ class EstadoCasita {
           : null;
     }
     if (h < 7 || h >= 22) return null;
+    if (h == 21 && sePuede(Escena.estrellas)) return Escena.estrellas;
     if (_rutina(h) case final e? when sePuede(e)) return e;
     if (h >= 20) return null;
     final rato =
@@ -2264,6 +2426,7 @@ class EstadoCasita {
     bool banando = false,
     DateTime? ahora,
     bool conGatitos = true,
+    Cosa? comiendo,
   ]) {
     final bebes = bebesEn(cuarto, ahora);
     String dibujo(Cosa c) => switch (etapa(c, ahora)) {
@@ -2279,11 +2442,15 @@ class EstadoCasita {
     final escena = conMuebles && ahora != null ? this.escena(ahora) : null;
     final enEsta = escena != null && cuartoDe(escena) == cuarto ? escena : null;
     // Con el botón de bañarlos, o en el bañito de la mañana.
+    // Si les estás dando de comer, se despiertan y comen (ver [comiendo]).
     final enLaTina =
+        comiendo == null &&
         (banando || enEsta == Escena.bano) &&
         conMuebles &&
         sePuedenBanar(cuarto);
-    final aqui = enLaTina || enEsta == Escena.siesta ? null : enEsta;
+    final aqui = enLaTina || enEsta == Escena.siesta || comiendo != null
+        ? null
+        : enEsta;
     // A medianoche el blanco duerme solito.
     final soloBlanco =
         escena == Escena.medianoche &&
@@ -2291,6 +2458,7 @@ class EstadoCasita {
         dondeDuermen == cuarto;
     final duermen =
         !enLaTina &&
+        comiendo == null &&
         conMuebles &&
         (enEsta == Escena.siesta ||
             (aqui == null && (soloBlanco || this.duermen(cuarto, momento))));
@@ -2334,11 +2502,18 @@ class EstadoCasita {
             if (prenda(g, p) case final c?) c.assetRopa(g),
         ],
         if (aqui != null) ...capasEscena(aqui, tick, ahora!),
+        if (comiendo != null) ...[
+          Casita.asset('escena_comer_${tick % 4 < 2 ? 1 : 2}'),
+          comiendo.assetDelante,
+        ],
       ],
       // Los bebés pasean (o duermen) encima del piso: ver [PaseoBebe].
       if (conMuebles && bebes.isNotEmpty)
         momento == Momento.noche ? Casita.bebesDurmiendo : Casita.bebesPaseando,
       if (momento != Momento.dia) Casita.asset(momento.name),
+      // Las estrellas brillan encima de la noche.
+      if (conGatitos && aqui == Escena.estrellas)
+        Casita.asset('escena_estrellas_cielo_${tick % 4 < 2 ? 1 : 2}'),
       // El brillo de la tele en la penumbra.
       if (conGatitos && aqui == Escena.drama && momento != Momento.dia)
         Casita.asset('escena_drama_luz_${tick % 4 < 2 ? 1 : 2}'),
