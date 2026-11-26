@@ -40,6 +40,37 @@ class Dibujos {
   /// Trazos máximos por dibujo (las reglas lo revisan igual).
   static const maxTrazos = 400;
 
+  /// Cuántos dibujos puede tener una partida (al final gana quien juntó
+  /// más puntos). Siempre pares, para que los dos dibujen lo mismo.
+  static const opcionesPartida = <int>[4, 6, 8, 10];
+  static const partidaPorDefecto = 6;
+
+  /// Cada dibujo tiene 1 minuto: si nadie adivina, se acaba el tiempo y le
+  /// toca dibujar a la otra persona.
+  static const segundosPorDibujo = 60;
+
+  /// Puntos de quien adivina: 100 si adivina al toque, y bajan con el
+  /// minuto hasta 20 en el último segundo. Quien dibuja gana la mitad (por
+  /// dibujar tan bonito que se entendió).
+  static const puntosMax = 100;
+  static const puntosMin = 20;
+  static int puntosAdivinar(Duration tiempo) =>
+      (puntosMax -
+              tiempo.inSeconds * (puntosMax - puntosMin) ~/ segundosPorDibujo)
+          .clamp(puntosMin, puntosMax);
+  static int puntosDibujar(int adivinar) => (adivinar / 2).round();
+
+  /// Respuestas rápidas del chat.
+  static const rapidasDibuja = <String>[
+    '¡Caliente!',
+    'Tibio',
+    'Frío',
+    '¡Casi!',
+    'Sí',
+    'No',
+  ];
+  static const rapidasAdivina = <String>['¿Una pista?', 'Ni idea', 'Jajaja'];
+
   /// Mensajes máximos en el chat de una ronda.
   static const maxMensajes = 150;
   static const maxMensaje = 60;
@@ -316,7 +347,10 @@ enum EstadoRonda {
   rendida('rendida'),
 
   /// Quien dibujaba la terminó sin que la adivinaran.
-  cancelada('cancelada');
+  cancelada('cancelada'),
+
+  /// Se acabó el minuto sin que la adivinaran.
+  agotada('agotada');
 
   const EstadoRonda(this.id);
   final String id;
@@ -377,9 +411,23 @@ class Ronda {
     this.adivinadaPor,
     this.creadaEn,
     this.terminadaEn,
+    this.partida,
+    this.numero = 1,
+    this.total = 0,
+    this.limite = 0,
   });
 
   final String id;
+
+  /// La partida a la que pertenece (null en rondas sueltas de antes).
+  final String? partida;
+
+  /// Qué dibujo de la partida es (1, 2…) y de cuántos.
+  final int numero;
+  final int total;
+
+  /// Segundos para adivinar (0 en las rondas de antes, sin reloj).
+  final int limite;
 
   /// uid de quien dibuja.
   final String dibuja;
@@ -405,6 +453,40 @@ class Ronda {
 
   bool get enJuego => estado == EstadoRonda.dibujando;
   bool get adivinada => estado == EstadoRonda.adivinada;
+
+  bool get enPartida => partida != null && total > 0;
+
+  /// Es el último dibujo de su partida.
+  bool get ultima => enPartida && numero >= total;
+
+  bool get conReloj => limite > 0;
+
+  /// Cuánto tiempo le queda a la ronda a la hora [ahora] (null sin reloj).
+  /// [desde] reemplaza a [creadaEn] mientras el servidor no la confirma.
+  Duration? queda(DateTime ahora, {DateTime? desde}) {
+    final inicio = creadaEn ?? desde;
+    if (!conReloj || inicio == null) return null;
+    final q = inicio.add(Duration(seconds: limite)).difference(ahora);
+    return q.isNegative ? Duration.zero : q;
+  }
+
+  /// Lo que tardó en adivinarse (null si no se sabe todavía).
+  Duration? get tiempo {
+    final a = creadaEn;
+    final b = terminadaEn;
+    if (a == null || b == null) return null;
+    final d = b.difference(a);
+    return d.isNegative ? Duration.zero : d;
+  }
+
+  /// Puntos que ganó [uid] en esta ronda.
+  int puntosDe(String uid) {
+    if (!adivinada) return 0;
+    final p = Dibujos.puntosAdivinar(tiempo ?? const Duration(minutes: 1));
+    if (adivinadaPor == uid) return p;
+    if (dibuja == uid) return Dibujos.puntosDibujar(p);
+    return 0;
+  }
 
   bool dibujo(String uid) => dibuja == uid;
 
@@ -454,8 +536,47 @@ class Ronda {
       adivinadaPor: m['adivinadaPor'] as String?,
       creadaEn: (m['creadaEn'] as Timestamp?)?.toDate(),
       terminadaEn: (m['terminadaEn'] as Timestamp?)?.toDate(),
+      partida: m['partida'] as String?,
+      numero: (m['numero'] as num?)?.toInt() ?? 1,
+      total: (m['total'] as num?)?.toInt() ?? 0,
+      limite: (m['limite'] as num?)?.toInt() ?? 0,
     );
   }
+}
+
+/// Los puntos de una partida de "Dibuja y adivina".
+class Marcador {
+  Marcador(Iterable<Ronda> rondas, this.members)
+    : rondas = [...rondas]..sort((a, b) => a.numero.compareTo(b.numero));
+
+  final List<Ronda> rondas;
+  final List<String> members;
+
+  int puntos(String uid) => rondas.fold(0, (s, r) => s + r.puntosDe(uid));
+
+  /// Ya se jugaron (y terminaron) todos los dibujos de la partida.
+  bool get terminada {
+    if (rondas.isEmpty) return false;
+    final total = rondas.first.total;
+    final hechas = {
+      for (final r in rondas)
+        if (!r.enJuego) r.numero,
+    };
+    return total > 0 && hechas.length >= total;
+  }
+
+  /// uid de quien ganó (null si empataron).
+  String? get ganador {
+    if (members.length < 2) return members.isEmpty ? null : members.first;
+    final a = puntos(members[0]);
+    final b = puntos(members[1]);
+    if (a == b) return null;
+    return a > b ? members[0] : members[1];
+  }
+
+  /// Dibujos adivinados por cada uno.
+  int adivinadas(String uid) =>
+      rondas.where((r) => r.adivinada && r.adivinadaPor == uid).length;
 }
 
 /// Un trazo del dibujo: puntos (x, y, x, y…) en el lienzo de 1000 × 1000.
