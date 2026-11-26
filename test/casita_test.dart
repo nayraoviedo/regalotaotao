@@ -925,6 +925,36 @@ void main() {
       }
     });
 
+    test('el recetario de Navidad abre recetas en diciembre', () {
+      final recetario = Catalogo.porId('recetario_navidad')!;
+      expect(recetario.especial, Especial.recetario);
+      // Se vende solo en Navidad y no sale en Especiales.
+      expect(recetario.aLaVenta(DateTime(2026, 11, 26)), isFalse);
+      expect(recetario.aLaVenta(DateTime(2026, 12, 10)), isTrue);
+      expect(Catalogo.especiales, isNot(contains(recetario)));
+
+      final diciembre = DateTime(2026, 12, 10);
+      final navidenas = Receta.values.where(
+        (r) => r.recetario == 'recetario_navidad',
+      );
+      expect(navidenas.length, greaterThanOrEqualTo(5));
+      expect(navidenas, contains(Receta.galletasJengibre));
+      final sin = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina'],
+      });
+      final con = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', 'recetario_navidad'],
+      });
+      for (final r in navidenas) {
+        expect(r.disponible(sin, diciembre), isFalse, reason: r.name);
+        expect(r.disponible(con, diciembre), isTrue, reason: r.name);
+        // Fuera de Navidad no se cocinan aunque tengan el recetario.
+        expect(r.disponible(con, DateTime(2027, 3, 1)), isFalse);
+      }
+      // Las de siempre no piden recetario.
+      expect(Receta.galletas.disponible(sin, DateTime(2027, 3, 1)), isTrue);
+    });
+
     test('los cuartos nuevos se abren comprándolos', () {
       const cerrado = EstadoCasita.vacio;
       expect(cerrado.abierto(Cuarto.sala), isTrue);

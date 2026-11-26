@@ -779,6 +779,75 @@ enum Receta {
     {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
     {Comida.almuerzo, Comida.cena},
     fiestas: {Festividad.anioNuevoChino},
+  ),
+  // ---- Del Recetario de Navidad (se compra en la tienda en diciembre) ----
+  galletasJengibre(
+    'galletas_jengibre',
+    'galletas de jengibre',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.azucar: 1,
+      Ingrediente.mantequilla: 1,
+      Ingrediente.canela: 1,
+    },
+    {Comida.desayuno},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
+  ),
+  galletasNavidad(
+    'galletas_navidad',
+    'galletas navideñas decoradas',
+    {Ingrediente.trigo: 1, Ingrediente.azucar: 2, Ingrediente.huevo: 1},
+    {Comida.desayuno},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
+  ),
+  troncoNavidad(
+    'tronco_navidad',
+    'tronco de Navidad',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.huevo: 2,
+      Ingrediente.azucar: 1,
+      Ingrediente.leche: 1,
+    },
+    {Comida.cena},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
+  ),
+  ponche(
+    'ponche_frutas',
+    'ponche navideño de frutas',
+    {
+      Ingrediente.fresa: 1,
+      Ingrediente.arandano: 1,
+      Ingrediente.canela: 1,
+      Ingrediente.azucar: 1,
+    },
+    {Comida.desayuno},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
+  ),
+  panNavidad(
+    'pan_navidad',
+    'pan dulce de Navidad',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.arandano: 1,
+      Ingrediente.mantequilla: 1,
+      Ingrediente.azucar: 1,
+    },
+    {Comida.desayuno},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
+  ),
+  asadoNavidad(
+    'asado_navidad',
+    'asado navideño con papas',
+    {Ingrediente.papa: 2, Ingrediente.ajo: 1, Ingrediente.carne: 2},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.navidad},
+    recetario: 'recetario_navidad',
   );
 
   const Receta(
@@ -787,7 +856,18 @@ enum Receta {
     this.ingredientes,
     this.comidas, {
     this.fiestas = const {},
+    this.recetario,
   });
+
+  /// Id del recetario ([Especial.recetario]) que hay que comprar para
+  /// cocinarla (null si viene con la cocina).
+  final String? recetario;
+
+  /// ¿Aparece en la cocina? (de temporada y, si es de un recetario, que lo
+  /// hayan comprado).
+  bool disponible(EstadoCasita estado, DateTime hoy) =>
+      deTemporada(hoy) &&
+      (recetario == null || estado.tenemos.contains(recetario));
 
   /// Si es comida de fiesta: solo se cocina mientras dura alguna de estas.
   final Set<Festividad> fiestas;
@@ -1033,6 +1113,9 @@ enum Especial {
 
   /// Un gatito bebé adoptado (`bebe_<color>`): pasea por los cuartos.
   bebe,
+
+  /// Un recetario: abre recetas nuevas en la cocina (ver [Receta.recetario]).
+  recetario,
 }
 
 /// Algo de la tienda: un mueble (con [lugar]), ropita (con [parte]), un
@@ -1759,6 +1842,13 @@ class Catalogo {
     ),
 
     // ---- Gatitos bebés para adoptar (cada uno elige su color) ----
+    Cosa(
+      'recetario_navidad',
+      'Recetario de Navidad',
+      120,
+      especial: Especial.recetario,
+      fiesta: Festividad.navidad,
+    ),
     Cosa('bebe_naranja', 'Bebé naranja', 120, especial: Especial.bebe),
     Cosa('bebe_ragdoll', 'Bebé ragdoll', 120, especial: Especial.bebe),
     Cosa('bebe_atigrado', 'Bebé gris atigrado', 120, especial: Especial.bebe),
@@ -2225,8 +2315,11 @@ class Catalogo {
     'stickers_cielo': ['luna', 'nube', 'arcoiris', 'sol'],
   };
 
-  static List<Cosa> get especiales =>
-      cosas.where((c) => c.esEspecial && !c.esBebe).toList();
+  static List<Cosa> get especiales => cosas
+      .where(
+        (c) => c.esEspecial && !c.esBebe && c.especial != Especial.recetario,
+      )
+      .toList();
 
   static List<Cosa> get bebes => cosas.where((c) => c.esBebe).toList();
 }

@@ -586,6 +586,10 @@ class _CasitaViewState extends State<CasitaView> {
       return;
     }
     if (cosa.especial == Especial.tema) return _usarTema(cosa);
+    if (cosa.especial == Especial.recetario) {
+      _aviso('Sus recetas nuevas ya están en la cocina 🎄');
+      return;
+    }
     if (cosa.esBebe) return _nombrar(cosa);
     final lugar = cosa.lugar!;
     final enUso = _estado.enUso(cosa);
@@ -773,6 +777,13 @@ class _CasitaViewState extends State<CasitaView> {
       }
       if (cosa.esBebe) {
         await _nombrar(cosa, recien: true);
+        return;
+      }
+      if (cosa.especial == Especial.recetario) {
+        _aviso(
+          '🎄 ¡Ya tienen el ${cosa.nombre}! Las recetas nuevas están en '
+          'la cocina.',
+        );
         return;
       }
       if (cosa.cuarto case final c?) {
@@ -1780,6 +1791,7 @@ class _Articulo extends StatelessWidget {
           Especial.stickers => 'En tus notas ✓',
           Especial.tema => enUso ? 'En uso ✓' : 'Usar',
           Especial.bebe => 'Adoptado ✓',
+          Especial.recetario => 'En la cocina ✓',
           null => enUso ? 'Puesto ✓' : (cosa.esRopa ? 'Ponérselo' : 'Poner'),
         },
         style: TextStyle(
@@ -2457,6 +2469,17 @@ class VistaEspecial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (cosa.especial == Especial.recetario) {
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Image.asset(
+          cosa.asset,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.none,
+          errorBuilder: (_, _, _) => const EmojiDoodle('🎄', size: 40),
+        ),
+      );
+    }
     if (cosa.esBebe) {
       return FittedBox(
         child: Container(
@@ -2626,7 +2649,13 @@ class _Despensa extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final recetas = Receta.values.where((r) => r.deTemporada(ahora));
+    final recetas = Receta.values.where((r) => r.disponible(estado, ahora));
+    // En diciembre, si todavía no compraron el recetario de Navidad.
+    final recetario = Catalogo.porId('recetario_navidad');
+    final sinRecetario =
+        recetario != null &&
+        recetario.aLaVenta(ahora) &&
+        !estado.tiene(recetario);
     final hay = [
       for (final i in Ingrediente.values)
         if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
@@ -2683,6 +2712,14 @@ class _Despensa extends StatelessWidget {
                         : () => onCocinar(r),
                   ),
               ],
+            ),
+          ],
+          if (sinRecetario) ...[
+            const SizedBox(height: 8),
+            TextoDoodle(
+              '🎄 En la tienda (De temporada) está el Recetario de Navidad: '
+              'galletas de jengibre, tronco de Navidad, ponche y más.',
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
             ),
           ],
           if (estado.cocinado case final r?

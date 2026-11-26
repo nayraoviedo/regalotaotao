@@ -271,6 +271,7 @@ const NOMBRES_CASITA = {
   comida_bombones: "bombones de corazón",
   comida_zongzi: "zongzi",
   comida_pavo: "pavo al horno",
+  recetario_navidad: "el recetario de Navidad",
   comida_pie_calabaza: "pie de calabaza",
   comida_picana: "picana navideña",
   comida_paneton: "panetón con chocolate",
