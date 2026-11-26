@@ -24,9 +24,13 @@ const POR_VUELTA = 40;
  *   buscar(coleccion, hastaIso, limite) -> [{ path, data, updateTime }]
  *   leer(path)                           -> { data } | null
  *   limpiar(path, updateTime)            -> true si la ganó esta vuelta
- *   enviar(uid, { title, body, canal })  -> manda a todos los celulares de uid
+ *   enviar(uid, { title, body, canal, nota, cuando })
+ *                                        -> manda a todos los celulares de uid
  *                                           (canal "recordatorio": alarma de
- *                                           maullidos; "notas": un maullido)
+ *                                           maullidos; "notas": un maullido;
+ *                                           nota y cuando: ruta y hora en ms,
+ *                                           para que el celular no repita la
+ *                                           alarma que ya tenía programada)
  */
 export async function revisarRecordatorios(deps, ahora = Date.now()) {
   const hasta = new Date(ahora).toISOString();
@@ -108,11 +112,15 @@ async function avisar(deps, nota, ahora) {
             title: "⏰ Recordatorio",
             body: esCompartida || para.length > 1 ? `De los dos: ${que}` : que,
             canal: "recordatorio",
+            nota: nota.path,
+            cuando,
           }
         : {
             title: "⏰ Recordatorio de tu pareja",
             body: esCompartida ? `De los dos: ${que}` : `${nombre} te recuerda: ${que}`,
             canal: "recordatorio",
+            nota: nota.path,
+            cuando,
           };
     enviados += await deps.enviar(uid, msg);
   }

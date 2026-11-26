@@ -10,6 +10,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/pairing/pairing_screen.dart';
 import 'screens/together/elegir_gatito.dart';
+import 'services/alarma_recordatorios.dart';
 import 'services/auth_service.dart';
 import 'services/push_service.dart';
 import 'services/user_service.dart';
@@ -107,6 +108,7 @@ class _AuthGateState extends State<AuthGate> {
         final firebaseUser = authSnap.data;
         if (firebaseUser == null) {
           _apagarMusica();
+          AlarmaRecordatorios.instance.detener();
           if (_onboardingSeen == null) return const _Loading();
           if (_onboardingSeen == false) {
             return OnboardingScreen(
@@ -124,6 +126,8 @@ class _AuthGateState extends State<AuthGate> {
           builder: (context, userSnap) {
             final user = userSnap.data;
             if (user == null) return const _Loading();
+            // Las alarmas de los recordatorios se programan en el celular.
+            AlarmaRecordatorios.instance.vigilar(user.uid, user.coupleId);
             if (user.gatito == null) return ElegirGatitoScreen(me: user);
             if (user.coupleId == null) {
               _apagarMusica();

@@ -5,13 +5,19 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'alarma_recordatorios.dart';
 import 'db.dart';
 import 'push/aviso_web_stub.dart'
     if (dart.library.js_interop) 'push/aviso_web.dart';
 
 @pragma('vm:entry-point')
 Future<void> _onBackgroundMessage(RemoteMessage message) async {
-  // El sistema muestra la notificación; no hace falta nada más por ahora.
+  // Los demás avisos los muestra el sistema solo. Los recordatorios llegan
+  // como datos para poder sonar como alarma (y no repetirse si este
+  // celular ya tenía la alarma programada).
+  if (message.data['tipo'] == 'recordatorio') {
+    await AlarmaRecordatorios.desdePush(message.data);
+  }
 }
 
 /// Notificaciones push (FCM). Guarda el token del dispositivo en el perfil
@@ -96,6 +102,11 @@ class PushService {
       // ignore: deprecated_member_use
       final token = await fm.getToken();
       if (token != null) await _saveToken(uid, token);
+      // Este celular ya sabe hacer sonar los recordatorios como alarma: el
+      // Worker se los manda como datos (ver AlarmaRecordatorios).
+      if (_android) {
+        await Db.user(uid).update({'recordatoriosComoAlarma': true});
+      }
       // ignore: deprecated_member_use
       fm.onTokenRefresh.listen((t) => _saveToken(uid, t));
     } catch (e) {
@@ -106,11 +117,7 @@ class PushService {
   Future<void> _prepararCanal() async {
     if (!_android) return;
     try {
-      await _notis.initialize(
-        settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@drawable/ic_notificacion'),
-        ),
-      );
+      await AlarmaRecordatorios.preparar();
       final android = _notis
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
@@ -125,6 +132,10 @@ class PushService {
   }
 
   void _mostrarConAppAbierta(RemoteMessage m) {
+    if (m.data['tipo'] == 'recordatorio' && _android) {
+      AlarmaRecordatorios.desdePush(m.data);
+      return;
+    }
     final n = m.notification;
     if (n == null) return;
     if (kIsWeb) {
