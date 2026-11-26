@@ -26,6 +26,7 @@ class Telefono {
     this.terminada = false,
     this.cobros = const {},
     this.creadaEn,
+    this.favorita = false,
   });
 
   static const turnos = 4;
@@ -43,6 +44,9 @@ class Telefono {
   final bool terminada;
   final Map<String, String> cobros;
   final DateTime? creadaEn;
+
+  /// Guardada en el álbum de favoritas.
+  final bool favorita;
 
   int hechos(String uid) => progreso[uid] ?? 0;
 
@@ -80,6 +84,7 @@ class Telefono {
           if (e.value is String) '${e.key}': e.value as String,
       },
       creadaEn: (m['creadaEn'] as Timestamp?)?.toDate(),
+      favorita: m['favorita'] == true,
     );
   }
 

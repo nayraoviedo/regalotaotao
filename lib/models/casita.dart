@@ -2075,6 +2075,7 @@ class Movimiento {
   static const rompecabezas = 'rompe';
   static const sudoku = 'sudoku';
   static const telefono = 'telefono';
+  static const rachaJuegos = 'rachajuegos';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
@@ -2109,6 +2110,12 @@ class Movimiento {
     animo => 'contó cómo se siente',
     respira => 'respiró con los gatitos',
     juego => 'jugó un juego de pareja',
+    dibujo => 'jugó a dibujar y adivinar',
+    memorama => 'terminó un memorama',
+    rompecabezas => 'armó un rompecabezas',
+    sudoku => 'completó un sudoku',
+    telefono => 'jugó al teléfono descompuesto',
+    rachaJuegos => 'jugaron juntos varios días seguidos (bonus)',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {

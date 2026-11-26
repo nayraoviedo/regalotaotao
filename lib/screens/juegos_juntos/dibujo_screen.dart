@@ -10,6 +10,7 @@ import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
 import 'lienzo.dart';
+import 'festejo.dart';
 
 /// "Dibuja y adivina", en vivo.
 ///
@@ -94,7 +95,15 @@ class _DibujoScreenState extends State<DibujoScreen> {
           .cobrar(_coupleId, _uid, r.id)
           .then(
             (n) {
-              if (mounted) setState(() => _ganado[r.id] = n);
+              if (!mounted) return;
+              setState(() => _ganado[r.id] = n);
+              festejarJuntos(
+                context,
+                coupleId: _coupleId,
+                uid: _uid,
+                titulo: '¡Lo adivinaron!',
+                ganado: n,
+              );
             },
             onError: (_) {
               _cobradas.remove(r.id);

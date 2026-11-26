@@ -5,12 +5,15 @@ import 'package:material_ui/material_ui.dart';
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
 import '../../models/dibujo.dart';
+import '../../services/juegos_extras_service.dart';
 import '../../services/juntos_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
+import 'album_telefono_screen.dart';
 import 'dibujo_screen.dart' show Herramientas;
 import 'lienzo.dart';
+import 'festejo.dart';
 
 /// "Teléfono descompuesto" para dos (tipo Gartic Phone). Ver [Telefono].
 class TelefonoScreen extends StatefulWidget {
@@ -47,7 +50,15 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
           .cobrarTelefono(_c, _uid, t.id)
           .then(
             (n) {
-              if (mounted) setState(() => _ganado[t.id] = n);
+              if (!mounted) return;
+              setState(() => _ganado[t.id] = n);
+              festejarJuntos(
+                context,
+                coupleId: _c,
+                uid: _uid,
+                titulo: '¡Terminaron el teléfono descompuesto!',
+                ganado: n,
+              );
             },
             onError: (_) {
               _cobradas.remove(t.id);
@@ -75,6 +86,16 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
     }
     if (mounted) setState(() => _ocupado = false);
   }
+
+  void _album() => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => AlbumTelefonoScreen(
+        coupleId: _c,
+        uid: _uid,
+        partnerName: _partnerName,
+      ),
+    ),
+  );
 
   void _aviso(String t) {
     if (!mounted) return;
@@ -107,10 +128,11 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
                 partnerName: _partnerName,
                 ocupado: _ocupado,
                 onEmpezar: _empezar,
+                onAlbum: _album,
               );
             }
             if (t.listos(_uid, _otro)) {
-              return _Revelacion(
+              return RevelacionPartida(
                 key: ValueKey(t.id),
                 coupleId: _c,
                 telefono: t,
@@ -119,6 +141,7 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
                 ganado: _ganado[t.id],
                 ocupado: _ocupado,
                 onOtra: _empezar,
+                onAlbum: _album,
               );
             }
             final turno = t.hechos(_uid);
@@ -150,11 +173,13 @@ class _Inicio extends StatelessWidget {
     required this.partnerName,
     required this.ocupado,
     required this.onEmpezar,
+    required this.onAlbum,
   });
 
   final String partnerName;
   final bool ocupado;
   final VoidCallback onEmpezar;
+  final VoidCallback onAlbum;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -220,6 +245,11 @@ class _Inicio extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       const _PremioInfo(),
+      const SizedBox(height: 6),
+      TextButton(
+        onPressed: onAlbum,
+        child: const Text('Ver el álbum de frases'),
+      ),
     ],
   );
 }
@@ -598,16 +628,18 @@ class DibujoLocalState extends State<DibujoLocal> {
   }
 }
 
-/// Las dos cadenas completas.
-class _Revelacion extends StatefulWidget {
-  const _Revelacion({
+/// Las dos cadenas completas de una partida (también se abre desde el
+/// álbum).
+class RevelacionPartida extends StatefulWidget {
+  const RevelacionPartida({
     super.key,
     required this.coupleId,
     required this.telefono,
     required this.uid,
     required this.partnerName,
-    required this.ocupado,
-    required this.onOtra,
+    this.ocupado = false,
+    this.onOtra,
+    this.onAlbum,
     this.ganado,
   });
 
@@ -616,14 +648,15 @@ class _Revelacion extends StatefulWidget {
   final String uid;
   final String partnerName;
   final bool ocupado;
-  final VoidCallback onOtra;
+  final VoidCallback? onOtra;
+  final VoidCallback? onAlbum;
   final int? ganado;
 
   @override
-  State<_Revelacion> createState() => _RevelacionState();
+  State<RevelacionPartida> createState() => _RevelacionState();
 }
 
-class _RevelacionState extends State<_Revelacion> {
+class _RevelacionState extends State<RevelacionPartida> {
   late final Future<List<PasoTelefono>> _pasos = JuntosService.instance.pasos(
     widget.coupleId,
     widget.telefono.id,
@@ -650,6 +683,11 @@ class _RevelacionState extends State<_Revelacion> {
                     : 'Ganaron ${Juntos.premio} pescaditos cada uno'),
           ocupado: widget.ocupado,
           onOtra: widget.onOtra,
+          onAlbum: widget.onAlbum,
+          favorita: t.favorita,
+          onFavorita: (si) => JuegosExtrasService.instance
+              .favorita(widget.coupleId, t.id, si)
+              .catchError((_) {}),
         );
       },
     );
@@ -663,9 +701,12 @@ class Revelacion extends StatefulWidget {
     required this.pasos,
     required this.uid,
     required this.partnerName,
-    required this.onOtra,
+    this.onOtra,
+    this.onAlbum,
     this.premio,
     this.ocupado = false,
+    this.favorita = false,
+    this.onFavorita,
   });
 
   final List<PasoTelefono> pasos;
@@ -673,7 +714,10 @@ class Revelacion extends StatefulWidget {
   final String partnerName;
   final String? premio;
   final bool ocupado;
-  final VoidCallback onOtra;
+  final VoidCallback? onOtra;
+  final VoidCallback? onAlbum;
+  final bool favorita;
+  final ValueChanged<bool>? onFavorita;
 
   @override
   State<Revelacion> createState() => _RevelacionVistaState();
@@ -682,6 +726,13 @@ class Revelacion extends StatefulWidget {
 class _RevelacionVistaState extends State<Revelacion> {
   /// 0: tu cadena, 1: la de tu pareja.
   int _cadena = 0;
+  late bool _fav = widget.favorita;
+
+  @override
+  void didUpdateWidget(Revelacion old) {
+    super.didUpdateWidget(old);
+    if (old.favorita != widget.favorita) _fav = widget.favorita;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -746,11 +797,35 @@ class _RevelacionVistaState extends State<Revelacion> {
             ],
           ),
         ],
-        const SizedBox(height: 14),
-        FilledButton(
-          onPressed: widget.ocupado ? null : widget.onOtra,
-          child: const Text('Jugar otra vez'),
-        ),
+        if (widget.onFavorita != null) ...[
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() => _fav = !_fav);
+              widget.onFavorita!(_fav);
+            },
+            icon: Doodle(
+              _fav ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: _fav ? AppTheme.amarillo : AppTheme.azul,
+              size: 22,
+            ),
+            label: Text(
+              _fav ? 'Está en sus favoritas' : 'Guardar en favoritas',
+            ),
+          ),
+        ],
+        if (widget.onOtra != null) ...[
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: widget.ocupado ? null : widget.onOtra,
+            child: const Text('Jugar otra vez'),
+          ),
+        ],
+        if (widget.onAlbum != null)
+          TextButton(
+            onPressed: widget.onAlbum,
+            child: const Text('Ver el álbum de frases'),
+          ),
       ],
     );
   }

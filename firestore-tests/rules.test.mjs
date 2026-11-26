@@ -475,6 +475,33 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no juega un quinto turno', updateDoc(doc(db('A'),T),{'progreso.A':5}));
   await ok('A gana 8 por el teléfono', cobrar('A','telefono',1,8,hay+36,'t1',{},'telefonos'));
   await no('A no cobra el teléfono dos veces', cobrar('A','telefono',2,8,hay+44,'t1',{},'telefonos'));
+  await ok('B guarda el teléfono en favoritas', updateDoc(doc(db('B'),T),{favorita:true}));
+  await no('B no cambia otra cosa al guardar', updateDoc(doc(db('B'),T),{favorita:false,por:'B'}));
+
+  // Racha de días jugando juntos.
+  const f = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const dias = (n) => f(new Date(h.getTime() + n*86400000));
+  const RJ = (d) => 'couples/c1/rachaJuegos/'+d;
+  await env.withSecurityRulesDisabled(async (c) => {
+    await setDoc(doc(c.firestore(), RJ(dias(-1))), {dias:2, ayer:dias(-2), creadoEn:serverTimestamp()});
+  });
+  await no('C no anota la racha', setDoc(doc(db('C'),RJ(hoy)),{dias:3,ayer:dias(-1),creadoEn:serverTimestamp()}));
+  await no('A no se inventa más días', setDoc(doc(db('A'),RJ(hoy)),{dias:9,ayer:dias(-1),creadoEn:serverTimestamp()}));
+  await no('A no pone un ayer que no es ayer', setDoc(doc(db('A'),RJ(hoy)),{dias:3,ayer:dias(-3),creadoEn:serverTimestamp()}));
+  await no('B no anota un día que no jugó', setDoc(doc(db('B'),RJ(dias(1))),{dias:1,ayer:hoy,creadoEn:serverTimestamp()}));
+  const racha = (u, n, premio, total) => {
+    const d = db(u); const b = writeBatch(d);
+    b.set(doc(d,RJ(hoy)), {dias:n, ayer:dias(-1), creadoEn:serverTimestamp()});
+    if (premio) {
+      const id = 'rachajuegos_'+hoy;
+      b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo:'rachajuegos', cantidad:premio, ref:hoy});
+      b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    }
+    return b.commit();
+  };
+  await no('A no cobra 50 por 3 días', racha('A',3,50,hay+86));
+  await ok('A llega a 3 días y gana 10', racha('A',3,10,hay+46));
+  await no('nadie cambia el día anotado', updateDoc(doc(db('A'),RJ(hoy)),{dias:4}));
 }
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));

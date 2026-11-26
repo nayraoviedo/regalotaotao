@@ -10,6 +10,8 @@ import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
+import '../../services/juegos_extras_service.dart';
+import 'festejo.dart';
 
 /// Sudoku para jugar solo (o sola). Se guarda en el celular para seguir
 /// después, y completarlo da pescaditos según el nivel.
@@ -123,7 +125,22 @@ class _SudokuScreenState extends State<SudokuScreen>
       );
       s.cobrado = true;
       _guardar();
-      if (mounted) setState(() => _ganado = n);
+      final record = await JuegosExtrasService.instance.sudokuTerminado(
+        widget.uid,
+        s.nivel,
+        s.segundos,
+      );
+      if (!mounted) return;
+      setState(() => _ganado = n);
+      festejar(
+        context,
+        titulo: '¡Completaste el sudoku!',
+        ganado: n,
+        extra: record
+            ? '¡Récord nuevo en ${s.nivel.nombre}: '
+                  '${Records.tiempo(s.segundos)}!'
+            : 'Tiempo: ${Records.tiempo(s.segundos)}',
+      );
     } catch (_) {}
   }
 

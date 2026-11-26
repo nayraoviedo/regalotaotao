@@ -12,6 +12,7 @@ import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
 import 'fotos_juegos_screen.dart';
 import 'imagen_juego.dart';
+import 'festejo.dart';
 
 /// Memorama por turnos con las fotos de los dos.
 class MemoramaScreen extends StatefulWidget {
@@ -68,7 +69,15 @@ class _MemoramaScreenState extends State<MemoramaScreen> {
           .cobrarMemorama(_c, _uid, m.id)
           .then(
             (n) {
-              if (mounted) setState(() => _ganado[m.id] = n);
+              if (!mounted) return;
+              setState(() => _ganado[m.id] = n);
+              festejarJuntos(
+                context,
+                coupleId: _c,
+                uid: _uid,
+                titulo: '¡Encontraron todas las parejas!',
+                ganado: n,
+              );
             },
             onError: (_) {
               _cobradas.remove(m.id);

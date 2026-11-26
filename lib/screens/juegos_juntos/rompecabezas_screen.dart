@@ -12,6 +12,7 @@ import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
 import 'fotos_juegos_screen.dart';
 import 'imagen_juego.dart';
+import 'festejo.dart';
 
 /// Rompecabezas para dos, por turnos, con una foto de ustedes.
 class RompecabezasScreen extends StatefulWidget {
@@ -50,7 +51,15 @@ class _RompecabezasScreenState extends State<RompecabezasScreen> {
           .cobrarRompecabezas(_c, _uid, r.id)
           .then(
             (n) {
-              if (mounted) setState(() => _ganado[r.id] = n);
+              if (!mounted) return;
+              setState(() => _ganado[r.id] = n);
+              festejarJuntos(
+                context,
+                coupleId: _c,
+                uid: _uid,
+                titulo: '¡Armaron el rompecabezas!',
+                ganado: n,
+              );
             },
             onError: (_) {
               _cobradas.remove(r.id);

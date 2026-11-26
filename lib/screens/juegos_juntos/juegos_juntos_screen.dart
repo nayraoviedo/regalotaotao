@@ -7,10 +7,14 @@ import '../../models/couple.dart';
 import '../../services/dibujo_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
+import '../../services/juegos_extras_service.dart';
 import '../../services/juntos_service.dart';
+import '../../services/pescaditos_service.dart';
 import 'dibujo_screen.dart';
+import 'album_telefono_screen.dart';
 import 'fotos_juegos_screen.dart';
 import 'memorama_screen.dart';
+import 'records_screen.dart';
 import 'rompecabezas_screen.dart';
 import 'telefono_screen.dart';
 import 'sudoku_screen.dart';
@@ -45,32 +49,54 @@ class JuegosJuntosScreen extends StatelessWidget {
             stream: svc.watchRompecabezas(couple.id),
             builder: (context, r) => StreamBuilder<Telefono?>(
               stream: svc.watchTelefono(couple.id),
-              builder: (context, t) => JuegosJuntosVista(
-                uid: me.uid,
-                partnerName: partnerName,
-                ronda: d.data,
-                memorama: m.data,
-                rompecabezas: r.data,
-                telefono: t.data,
-                onDibujo: () => abrir(
-                  DibujoScreen(me: me, couple: couple, partner: partner),
-                ),
-                onTelefono: () => abrir(
-                  TelefonoScreen(me: me, couple: couple, partner: partner),
-                ),
-                onMemorama: () => abrir(
-                  MemoramaScreen(me: me, couple: couple, partner: partner),
-                ),
-                onRompecabezas: () => abrir(
-                  RompecabezasScreen(me: me, couple: couple, partner: partner),
-                ),
-                onSudoku: () =>
-                    abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
-                onFotos: () => abrir(
-                  FotosJuegosScreen(
-                    coupleId: couple.id,
-                    uid: me.uid,
-                    partnerName: partnerName,
+              builder: (context, t) => StreamBuilder<RachaJuegos?>(
+                stream: JuegosExtrasService.instance.watchRacha(couple.id),
+                builder: (context, ra) => JuegosJuntosVista(
+                  racha: RachaJuegos.vigente(
+                    ra.data,
+                    PescaditosService.dia(),
+                    JuegosExtrasService.ayer(),
+                  ),
+                  onRecords: () => abrir(
+                    RecordsScreen(me: me, couple: couple, partner: partner),
+                  ),
+                  onAlbum: () => abrir(
+                    AlbumTelefonoScreen(
+                      coupleId: couple.id,
+                      uid: me.uid,
+                      partnerName: partnerName,
+                    ),
+                  ),
+                  uid: me.uid,
+                  partnerName: partnerName,
+                  ronda: d.data,
+                  memorama: m.data,
+                  rompecabezas: r.data,
+                  telefono: t.data,
+                  onDibujo: () => abrir(
+                    DibujoScreen(me: me, couple: couple, partner: partner),
+                  ),
+                  onTelefono: () => abrir(
+                    TelefonoScreen(me: me, couple: couple, partner: partner),
+                  ),
+                  onMemorama: () => abrir(
+                    MemoramaScreen(me: me, couple: couple, partner: partner),
+                  ),
+                  onRompecabezas: () => abrir(
+                    RompecabezasScreen(
+                      me: me,
+                      couple: couple,
+                      partner: partner,
+                    ),
+                  ),
+                  onSudoku: () =>
+                      abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
+                  onFotos: () => abrir(
+                    FotosJuegosScreen(
+                      coupleId: couple.id,
+                      uid: me.uid,
+                      partnerName: partnerName,
+                    ),
                   ),
                 ),
               ),
@@ -94,6 +120,9 @@ class JuegosJuntosVista extends StatelessWidget {
     required this.onRompecabezas,
     required this.onSudoku,
     required this.onFotos,
+    this.onRecords,
+    this.onAlbum,
+    this.racha = 0,
     this.ronda,
     this.memorama,
     this.rompecabezas,
@@ -112,6 +141,11 @@ class JuegosJuntosVista extends StatelessWidget {
   final VoidCallback onRompecabezas;
   final VoidCallback onSudoku;
   final VoidCallback onFotos;
+  final VoidCallback? onRecords;
+  final VoidCallback? onAlbum;
+
+  /// Días seguidos que llevan terminando un juego juntos.
+  final int racha;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +175,8 @@ class JuegosJuntosVista extends StatelessWidget {
           'pescaditos para la casita.',
           style: TextStyle(color: AppTheme.gris, fontSize: 14.5),
         ),
+        const SizedBox(height: 12),
+        RachaJuegosVista(dias: racha),
         const SizedBox(height: 16),
         TarjetaJuegoJuntos(
           titulo: 'Dibuja y adivina',
@@ -233,7 +269,90 @@ class JuegosJuntosVista extends StatelessWidget {
           ),
           label: const Text('Nuestras fotos para jugar'),
         ),
+        if (onRecords != null)
+          TextButton.icon(
+            onPressed: onRecords,
+            icon: Doodle(
+              Icons.emoji_events_outlined,
+              color: AppTheme.azul,
+              size: 22,
+            ),
+            label: const Text('Récords'),
+          ),
+        if (onAlbum != null)
+          TextButton.icon(
+            onPressed: onAlbum,
+            icon: Doodle(
+              Icons.auto_stories_outlined,
+              color: AppTheme.azul,
+              size: 22,
+            ),
+            label: const Text('Álbum de frases del teléfono'),
+          ),
       ],
+    );
+  }
+}
+
+/// Cuántos días seguidos llevan jugando juntos y el siguiente premio.
+class RachaJuegosVista extends StatelessWidget {
+  const RachaJuegosVista({super.key, required this.dias});
+  final int dias;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = RachaJuegos.proximo(dias);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: dias > 0 ? AppTheme.azul : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Doodle(
+            Icons.local_fire_department_rounded,
+            color: dias > 0 ? AppTheme.amarillo : AppTheme.gris,
+            size: 30,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dias == 0
+                      ? 'Empiecen una racha de juegos'
+                      : dias == 1
+                      ? '1 día jugando juntos'
+                      : '$dias días seguidos jugando juntos',
+                  style: TextStyle(
+                    color: dias > 0 ? AppTheme.amarillo : AppTheme.azul,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  p == null
+                      ? '¡Ya ganaron todos los premios de racha!'
+                      : dias == 0
+                      ? 'Terminen un juego juntos cada día. A los ${p.$1} '
+                            'días ganan ${p.$2} pescaditos extra.'
+                      : p.$1 - dias == 1
+                      ? 'Falta 1 día para ganar ${p.$2} pescaditos extra.'
+                      : 'Faltan ${p.$1 - dias} días para ganar ${p.$2} '
+                            'pescaditos extra.',
+                  style: TextStyle(
+                    color: dias > 0 ? AppTheme.crema : AppTheme.gris,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
