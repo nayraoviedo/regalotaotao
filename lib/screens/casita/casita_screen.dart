@@ -506,13 +506,11 @@ class _CasitaViewState extends State<CasitaView> {
     final pareja = widget.partner?.name;
     final sePuedeRegalar =
         widget.onRegalar != null && pareja != null && !cosa.esCuarto;
-    // Las compras grandes las aprueba la pareja (salvo los regalos).
-    final pideAprobacion =
-        widget.onProponer != null &&
-        pareja != null &&
-        Casita.necesitaAprobacion(cosa);
+    // Comprar en pareja (pedirle el sí) es opcional: por defecto cada uno
+    // compra lo que quiere.
+    final sePuedeJuntos = widget.onProponer != null && pareja != null;
     String? gatito = cosa.esRopa ? mio.id : null;
-    var regalo = false;
+    var modo = _ModoCompra.yo;
     var texto = '';
     final ok = await showDialog<bool>(
       context: context,
@@ -544,48 +542,48 @@ class _CasitaViewState extends State<CasitaView> {
                   'Cuesta ${cosa.precio} pescaditos de los dos. '
                   'Les quedarían ${hay - cosa.precio}.',
                 ),
-                if (pideAprobacion && !regalo) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Es una compra grande: $pareja tiene que aprobarla '
-                    'antes de gastar los pescaditos.',
-                    style: const TextStyle(color: AppTheme.gris, fontSize: 13),
-                  ),
-                ],
-                if (sePuedeRegalar) ...[
+                if (sePuedeJuntos || sePuedeRegalar) ...[
                   const SizedBox(height: 12),
-                  // Dos caminos, sin imponer el regalo: por defecto es
-                  // para los dos y regalar es solo si uno quiere.
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<bool>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: false,
-                          label: TextoDoodle('🏠 Para los dos'),
+                  // Por defecto lo compras tú, de una vez. Pedirle el sí a
+                  // tu pareja o regalarlo es solo si tú quieres.
+                  // Chips que bajan de línea si no caben (celular angosto).
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final (m, label) in [
+                        (_ModoCompra.yo, '🛒 Yo lo compro'),
+                        if (sePuedeJuntos) (_ModoCompra.juntos, '🤝 En pareja'),
+                        if (sePuedeRegalar) (_ModoCompra.regalo, '🎁 Regalar'),
+                      ])
+                        ChoiceChip(
+                          label: TextoDoodle(label),
+                          selected: modo == m,
+                          onSelected: (_) => setDialog(() {
+                            modo = m;
+                            if (cosa.esRopa) {
+                              gatito = modo == _ModoCompra.regalo
+                                  ? suyo.id
+                                  : mio.id;
+                            }
+                          }),
                         ),
-                        ButtonSegment(
-                          value: true,
-                          label: TextoDoodle('🎁 Regalar'),
-                        ),
-                      ],
-                      selected: {regalo},
-                      onSelectionChanged: (s) => setDialog(() {
-                        regalo = s.first;
-                        if (cosa.esRopa) gatito = regalo ? suyo.id : mio.id;
-                      }),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    regalo
-                        ? 'Le llega envuelto a $pareja en la casita '
-                              'y lo abre cuando quiera.'
-                        : 'Va directo a la casita, para los dos.',
+                    switch (modo) {
+                      _ModoCompra.yo => 'Va directo a la casita, para los dos.',
+                      _ModoCompra.juntos =>
+                        'Le preguntamos a $pareja y se compra cuando te '
+                            'dé el sí.',
+                      _ModoCompra.regalo =>
+                        'Le llega envuelto a $pareja en la casita '
+                            'y lo abre cuando quiera.',
+                    },
                     style: const TextStyle(color: AppTheme.gris, fontSize: 13),
                   ),
-                  if (regalo)
+                  if (modo == _ModoCompra.regalo)
                     TextField(
                       onChanged: (v) => texto = v,
                       maxLength: 120,
@@ -623,15 +621,12 @@ class _CasitaViewState extends State<CasitaView> {
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
               onPressed: () => Navigator.pop(context, true),
-              child: Text(
-                regalo
-                    ? 'Regalar'
-                    : pideAprobacion
-                    ? 'Pedirle el sí'
-                    : cosa.esBebe
-                    ? 'Adoptar'
-                    : 'Comprar',
-              ),
+              child: Text(switch (modo) {
+                _ModoCompra.regalo => 'Regalar',
+                _ModoCompra.juntos => 'Pedirle el sí',
+                _ when cosa.esBebe => 'Adoptar',
+                _ => 'Comprar',
+              }),
             ),
           ],
         ),
@@ -639,12 +634,12 @@ class _CasitaViewState extends State<CasitaView> {
     );
     if (ok != true) return;
     try {
-      if (pideAprobacion && !regalo) {
+      if (modo == _ModoCompra.juntos) {
         await widget.onProponer!(cosa, gatito);
-        _aviso('Le avisamos a $pareja para que lo apruebe 🐟');
+        _aviso('Le avisamos a $pareja para que te dé el sí 🐟');
         return;
       }
-      if (regalo) {
+      if (modo == _ModoCompra.regalo) {
         await widget.onRegalar!(cosa, gatito, texto.trim());
         _aviso('🎁 Listo: $pareja lo va a encontrar envuelto en la casita');
         return;
@@ -930,10 +925,7 @@ class _CasitaViewState extends State<CasitaView> {
                 de: widget.partner?.name ?? 'Tu pareja',
                 onAbrir: () => _abrirRegalo(cosa, regalo),
               ),
-          if (_estado.propuesta case final p?
-              when p.queCosa != null &&
-                  !_estado.tiene(p.queCosa!) &&
-                  widget.onAprobar != null)
+          if (_estado.pendiente case final p? when widget.onAprobar != null)
             _AvisoPropuesta(
               propuesta: p,
               mia: p.de == widget.me.uid,
@@ -1900,7 +1892,19 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
   }
 }
 
-/// Compra grande pendiente: a la pareja le pide el sí; a quien la propuso
+/// Cómo se compra algo de la tienda.
+enum _ModoCompra {
+  /// Lo compras tú, de una vez (lo normal).
+  yo,
+
+  /// Le pides el sí a tu pareja y se compra cuando lo aprueba.
+  juntos,
+
+  /// Sorpresa envuelta para tu pareja.
+  regalo,
+}
+
+/// Compra en pareja pendiente: a la pareja le pide el sí; a quien la propuso
 /// le dice que está esperando.
 class _AvisoPropuesta extends StatelessWidget {
   const _AvisoPropuesta({
