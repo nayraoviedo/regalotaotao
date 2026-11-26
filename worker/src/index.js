@@ -165,7 +165,7 @@ const NOMBRES_CASITA = {
   pimientos: "semillas de pimiento",
   arroz: "semillas de arroz",
   ajos: "dientes de ajo para sembrar",
-  paltos: "una semilla de palta (aguacate)",
+  paltos: "una semilla de aguacate (palta)",
   berenjenas: "semillas de berenjena",
   bebe_naranja: "un gatito bebé naranja",
   bebe_ragdoll: "un gatito bebé ragdoll",

@@ -217,7 +217,7 @@ enum Ingrediente {
   pimiento('pimientos', 'pimiento', 'pimientos', '🫑'),
   arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
   ajo('ajos', 'ajo', 'ajos', '🧄'),
-  palta('paltos', 'palta (aguacate)', 'paltas (aguacates)', '🥑'),
+  palta('paltos', 'aguacate (palta)', 'aguacates (paltas)', '🥑'),
   berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
@@ -395,9 +395,9 @@ enum Receta {
     {Ingrediente.cebolla: 2, Ingrediente.trigo: 1},
     {Comida.almuerzo, Comida.cena},
   ),
-  chairo(
-    'chairo',
-    'chairo',
+  sopaPollo(
+    'sopa_pollo',
+    'sopa de pollo',
     {Ingrediente.papa: 1, Ingrediente.choclo: 1, Ingrediente.zanahoria: 1},
     {Comida.almuerzo, Comida.cena},
   ),
@@ -407,10 +407,10 @@ enum Receta {
     {Ingrediente.trigo: 1, Ingrediente.zanahoria: 1},
     {Comida.almuerzo, Comida.cena},
   ),
-  cremaChoclo(
-    'crema_choclo',
-    'crema de choclo',
-    {Ingrediente.choclo: 2},
+  cremaVerduras(
+    'crema_verduras',
+    'crema de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.arveja: 1, Ingrediente.papa: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   sopaMiso(
@@ -512,7 +512,7 @@ enum Receta {
   ),
   tostadaPalta(
     'tostada_palta',
-    'tostada de palta (aguacate)',
+    'tostada de aguacate (palta)',
     {Ingrediente.trigo: 1, Ingrediente.palta: 1},
     {Comida.desayuno},
   ),
@@ -1232,7 +1232,7 @@ class Catalogo {
     ),
     Cosa(
       'paltos',
-      'Semilla de palta (aguacate)',
+      'Semilla de aguacate (palta)',
       40,
       lugar: Lugar.fondoHuerto,
       semilla: true,
