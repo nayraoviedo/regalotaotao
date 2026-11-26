@@ -9,14 +9,18 @@ import '../../services/dibujo_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
-import 'lienzo.dart';
+import 'chat_juego.dart';
 import 'festejo.dart';
+import 'lienzo.dart';
 
 /// "Dibuja y adivina", en vivo.
 ///
 /// Uno elige una palabra y la dibuja; el otro ve el dibujo mientras se
 /// hace y escribe en el chat qué cree que es. Al adivinar, los dos ganan
 /// pescaditos y le toca dibujar a quien adivinó.
+///
+/// Se juega por partidas de varios dibujos (4, 6, 8 o 10): adivinar rápido
+/// da más puntos y al final gana quien juntó más.
 class DibujoScreen extends StatefulWidget {
   const DibujoScreen({
     super.key,
@@ -45,6 +49,15 @@ class _DibujoScreenState extends State<DibujoScreen> {
   bool _quiereDibujar = false;
   bool _empezando = false;
 
+  /// El marcador de la partida que se está viendo.
+  String? _partidaId;
+  Stream<List<Ronda>>? _partida;
+
+  /// Hasta qué mensaje leíste el chat de cada ronda.
+  final _visto = <String, int>{};
+  String? _ultimaRonda;
+  bool _chatAbierto = false;
+
   String get _coupleId => widget.couple.id;
   String get _uid => widget.me.uid;
   String get _partnerName => widget.partner?.name ?? 'Tu pareja';
@@ -62,11 +75,31 @@ class _DibujoScreenState extends State<DibujoScreen> {
     } catch (_) {}
   }
 
-  Future<void> _empezar(String palabra) async {
+  Stream<List<Ronda>>? _partidaDe(Ronda? r) {
+    final id = r?.partida;
+    if (id == null) return null;
+    if (id != _partidaId) {
+      _partidaId = id;
+      _partida = _svc.watchPartida(_coupleId, id);
+    }
+    return _partida;
+  }
+
+  /// Empieza el siguiente dibujo de la partida (o una partida nueva de
+  /// [total] dibujos si no hay una a medias).
+  Future<void> _empezar(Ronda? anterior, String palabra, int total) async {
     if (_empezando) return;
     setState(() => _empezando = true);
+    final sigue = anterior != null && anterior.enPartida && !anterior.ultima;
     try {
-      await _svc.empezar(_coupleId, _uid, palabra);
+      await _svc.empezar(
+        _coupleId,
+        _uid,
+        palabra,
+        partida: sigue ? anterior.partida! : _svc.nuevaPartida(_coupleId),
+        numero: sigue ? anterior.numero + 1 : 1,
+        total: sigue ? anterior.total : total,
+      );
       _recientes = {..._recientes, Dibujos.clave(palabra)};
       _quiereDibujar = false;
     } catch (_) {
@@ -82,9 +115,99 @@ class _DibujoScreenState extends State<DibujoScreen> {
       ..showSnackBar(SnackBar(content: Text(texto)));
   }
 
+  /// Mensajes nuevos de la pareja en el chat de [r] que todavía no viste.
+  List<Mensaje> _nuevos(Ronda r) {
+    final visto = _visto[r.id];
+    if (visto == null) return const [];
+    return [
+      for (final m in r.mensajes)
+        if (m.uid != _uid && m.en > visto) m,
+    ];
+  }
+
+  int _ultimo(Ronda r) => r.mensajes.isEmpty ? 0 : r.mensajes.last.en;
+
+  /// Lleva la cuenta de lo leído en el chat. Mientras se juega el chat está
+  /// a la vista; entre rondas, avisa cuando la pareja escribe.
+  void _revisarChat(Ronda r) {
+    if (!_visto.containsKey(r.id)) {
+      _visto[r.id] = _ultimo(r);
+      ChatVisto.leer(r.id).then((v) {
+        if (!mounted || v == 0) return;
+        setState(() => _visto[r.id] = v);
+      });
+      _ultimaRonda = r.id;
+      return;
+    }
+    if (r.enJuego || _chatAbierto) {
+      _marcarLeido(r);
+      return;
+    }
+    final nuevos = _nuevos(r);
+    if (nuevos.isNotEmpty && _ultimaRonda == r.id) {
+      final ultimo = nuevos.last;
+      if (ultimo.en > (_avisado[r.id] ?? 0)) {
+        _avisado[r.id] = ultimo.en;
+        avisarMensaje(
+          context,
+          partnerName: _partnerName,
+          texto: ultimo.texto,
+          onResponder: () => _abrirChat(r),
+        );
+      }
+    }
+    _ultimaRonda = r.id;
+  }
+
+  final _avisado = <String, int>{};
+
+  void _marcarLeido(Ronda r) {
+    final u = _ultimo(r);
+    if ((_visto[r.id] ?? 0) >= u) return;
+    if (mounted) setState(() => _visto[r.id] = u);
+    unawaited(ChatVisto.guardar(r.id, u));
+  }
+
+  Future<void> _abrirChat(Ronda r) async {
+    setState(() => _chatAbierto = true);
+    _marcarLeido(r);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final id = r.id;
+    final lineas = _svc
+        .watchActual(_coupleId)
+        .where((x) => x != null && x.id == id)
+        .map((x) => lineasRonda(x!, _uid, _partnerName));
+    await abrirChat(
+      context,
+      lineas: lineas,
+      iniciales: lineasRonda(r, _uid, _partnerName),
+      uid: _uid,
+      partnerName: _partnerName,
+      titulo: 'Chat de la ronda',
+      hint: 'Escríbele a $_partnerName…',
+      rapidas: const ['¡Bien hecho!', 'Jajaja', '¡Otra!', 'Te quiero'],
+      onMandar: (t) async {
+        try {
+          final actual = await _svc.watchActual(_coupleId).first;
+          if (actual == null || actual.id != id) return;
+          if (actual.mensajes.length >= Dibujos.maxMensajes) {
+            _aviso('El chat de esta ronda ya está lleno');
+            return;
+          }
+          await _svc.mandar(_coupleId, actual, _uid, t);
+        } catch (_) {
+          _aviso('No se pudo mandar, intenta otra vez');
+        }
+      },
+    );
+    if (!mounted) return;
+    setState(() => _chatAbierto = false);
+  }
+
   /// Cosas que se hacen una sola vez al ver la ronda: avisar que está
   /// mirando y cobrar los pescaditos.
   void _alVer(Ronda r) {
+    _revisarChat(r);
     if (r.enJuego && !r.dibujo(_uid) && !r.viendo.containsKey(_uid)) {
       if (_vistas.add(r.id)) {
         unawaited(_svc.estoyViendo(_coupleId, r.id, _uid).catchError((_) {}));
@@ -151,13 +274,21 @@ class _DibujoScreenState extends State<DibujoScreen> {
       builder: (context, s) {
         final r = s.data;
         if (r != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _alVer(r));
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _alVer(r);
+          });
         }
         final enJuego = r != null && r.enJuego;
+        final partida = _partidaDe(r);
         return Scaffold(
           appBar: AppBar(
             title: const Text('Dibuja y adivina'),
             actions: [
+              if (r != null && !enJuego)
+                BotonChat(
+                  nuevos: _nuevos(r).length,
+                  onPressed: () => _abrirChat(r),
+                ),
               if (enJuego)
                 TextButton(
                   onPressed: () => _terminar(r),
@@ -167,44 +298,146 @@ class _DibujoScreenState extends State<DibujoScreen> {
           ),
           body: SafeArea(
             top: false,
-            child: switch (s) {
-              _ when s.hasError => const Center(
-                child: Text('No se pudo cargar el juego'),
-              ),
-              _
-                  when !s.hasData &&
-                      s.connectionState == ConnectionState.waiting =>
-                const Center(child: CircularProgressIndicator()),
-              _ when enJuego => _EnVivo(
-                key: ValueKey(r.id),
-                coupleId: _coupleId,
-                ronda: r,
-                uid: _uid,
-                partnerName: _partnerName,
-              ),
-              _ => EntreRondas(
-                ronda: r,
-                uid: _uid,
-                partnerName: _partnerName,
-                meToca:
-                    _quiereDibujar ||
-                    r == null ||
-                    r.siguiente(widget.couple.members) == _uid,
-                ganado: r == null ? null : _ganado[r.id],
-                recientes: _recientes,
-                empezando: _empezando,
-                onEmpezar: _empezar,
-                onQuieroDibujar: () => setState(() => _quiereDibujar = true),
-                dibujoFinal: r == null
+            child: StreamBuilder<List<Ronda>>(
+              stream: partida,
+              builder: (context, p) {
+                final rondas = p.data;
+                final marcador = r == null || !r.enPartida || rondas == null
                     ? null
-                    : _DibujoFinal(coupleId: _coupleId, ronda: r),
-              ),
-            },
+                    : Marcador(
+                        // La ronda actual llega antes por su propio stream.
+                        [
+                          for (final x in rondas)
+                            if (x.id != r.id) x,
+                          r,
+                        ],
+                        widget.couple.members,
+                      );
+                return _cuerpo(s, r, enJuego, marcador);
+              },
+            ),
           ),
         );
       },
     );
   }
+
+  Widget _cuerpo(
+    AsyncSnapshot<Ronda?> s,
+    Ronda? r,
+    bool enJuego,
+    Marcador? marcador,
+  ) => switch (s) {
+    _ when s.hasError => const Center(
+      child: Text('No se pudo cargar el juego'),
+    ),
+    _ when !s.hasData && s.connectionState == ConnectionState.waiting =>
+      const Center(child: CircularProgressIndicator()),
+    _ when enJuego && r != null => _EnVivo(
+      key: ValueKey(r.id),
+      coupleId: _coupleId,
+      ronda: r,
+      uid: _uid,
+      partnerName: _partnerName,
+      marcador: marcador,
+    ),
+    _ => EntreRondas(
+      ronda: r,
+      uid: _uid,
+      partnerName: _partnerName,
+      meToca:
+          _quiereDibujar ||
+          r == null ||
+          r.siguiente(widget.couple.members) == _uid,
+      ganado: r == null ? null : _ganado[r.id],
+      recientes: _recientes,
+      empezando: _empezando,
+      marcador: marcador,
+      onEmpezar: (p, total) => _empezar(r, p, total),
+      onQuieroDibujar: () => setState(() => _quiereDibujar = true),
+      dibujoFinal: r == null
+          ? null
+          : _DibujoFinal(coupleId: _coupleId, ronda: r),
+    ),
+  };
+}
+
+/// Los renglones del chat de una ronda: los mensajes y los avisos del juego
+/// (quién dibuja, quién llegó a mirar, quién adivinó y cuántos puntos).
+List<LineaChat> lineasRonda(Ronda r, String uid, String partnerName) {
+  String para(String u) => u == uid ? 'ti' : partnerName;
+  final inicio = r.creadaEn?.millisecondsSinceEpoch ?? 0;
+  final medio = <LineaChat>[
+    for (final m in r.mensajes) LineaChat.de(m),
+    for (final v in r.viendo.entries)
+      if (v.key != r.dibuja)
+        LineaChat(
+          tipo: TipoLinea.aviso,
+          en: v.value?.millisecondsSinceEpoch ?? inicio,
+          texto: v.key == uid
+              ? 'Llegaste a mirar 👀'
+              : '$partnerName llegó a mirar 👀',
+        ),
+  ]..sort((a, b) => a.en.compareTo(b.en));
+  final fin = <LineaChat>[];
+  final quien = r.adivinadaPor;
+  if (r.adivinada && quien != null && r.enPartida) {
+    final pa = r.puntosDe(quien);
+    final pd = r.puntosDe(r.dibuja);
+    fin.add(
+      LineaChat(
+        tipo: TipoLinea.exito,
+        texto: '+$pa puntos para ${para(quien)} y +$pd para ${para(r.dibuja)}',
+      ),
+    );
+  } else if (r.estado == EstadoRonda.rendida) {
+    fin.add(
+      LineaChat(
+        tipo: TipoLinea.aviso,
+        texto: r.dibujo(uid)
+            ? '$partnerName se rindió. Era "${r.palabra}"'
+            : 'Te rendiste. Era "${r.palabra}"',
+      ),
+    );
+  } else if (r.estado == EstadoRonda.agotada) {
+    fin.add(
+      LineaChat(
+        tipo: TipoLinea.aviso,
+        texto: '¡Se acabó el tiempo! Era "${r.palabra}"',
+      ),
+    );
+  } else if (r.estado == EstadoRonda.cancelada) {
+    fin.add(
+      LineaChat(
+        tipo: TipoLinea.aviso,
+        texto: r.dibujo(uid)
+            ? 'Terminaste la ronda. Era "${r.palabra}"'
+            : '$partnerName terminó la ronda. Era "${r.palabra}"',
+      ),
+    );
+  }
+  // El final va justo después del acierto (o en su momento, si se rindió o
+  // la terminó), aunque después sigan conversando.
+  var donde = medio.indexWhere((l) => l.tipo == TipoLinea.acierto) + 1;
+  if (donde == 0) {
+    final hora = r.terminadaEn?.millisecondsSinceEpoch;
+    final despues = hora == null ? -1 : medio.indexWhere((l) => l.en > hora);
+    donde = despues < 0 ? medio.length : despues;
+  }
+  medio.insertAll(donde, fin);
+  return [
+    LineaChat(
+      tipo: TipoLinea.aviso,
+      en: inicio,
+      texto: r.enPartida
+          ? 'Dibujo ${r.numero} de ${r.total}: '
+                '${r.dibujo(uid) ? 'tú dibujas ✍' : '$partnerName está dibujando ✍'}'
+          : r.dibujo(uid)
+          ? 'Tú dibujas ✍'
+          : '$partnerName está dibujando ✍',
+    ),
+    ...medio,
+  ];
 }
 
 /// La ronda en juego: escucha los trazos y arma la vista.
@@ -215,12 +448,14 @@ class _EnVivo extends StatefulWidget {
     required this.ronda,
     required this.uid,
     required this.partnerName,
+    this.marcador,
   });
 
   final String coupleId;
   final Ronda ronda;
   final String uid;
   final String partnerName;
+  final Marcador? marcador;
 
   @override
   State<_EnVivo> createState() => _EnVivoState();
@@ -232,7 +467,37 @@ class _EnVivoState extends State<_EnVivo> {
   int _color = 0;
   int _grosor = Dibujos.grosores[1];
 
+  /// Revisa cada segundo si se acabó el minuto.
+  Timer? _reloj;
+  final _abierta = DateTime.now();
+  DateTime? _intentoAgotar;
+
   Ronda get _r => widget.ronda;
+
+  @override
+  void initState() {
+    super.initState();
+    _reloj = Timer.periodic(const Duration(seconds: 1), (_) => _revisarReloj());
+  }
+
+  @override
+  void dispose() {
+    _reloj?.cancel();
+    super.dispose();
+  }
+
+  /// Se acabó el tiempo: cualquiera de los dos cierra la ronda (si el otro
+  /// ya la cerró, el cambio no pasa y no importa). Se reintenta cada pocos
+  /// segundos por si el reloj del celular va un poco adelantado.
+  void _revisarReloj() {
+    final r = _r;
+    final ahora = DateTime.now();
+    if (!r.enJuego || r.queda(ahora, desde: _abierta) != Duration.zero) return;
+    final antes = _intentoAgotar;
+    if (antes != null && ahora.difference(antes).inSeconds < 4) return;
+    _intentoAgotar = ahora;
+    unawaited(_svc.agotar(widget.coupleId, r).catchError((_) {}));
+  }
 
   Future<void> _mandar(String texto) async {
     final r = _r;
@@ -249,6 +514,9 @@ class _EnVivoState extends State<_EnVivo> {
     if (r.mensajes.length >= Dibujos.maxMensajes) {
       _aviso('El chat de esta ronda ya está lleno');
       return;
+    }
+    if (r.queda(DateTime.now(), desde: _abierta) == Duration.zero) {
+      _aviso('¡Se acabó el tiempo!');
     }
     try {
       await _svc.mandar(widget.coupleId, r, widget.uid, texto);
@@ -277,6 +545,7 @@ class _EnVivoState extends State<_EnVivo> {
           trazos: trazos,
           uid: widget.uid,
           partnerName: widget.partnerName,
+          marcador: widget.marcador,
           color: _color,
           grosor: _grosor,
           onColor: (c) => setState(() => _color = c),
@@ -317,8 +586,8 @@ class _EnVivoState extends State<_EnVivo> {
   }
 }
 
-/// La ronda en juego sin Firebase: el papel, las herramientas (si dibujas)
-/// y el chat.
+/// La ronda en juego sin Firebase: el marcador, el papel, las herramientas
+/// (si dibujas) y el chat.
 class RondaEnVivo extends StatelessWidget {
   const RondaEnVivo({
     super.key,
@@ -327,6 +596,7 @@ class RondaEnVivo extends StatelessWidget {
     required this.uid,
     required this.partnerName,
     required this.onMandar,
+    this.marcador,
     this.color = 0,
     this.grosor = 14,
     this.onColor,
@@ -340,6 +610,7 @@ class RondaEnVivo extends StatelessWidget {
   final List<Trazo> trazos;
   final String uid;
   final String partnerName;
+  final Marcador? marcador;
   final int color;
   final int grosor;
   final ValueChanged<int>? onColor;
@@ -351,6 +622,9 @@ class RondaEnVivo extends StatelessWidget {
 
   bool get _dibujo => ronda.dibujo(uid);
 
+  /// Alto que se guarda para el chat (aunque el papel quede más chico).
+  static const altoChat = 235.0;
+
   @override
   Widget build(BuildContext context) {
     final siguiente = trazos.isEmpty ? 0 : trazos.last.n + 1;
@@ -358,17 +632,29 @@ class RondaEnVivo extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final ancho = c.maxWidth.clamp(0, 560).toDouble();
+        final reservado =
+            altoChat + 86 + (ronda.enPartida ? 36 : 0) + (_dibujo ? 96 : 0);
         final lado = (ancho - 24).clamp(
           120.0,
-          (c.maxHeight * (_dibujo ? 0.52 : 0.58)).clamp(120.0, 900.0),
+          (c.maxHeight - reservado).clamp(120.0, 900.0),
         );
         return Center(
           child: SizedBox(
             width: ancho,
             child: Column(
               children: [
+                if (ronda.enPartida)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+                    child: BarraPartida(
+                      ronda: ronda,
+                      marcador: marcador,
+                      uid: uid,
+                      partnerName: partnerName,
+                    ),
+                  ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
                   child: _Cabecera(
                     ronda: ronda,
                     dibujo: _dibujo,
@@ -398,23 +684,185 @@ class RondaEnVivo extends StatelessWidget {
                     onLimpiar: onLimpiar,
                   ),
                 Expanded(
-                  child: ChatRonda(
-                    mensajes: ronda.mensajes,
-                    uid: uid,
-                    dibuja: ronda.dibuja,
-                    partnerName: partnerName,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    child: PanelChat(
+                      lineas: lineasRonda(ronda, uid, partnerName),
+                      uid: uid,
+                      partnerName: partnerName,
+                      onMandar: onMandar,
+                      maxLength: Dibujos.maxMensaje,
+                      hint: _dibujo
+                          ? 'Dale una pista a $partnerName…'
+                          : '¿Qué es? Escríbelo aquí…',
+                      rapidas: _dibujo
+                          ? Dibujos.rapidasDibuja
+                          : Dibujos.rapidasAdivina,
+                    ),
                   ),
-                ),
-                _Escribir(
-                  dibujo: _dibujo,
-                  partnerName: partnerName,
-                  onMandar: onMandar,
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+/// "Dibujo 2 de 6", los puntos de cada uno y (mientras se adivina) cuánto
+/// vale adivinar ahora.
+class BarraPartida extends StatelessWidget {
+  const BarraPartida({
+    super.key,
+    required this.ronda,
+    required this.uid,
+    required this.partnerName,
+    this.marcador,
+  });
+
+  final Ronda ronda;
+  final Marcador? marcador;
+  final String uid;
+  final String partnerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = marcador;
+    final otro = m?.members.firstWhere((x) => x != uid, orElse: () => '');
+    final estilo = TextStyle(
+      color: AppTheme.azul,
+      fontSize: 13,
+      fontWeight: FontWeight.w800,
+    );
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppTheme.azul,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            'Dibujo ${ronda.numero} de ${ronda.total}',
+            style: TextStyle(
+              color: AppTheme.crema,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (m != null && otro != null)
+          Expanded(
+            child: Text(
+              'Tú ${m.puntos(uid)}  ·  $partnerName ${m.puntos(otro)}',
+              style: estilo,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        else
+          const Spacer(),
+        if (ronda.enJuego && (ronda.conReloj || ronda.creadaEn != null))
+          _Reloj(ronda: ronda, dibujo: ronda.dibujo(uid)),
+      ],
+    );
+  }
+}
+
+/// El reloj del dibujo: los segundos que quedan del minuto (con un
+/// circulito que se va vaciando) y cuántos puntos da adivinar ahora.
+class _Reloj extends StatefulWidget {
+  const _Reloj({required this.ronda, required this.dibujo});
+  final Ronda ronda;
+  final bool dibujo;
+
+  @override
+  State<_Reloj> createState() => _RelojState();
+}
+
+class _RelojState extends State<_Reloj> {
+  Timer? _t;
+  final _abierto = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.ronda;
+    final ahora = DateTime.now();
+    final inicio = r.creadaEn ?? _abierto;
+    var pasado = ahora.difference(inicio);
+    if (pasado.isNegative) pasado = Duration.zero;
+    final vale = Dibujos.puntosAdivinar(pasado);
+    final queda = r.queda(ahora, desde: _abierto);
+    final apurado = queda != null && queda.inSeconds <= 10;
+    final color = apurado ? ColoresChat.pareja : AppTheme.azul;
+    return Tooltip(
+      message: widget.dibujo
+          ? 'Si adivina ahora: $vale para tu pareja y '
+                '${Dibujos.puntosDibujar(vale)} para ti'
+          : 'Si adivinas ahora ganas $vale puntos',
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
+        decoration: BoxDecoration(
+          color: AppTheme.amarillo.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (queda != null)
+              SizedBox(
+                width: 30,
+                height: 30,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: queda.inMilliseconds / (r.limite * 1000),
+                      strokeWidth: 3,
+                      color: color,
+                      backgroundColor: Colors.white,
+                    ),
+                    Text(
+                      '${queda.inSeconds}',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Doodle(Icons.timer_outlined, size: 16, color: AppTheme.azul),
+            const SizedBox(width: 6),
+            Text(
+              'vale $vale',
+              style: TextStyle(
+                color: AppTheme.azul,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -682,186 +1130,6 @@ class _Grosor extends StatelessWidget {
   }
 }
 
-/// El chat de la ronda: lo que va escribiendo quien adivina (y las pistas
-/// de quien dibuja).
-class ChatRonda extends StatefulWidget {
-  const ChatRonda({
-    super.key,
-    required this.mensajes,
-    required this.uid,
-    required this.dibuja,
-    required this.partnerName,
-  });
-
-  final List<Mensaje> mensajes;
-  final String uid;
-  final String dibuja;
-  final String partnerName;
-
-  @override
-  State<ChatRonda> createState() => _ChatRondaState();
-}
-
-class _ChatRondaState extends State<ChatRonda> {
-  final _scroll = ScrollController();
-
-  @override
-  void didUpdateWidget(ChatRonda old) {
-    super.didUpdateWidget(old);
-    if (widget.mensajes.length != old.mensajes.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) {
-          _scroll.animateTo(
-            _scroll.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final yoDibujo = widget.dibuja == widget.uid;
-    if (widget.mensajes.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            yoDibujo
-                ? 'Aquí verás lo que ${widget.partnerName} cree que es.'
-                : 'Escribe aquí lo que crees que es. ¡Puedes intentar '
-                      'todas las veces que quieras!',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.gris, fontSize: 13.5),
-          ),
-        ),
-      );
-    }
-    return ListView.builder(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      itemCount: widget.mensajes.length,
-      itemBuilder: (context, i) {
-        final m = widget.mensajes[i];
-        final mio = m.uid == widget.uid;
-        final pista = m.uid == widget.dibuja;
-        final fondo = m.acierto
-            ? AppTheme.amarillo
-            : mio
-            ? AppTheme.azul
-            : Colors.white;
-        final letra = m.acierto
-            ? AppTheme.azul
-            : mio
-            ? AppTheme.crema
-            : AppTheme.azul;
-        return Align(
-          alignment: mio ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            constraints: const BoxConstraints(maxWidth: 280),
-            decoration: BoxDecoration(
-              color: fondo,
-              borderRadius: BorderRadius.circular(16),
-              border: mio
-                  ? null
-                  : Border.all(color: AppTheme.azul.withValues(alpha: 0.12)),
-            ),
-            child: Text(
-              m.acierto
-                  ? '¡${m.texto}! ✓'
-                  : pista && !mio
-                  ? 'Pista: ${m.texto}'
-                  : m.texto,
-              style: TextStyle(
-                color: letra,
-                fontSize: 14.5,
-                fontWeight: m.acierto ? FontWeight.w800 : FontWeight.w500,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Escribir extends StatefulWidget {
-  const _Escribir({
-    required this.dibujo,
-    required this.partnerName,
-    required this.onMandar,
-  });
-
-  final bool dibujo;
-  final String partnerName;
-  final Future<void> Function(String) onMandar;
-
-  @override
-  State<_Escribir> createState() => _EscribirState();
-}
-
-class _EscribirState extends State<_Escribir> {
-  final _ctrl = TextEditingController();
-  final _foco = FocusNode();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _foco.dispose();
-    super.dispose();
-  }
-
-  void _enviar() {
-    final t = _ctrl.text.trim();
-    if (t.isEmpty) return;
-    _ctrl.clear();
-    widget.onMandar(t);
-    _foco.requestFocus();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 8, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _ctrl,
-              focusNode: _foco,
-              maxLength: Dibujos.maxMensaje,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _enviar(),
-              decoration: InputDecoration(
-                counterText: '',
-                isDense: true,
-                hintText: widget.dibujo
-                    ? 'Dale una pista a ${widget.partnerName}…'
-                    : '¿Qué es? Escríbelo aquí…',
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Mandar',
-            onPressed: _enviar,
-            icon: Doodle(Icons.send_rounded, color: AppTheme.azul, size: 28),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// El dibujo terminado de la ronda anterior (en chiquito).
 class _DibujoFinal extends StatelessWidget {
   const _DibujoFinal({required this.coupleId, required this.ronda});
@@ -894,6 +1162,7 @@ class EntreRondas extends StatefulWidget {
     this.recientes = const {},
     this.empezando = false,
     this.dibujoFinal,
+    this.marcador,
   });
 
   /// La última ronda (null si nunca jugaron).
@@ -906,9 +1175,21 @@ class EntreRondas extends StatefulWidget {
   final int? ganado;
   final Set<String> recientes;
   final bool empezando;
-  final ValueChanged<String> onEmpezar;
+
+  /// Empieza a dibujar la palabra; [total] es cuántos dibujos tendrá la
+  /// partida si es una nueva.
+  final void Function(String palabra, int total) onEmpezar;
   final VoidCallback onQuieroDibujar;
   final Widget? dibujoFinal;
+
+  /// Los puntos de la partida de la última ronda.
+  final Marcador? marcador;
+
+  /// La siguiente ronda empieza una partida nueva.
+  bool get partidaNueva {
+    final r = ronda;
+    return r == null || !r.enPartida || r.ultima;
+  }
 
   @override
   State<EntreRondas> createState() => _EntreRondasState();
@@ -917,6 +1198,7 @@ class EntreRondas extends StatefulWidget {
 class _EntreRondasState extends State<EntreRondas> {
   late List<String> _opciones = Dibujos.elegir(widget.recientes);
   final _propia = TextEditingController();
+  int _total = Dibujos.partidaPorDefecto;
 
   @override
   void dispose() {
@@ -927,15 +1209,33 @@ class _EntreRondasState extends State<EntreRondas> {
   void _propiaLista() {
     final t = _propia.text.trim();
     if (Dibujos.clave(t).isEmpty) return;
-    widget.onEmpezar(t);
+    widget.onEmpezar(t, _total);
   }
 
   @override
   Widget build(BuildContext context) {
     final r = widget.ronda;
+    final m = widget.marcador;
+    final nueva = widget.partidaNueva;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
+        if (r != null && r.ultima && m != null && m.terminada) ...[
+          TarjetaGanador(
+            marcador: m,
+            uid: widget.uid,
+            partnerName: widget.partnerName,
+          ),
+          const SizedBox(height: 12),
+        ] else if (r != null && r.enPartida) ...[
+          BarraPartida(
+            ronda: r,
+            marcador: m,
+            uid: widget.uid,
+            partnerName: widget.partnerName,
+          ),
+          const SizedBox(height: 10),
+        ],
         if (r == null)
           _Bienvenida(partnerName: widget.partnerName)
         else
@@ -948,10 +1248,47 @@ class _EntreRondasState extends State<EntreRondas> {
           ),
         const SizedBox(height: 18),
         if (widget.meToca) ...[
+          if (nueva) ...[
+            Text(
+              r != null && r.ultima ? '¿Otra partida?' : 'Nueva partida',
+              style: TextStyle(
+                color: AppTheme.azul,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              '¿Cuántos dibujos? Se turnan para dibujar, cada dibujo tiene '
+              '1 minuto y al final gana quien junte más puntos (adivinar '
+              'rápido da más).',
+              style: TextStyle(color: AppTheme.gris, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final n in Dibujos.opcionesPartida)
+                  ChoiceChip(
+                    label: Text('$n dibujos'),
+                    selected: _total == n,
+                    onSelected: (_) => setState(() => _total = n),
+                    selectedColor: AppTheme.amarillo.withValues(alpha: 0.55),
+                    backgroundColor: Colors.white,
+                    checkmarkColor: AppTheme.azul,
+                    labelStyle: TextStyle(
+                      color: AppTheme.azul,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(
-            r == null
+            nueva
                 ? '¿Empiezas tú? Elige qué dibujar'
-                : '¡Ahora dibujas tú!',
+                : 'Dibujo ${r!.numero + 1} de ${r.total}: ¡dibujas tú!',
             style: TextStyle(
               color: AppTheme.azul,
               fontSize: 19,
@@ -969,7 +1306,9 @@ class _EntreRondasState extends State<EntreRondas> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: OutlinedButton(
-                onPressed: widget.empezando ? null : () => widget.onEmpezar(p),
+                onPressed: widget.empezando
+                    ? null
+                    : () => widget.onEmpezar(p, _total),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(
@@ -1028,7 +1367,10 @@ class _EntreRondasState extends State<EntreRondas> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ahora dibuja ${widget.partnerName}',
+                  !nueva && r != null
+                      ? 'Dibujo ${r.numero + 1} de ${r.total}: '
+                            'dibuja ${widget.partnerName}'
+                      : 'Ahora dibuja ${widget.partnerName}',
                   style: TextStyle(
                     color: AppTheme.amarillo,
                     fontSize: 18,
@@ -1037,8 +1379,12 @@ class _EntreRondasState extends State<EntreRondas> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Cuando elija su palabra, aquí verás su dibujo en vivo '
-                  'para que adivines. Quédate cerquita.',
+                  nueva
+                      ? 'Cuando elija cuántos dibujos y su palabra, aquí '
+                            'verás su dibujo en vivo para que adivines. '
+                            'Quédate cerquita.'
+                      : 'Cuando elija su palabra, aquí verás su dibujo en '
+                            'vivo para que adivines. Quédate cerquita.',
                   style: TextStyle(color: AppTheme.crema, fontSize: 14),
                 ),
               ],
@@ -1072,6 +1418,152 @@ class _EntreRondasState extends State<EntreRondas> {
   }
 }
 
+/// Al terminar la partida: quién ganó y con cuántos puntos.
+class TarjetaGanador extends StatelessWidget {
+  const TarjetaGanador({
+    super.key,
+    required this.marcador,
+    required this.uid,
+    required this.partnerName,
+  });
+
+  final Marcador marcador;
+  final String uid;
+  final String partnerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = marcador;
+    final otro = m.members.firstWhere((x) => x != uid, orElse: () => '');
+    final g = m.ganador;
+    final titulo = g == null
+        ? '¡Empate!'
+        : g == uid
+        ? '¡Ganaste la partida!'
+        : '¡Ganó $partnerName!';
+    final sub = g == null
+        ? 'Los dos juntaron lo mismo. ¡Qué buen equipo hacen!'
+        : g == uid
+        ? 'Dibujaste y adivinaste increíble. ¡$partnerName querrá la revancha!'
+        : 'Esta vez ganó $partnerName. ¿Le pides la revancha?';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.azul,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Doodle(
+                Icons.emoji_events_outlined,
+                size: 58,
+                color: AppTheme.crema,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: TextStyle(
+                        color: AppTheme.amarillo,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sub,
+                      style: TextStyle(color: AppTheme.crema, fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _Puntaje(
+                  nombre: 'Tú',
+                  puntos: m.puntos(uid),
+                  adivinadas: m.adivinadas(uid),
+                  gana: g == uid,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _Puntaje(
+                  nombre: partnerName,
+                  puntos: m.puntos(otro),
+                  adivinadas: m.adivinadas(otro),
+                  gana: g == otro,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Puntaje extends StatelessWidget {
+  const _Puntaje({
+    required this.nombre,
+    required this.puntos,
+    required this.adivinadas,
+    required this.gana,
+  });
+
+  final String nombre;
+  final int puntos;
+  final int adivinadas;
+  final bool gana;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+    decoration: BoxDecoration(
+      color: gana ? AppTheme.amarillo : AppTheme.crema,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      children: [
+        Text(
+          nombre,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: AppTheme.azul,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          '$puntos',
+          style: TextStyle(
+            color: AppTheme.azul,
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          adivinadas == 1 ? '1 adivinada' : '$adivinadas adivinadas',
+          style: TextStyle(
+            color: AppTheme.azul.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _Bienvenida extends StatelessWidget {
   const _Bienvenida({required this.partnerName});
   final String partnerName;
@@ -1091,7 +1583,8 @@ class _Bienvenida extends StatelessWidget {
       const SizedBox(height: 8),
       Text(
         'Uno dibuja y $partnerName lo ve en vivo y adivina por el chat. '
-        'Cuando adivina, le toca dibujar.',
+        'Hay 1 minuto por dibujo: adivine o no, después le toca dibujar '
+        'al otro. Al final de la partida, gana quien junte más puntos.',
         textAlign: TextAlign.center,
         style: const TextStyle(color: AppTheme.gris, fontSize: 14.5),
       ),
@@ -1123,6 +1616,7 @@ class _ComoTermino extends StatelessWidget {
         yoDibuje ? '¡$partnerName adivinó!' : '¡Adivinaste!',
       EstadoRonda.rendida =>
         yoDibuje ? '$partnerName se rindió' : 'Te rendiste',
+      EstadoRonda.agotada => '¡Se acabó el tiempo!',
       _ => yoDibuje ? 'Terminaste la ronda' : '$partnerName terminó la ronda',
     };
     final cobro = r.cobros[uid];
@@ -1168,6 +1662,17 @@ class _ComoTermino extends StatelessWidget {
                     ),
                     style: TextStyle(color: AppTheme.azul, fontSize: 15),
                   ),
+                  if (r.adivinada && r.enPartida) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '+${r.puntosDe(uid)} puntos para ti',
+                      style: const TextStyle(
+                        color: ColoresChat.aciertoLetra,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                   if (premio != null) ...[
                     const SizedBox(height: 8),
                     Row(

@@ -45,8 +45,26 @@ class DibujoService {
               ..sort((a, b) => a.n.compareTo(b.n)),
       );
 
-  /// Empieza una ronda: [uid] dibuja [palabra]. Le avisa a la pareja.
-  Future<String> empezar(String coupleId, String uid, String palabra) async {
+  /// Todas las rondas de una partida (para el marcador).
+  Stream<List<Ronda>> watchPartida(String coupleId, String partida) =>
+      _col(coupleId)
+          .where('partida', isEqualTo: partida)
+          .snapshots()
+          .map((q) => [for (final d in q.docs) ?Ronda.fromDoc(d)]);
+
+  /// Id para una partida nueva.
+  String nuevaPartida(String coupleId) => _col(coupleId).doc().id;
+
+  /// Empieza una ronda: [uid] dibuja [palabra]. Es el dibujo [numero] de
+  /// [total] de la [partida]. Le avisa a la pareja.
+  Future<String> empezar(
+    String coupleId,
+    String uid,
+    String palabra, {
+    required String partida,
+    required int numero,
+    required int total,
+  }) async {
     final ref = _col(coupleId).doc();
     final p = palabra.trim();
     await ref.set({
@@ -56,6 +74,10 @@ class DibujoService {
       'estado': EstadoRonda.dibujando.id,
       'mensajes': <Object>[],
       'borradoHasta': 0,
+      'partida': partida,
+      'numero': numero,
+      'total': total,
+      'limite': Dibujos.segundosPorDibujo,
       'creadaEn': FieldValue.serverTimestamp(),
     });
     NotifyService.instance.send(NotifyKind.dibujo, coupleId, ref.id);
@@ -92,8 +114,12 @@ class DibujoService {
     final corto = t.length > Dibujos.maxMensaje
         ? t.substring(0, Dibujos.maxMensaje)
         : t;
+    final tarde = ronda.queda(DateTime.now()) == Duration.zero;
     final acierto =
-        !ronda.dibujo(uid) && ronda.enJuego && Dibujos.adivina(t, ronda.clave);
+        !ronda.dibujo(uid) &&
+        ronda.enJuego &&
+        !tarde &&
+        Dibujos.adivina(t, ronda.clave);
     final m = Mensaje(
       uid: uid,
       texto: corto,
@@ -118,6 +144,15 @@ class DibujoService {
         'estado': ronda.dibujo(uid)
             ? EstadoRonda.cancelada.id
             : EstadoRonda.rendida.id,
+        'terminadaEn': FieldValue.serverTimestamp(),
+      });
+
+  /// Se acabó el minuto: la ronda termina sin puntos y le toca dibujar a
+  /// la otra persona. Lo puede marcar cualquiera de los dos.
+  Future<void> agotar(String coupleId, Ronda ronda) => _col(coupleId)
+      .doc(ronda.id)
+      .update({
+        'estado': EstadoRonda.agotada.id,
         'terminadaEn': FieldValue.serverTimestamp(),
       });
 

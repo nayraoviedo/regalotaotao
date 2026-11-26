@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/dibujo.dart' show Mensaje;
 import '../models/juntos.dart';
 import '../models/telefono.dart';
 import 'db.dart';
@@ -227,6 +228,27 @@ class JuntosService {
     });
     NotifyService.instance.send(NotifyKind.telefono, coupleId, ref.id);
     return ref.id;
+  }
+
+  /// Manda un mensaje al chat de la partida.
+  Future<void> mandarTelefono(
+    String coupleId,
+    String telefonoId,
+    String uid,
+    String texto,
+  ) async {
+    final t = texto.trim();
+    if (t.isEmpty) return;
+    final m = Mensaje(
+      uid: uid,
+      texto: t.length > Telefono.maxMensaje
+          ? t.substring(0, Telefono.maxMensaje)
+          : t,
+      en: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _tel(coupleId).doc(telefonoId).update({
+      'mensajes': FieldValue.arrayUnion([m.toMap()]),
+    });
   }
 
   /// Lee un paso (una frase o un dibujo) de una cadena.

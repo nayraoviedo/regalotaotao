@@ -27,9 +27,20 @@ class Telefono {
     this.cobros = const {},
     this.creadaEn,
     this.favorita = false,
+    this.mensajes = const [],
   });
 
   static const turnos = 4;
+
+  /// Chat de la partida.
+  static const maxMensajes = 150;
+  static const maxMensaje = 120;
+  static const rapidas = <String>[
+    '¡Ya te toca!',
+    'Ya voy',
+    'Jajaja',
+    '¡Qué lindo dibujo!',
+  ];
   static const maxFrase = 80;
 
   /// Números (x, y…) en total por dibujo (para que el documento no pese
@@ -47,6 +58,9 @@ class Telefono {
 
   /// Guardada en el álbum de favoritas.
   final bool favorita;
+
+  /// El chat de la partida (para hablar mientras juegan).
+  final List<Mensaje> mensajes;
 
   int hechos(String uid) => progreso[uid] ?? 0;
 
@@ -85,6 +99,10 @@ class Telefono {
       },
       creadaEn: (m['creadaEn'] as Timestamp?)?.toDate(),
       favorita: m['favorita'] == true,
+      mensajes: [
+        for (final x in (m['mensajes'] as List?) ?? const [])
+          ?Mensaje.fromMap(x),
+      ]..sort((a, b) => a.en.compareTo(b.en)),
     );
   }
 
