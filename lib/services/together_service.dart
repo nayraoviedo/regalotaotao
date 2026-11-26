@@ -149,6 +149,35 @@ class TogetherService {
           .snapshots()
           .map((d) => DailyCard.fromData(d.data(), deck: questions));
 
+  /// Días anteriores de la pregunta del día, entre [desde] y [hasta]
+  /// (incluidos), del más nuevo al más viejo. Se pide por rango de fechas
+  /// (los ids son `yyyy-MM-dd`), así se lee poquito cada vez.
+  Future<List<DiaRespondido>> historial(
+    String coupleId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
+    final q = await Db.coupleSub(coupleId, 'dailyAnswers')
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: todayKey(desde))
+        .where(FieldPath.documentId, isLessThanOrEqualTo: todayKey(hasta))
+        .get();
+    final dias = [
+      for (final d in q.docs)
+        DiaRespondido(d.id, DailyCard.fromData(d.data(), deck: questions)),
+    ]..sort((a, b) => b.dia.compareTo(a.dia));
+    return dias;
+  }
+
+  /// El primer día en que sacaron una carta (para saber hasta dónde hay
+  /// historial). `null` si nunca jugaron.
+  Future<String?> primerDia(String coupleId) async {
+    final q = await Db.coupleSub(
+      coupleId,
+      'dailyAnswers',
+    ).orderBy(FieldPath.documentId).limit(1).get();
+    return q.docs.isEmpty ? null : q.docs.first.id;
+  }
+
   /// Saca un naipe al azar para hoy. Si tu pareja ya lo sacó, devuelve
   /// ese mismo, así los dos responden la misma pregunta.
   ///

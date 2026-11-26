@@ -41,3 +41,35 @@ class DailyCard {
     );
   }
 }
+
+/// Un día de la pregunta del día, para el historial ("Nuestras respuestas").
+class DiaRespondido {
+  const DiaRespondido(this.dia, this.card);
+
+  /// `yyyy-MM-dd`.
+  final String dia;
+  final DailyCard card;
+
+  DateTime get fecha {
+    final p = dia.split('-').map(int.parse).toList();
+    return DateTime(p[0], p[1], p[2]);
+  }
+
+  /// El texto de la pregunta de ese día.
+  String pregunta(List<String> deck) {
+    final c = card.card;
+    if (card.autor == null && c != null && c >= 0 && c < deck.length) {
+      return deck[c];
+    }
+    return card.question ?? '';
+  }
+
+  /// Se muestra en el historial si alguno de los dos respondió.
+  bool get tieneRespuestas =>
+      card.answers.values.any((a) => a.trim().isNotEmpty);
+
+  /// La respuesta de mi pareja se ve si ya respondí, o si el día ya pasó
+  /// (el de hoy sigue la regla de siempre: primero respondes tú).
+  bool puedoVerSuya(String miUid, String hoy) =>
+      dia != hoy || card.answers[miUid] != null;
+}

@@ -92,6 +92,8 @@ flutter:
     # Dibujos de las categorías de la recomendación del día.
     - assets/recomendaciones/
     - assets/casita/
+    # Frasco de la cápsula del tiempo (ver capsula_screen.dart).
+    - assets/capsula/
     # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
     - assets/cartas/
     # Tutorial de bienvenida (ver lib/screens/tutorial/tutorial_screen.dart).

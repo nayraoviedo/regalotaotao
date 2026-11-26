@@ -11,6 +11,7 @@ import '../racha/premio_racha.dart';
 import '../racha/racha_widgets.dart';
 import '../together/gatitos.dart';
 import 'carta_style.dart';
+import 'historial_preguntas.dart';
 import 'mis_preguntas.dart';
 import 'naipes.dart';
 import '../../widgets/doodle.dart';
@@ -140,6 +141,16 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
     uid: widget.me.uid,
   );
 
+  void _historial() => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => HistorialPreguntasScreen(
+        me: widget.me,
+        couple: widget.couple,
+        partner: widget.partner,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,6 +159,11 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
         title: const Text('Pregunta del día'),
         actions: [
           if (_racha case final r?) RachaPreguntas(racha: r, onTap: _verRacha),
+          IconButton(
+            tooltip: 'Nuestras respuestas',
+            icon: const Doodle(Icons.menu_book_rounded),
+            onPressed: _historial,
+          ),
           IconButton(
             tooltip: 'Agregar mis preguntas al mazo',
             icon: const Doodle(Icons.edit_note),
@@ -229,6 +245,12 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
                 icon: const Doodle(Icons.style),
                 label: Text(yaSalio ? 'Ver la carta' : 'Barajar y sacar'),
               ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _historial,
+                icon: const Doodle(Icons.menu_book_rounded),
+                label: const Text('Leer nuestras respuestas'),
+              ),
             ],
           ),
         ),
@@ -295,6 +317,11 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
           ],
         ],
         const SizedBox(height: 20),
+        TextButton.icon(
+          onPressed: _historial,
+          icon: const Doodle(Icons.menu_book_rounded),
+          label: const Text('Leer nuestras respuestas de otros días'),
+        ),
         TextButton.icon(
           onPressed: _misPreguntas,
           icon: const Doodle(Icons.edit_note),

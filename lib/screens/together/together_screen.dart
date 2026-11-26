@@ -8,6 +8,7 @@ import '../../services/datos_curiosos_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../../widgets/user_avatar.dart';
+import '../capsula/capsula_inicio.dart';
 import 'dato_del_dia.dart';
 import 'fondo_flotante.dart';
 import 'gatitos.dart';
@@ -64,6 +65,11 @@ class TogetherScreen extends StatelessWidget {
                 partner: partnerSnap.data,
                 onCambiarFecha: () => _elegirFecha(context, c),
                 datosPareja: datosSnap.data,
+                capsula: CapsulaAcceso(
+                  coupleId: c.id,
+                  uid: myUid,
+                  partnerName: partnerSnap.data?.name ?? 'Tu pareja',
+                ),
               ),
             ),
           ),
@@ -96,6 +102,7 @@ class DiasJuntosView extends StatelessWidget {
     required this.onCambiarFecha,
     this.hoy,
     this.datosPareja,
+    this.capsula,
   });
 
   final Couple couple;
@@ -109,6 +116,9 @@ class DiasJuntosView extends StatelessWidget {
 
   /// Solo para pruebas; por defecto es hoy.
   final DateTime? hoy;
+
+  /// Tarjeta de la cápsula del tiempo (abajo de todo).
+  final Widget? capsula;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +175,10 @@ class DiasJuntosView extends StatelessWidget {
                             dato: DatoCurioso.delDia(datosPareja!, today),
                             nombre: partner?.name ?? 'tu pareja',
                           ),
+                        ],
+                        if (capsula case final c?) ...[
+                          const SizedBox(height: 24),
+                          c,
                         ],
                       ],
                     ),

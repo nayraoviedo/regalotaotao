@@ -60,6 +60,46 @@ await ok('A manda un beso a B', addDoc(collection(db('A'),'couples/c1/besos'),{f
 await no('A no manda besos en nombre de B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'B',to:'A'}));
 await ok('A hace sonar el cascabel para B', addDoc(collection(db('A'),'couples/c1/cascabeles'),{from:'A',to:'B'}));
 await no('A no hace sonar el cascabel en nombre de B', addDoc(collection(db('A'),'couples/c1/cascabeles'),{from:'B',to:'A'}));
+// Buenos días y buenas noches.
+await ok('A le da los buenos días a B', addDoc(collection(db('A'),'couples/c1/saludos'),{from:'A',to:'B',tipo:'dias',texto:'¡Que tengas un lindo día!',createdAt:serverTimestamp()}));
+await ok('A le da las buenas noches a B sin mensaje', addDoc(collection(db('A'),'couples/c1/saludos'),{from:'A',to:'B',tipo:'noches',createdAt:serverTimestamp()}));
+await no('A no saluda en nombre de B', addDoc(collection(db('A'),'couples/c1/saludos'),{from:'B',to:'A',tipo:'dias',createdAt:serverTimestamp()}));
+await no('saludo de otro tipo no', addDoc(collection(db('A'),'couples/c1/saludos'),{from:'A',to:'B',tipo:'tardes',createdAt:serverTimestamp()}));
+await no('mensajito de más de 140 letras no', addDoc(collection(db('A'),'couples/c1/saludos'),{from:'A',to:'B',tipo:'dias',texto:'x'.repeat(141),createdAt:serverTimestamp()}));
+await no('C no saluda a B', addDoc(collection(db('C'),'couples/c1/saludos'),{from:'C',to:'B',tipo:'dias',createdAt:serverTimestamp()}));
+// Cápsula del tiempo.
+{
+  const { Timestamp, increment } = await import('firebase/firestore');
+  const enUnAnio = Timestamp.fromMillis(Date.now() + 365 * 864e5);
+  const cap = (u) => doc(db(u), 'couples/c1/capsulas/k1');
+  const nueva = { titulo: 'Para nosotros del 2027', creadaPor: 'A', abrirEl: enUnAnio, avisarEn: enUnAnio, aportes: {}, ultimo: 'A', createdAt: serverTimestamp() };
+  await no('no se entierra una cápsula que ya se abrió', setDoc(cap('A'), { ...nueva, abrirEl: Timestamp.fromMillis(Date.now() - 1000), avisarEn: Timestamp.fromMillis(Date.now() - 1000) }));
+  await no('C no entierra cápsulas en la pareja', setDoc(doc(db('C'), 'couples/c1/capsulas/k1'), { ...nueva, creadaPor: 'C', ultimo: 'C' }));
+  await ok('A entierra una cápsula', setDoc(cap('A'), nueva));
+  const guardar = (u, id, extra = {}) => { const d = db(u); const b = writeBatch(d);
+    b.set(doc(d, `couples/c1/capsulas/k1/cosas/${id}`), { from: u, texto: 'hoy estamos felices', createdAt: serverTimestamp(), ...extra });
+    b.update(doc(d, 'couples/c1/capsulas/k1'), { [`aportes.${u}`]: increment(1), ultimo: u }); return b.commit(); };
+  await ok('A guarda algo', guardar('A', 'a1'));
+  await ok('B guarda algo con foto', guardar('B', 'b1', { foto: 'abc' }));
+  await no('B no lee lo guardado antes de tiempo', getDoc(doc(db('B'), 'couples/c1/capsulas/k1/cosas/b1')));
+  await no('A no lee ni lo suyo antes de tiempo', getDocs(collection(db('A'), 'couples/c1/capsulas/k1/cosas')));
+  await ok('B ve cuántas cosas hay', getDoc(cap('B')));
+  await no('B no cambia la fecha', updateDoc(cap('B'), { abrirEl: Timestamp.fromMillis(Date.now() + 2 * 3600e3) }));
+  await no('B no suma por A', updateDoc(cap('B'), { 'aportes.A': increment(1), ultimo: 'B' }));
+  await no('A no borra la cápsula con cosas', deleteDoc(cap('A')));
+  await no('B no cambia lo que guardó', updateDoc(doc(db('B'), 'couples/c1/capsulas/k1/cosas/b1'), { texto: 'otro' }));
+  // Una que ya se abrió (sembrada sin reglas).
+  await env.withSecurityRulesDisabled(async (c) => {
+    const d = c.firestore();
+    await setDoc(doc(d, 'couples/c1/capsulas/k2'), { ...nueva, abrirEl: Timestamp.fromMillis(Date.now() - 1000), aportes: { A: 1 } });
+    await setDoc(doc(d, 'couples/c1/capsulas/k2/cosas/x'), { from: 'A', texto: 'hola futuro' });
+  });
+  await ok('abierta: B lee lo que guardó A', getDocs(collection(db('B'), 'couples/c1/capsulas/k2/cosas')));
+  await no('abierta: C no lee', getDocs(collection(db('C'), 'couples/c1/capsulas/k2/cosas')));
+  await no('abierta: ya no se guarda nada', setDoc(doc(db('A'), 'couples/c1/capsulas/k2/cosas/tarde'), { from: 'A', texto: 'tarde', createdAt: serverTimestamp() }));
+  await ok('A crea otra vacía y la borra', setDoc(doc(db('A'), 'couples/c1/capsulas/k3'), nueva).then(() => deleteDoc(doc(db('A'), 'couples/c1/capsulas/k3'))));
+  await ok('A lee las respuestas de otros días', getDocs(query(collection(db('A'), 'couples/c1/dailyAnswers'), where('__name__', '>=', doc(db('A'), 'couples/c1/dailyAnswers/2026-11-01')))));
+}
 await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
 // Música juntos.
 const sala = (u) => doc(db(u),'couples/c1/musica/sala');
