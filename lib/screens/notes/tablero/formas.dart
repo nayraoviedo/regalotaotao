@@ -37,10 +37,10 @@ class SiluetaDeNota extends StatelessWidget {
 
 /// Zona de cada forma donde va el texto, en fracciones del tamaño.
 Rect zonaDeTexto(String forma) => switch (forma) {
-  'gatito' => const Rect.fromLTRB(0.14, 0.52, 0.86, 0.9),
+  'gatito' => const Rect.fromLTRB(0.12, 0.49, 0.88, 0.93),
   'estrella' => const Rect.fromLTRB(0.27, 0.4, 0.73, 0.72),
   'corazon' => const Rect.fromLTRB(0.17, 0.2, 0.83, 0.62),
-  'rana' => const Rect.fromLTRB(0.13, 0.5, 0.87, 0.9),
+  'rana' => const Rect.fromLTRB(0.12, 0.49, 0.88, 0.92),
   'polaroid' => const Rect.fromLTRB(0.09, 0.77, 0.91, 0.97),
   'clip' => const Rect.fromLTRB(0.11, 0.15, 0.89, 0.9),
   _ => const Rect.fromLTRB(0.11, 0.15, 0.89, 0.9),

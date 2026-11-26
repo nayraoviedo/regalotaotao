@@ -76,12 +76,20 @@ class NotasStyle {
     'gatito',
   ];
 
-  /// Letra de las notas (manuscrita, como escrita a mano).
-  static const letra = TextStyle(
+  /// Letra del título de las notas (cursiva, como escrita a mano).
+  static const titulo = TextStyle(
     fontFamily: 'Manuscrita',
     color: azul,
-    fontSize: 19,
-    height: 1.25,
+    fontSize: 20,
+    height: 1.2,
+  );
+
+  /// Letra del contenido: manuscrita pero de imprenta, fácil de leer.
+  static const letra = TextStyle(
+    fontFamily: 'LetraNota',
+    color: azul,
+    fontSize: 18,
+    height: 1.2,
   );
 }
 
