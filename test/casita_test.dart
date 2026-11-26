@@ -398,7 +398,16 @@ void main() {
       expect([aLas(16), aLas(17)], everyElement(Escena.picnic));
       expect(aLas(18), Escena.cocinando);
       expect(aLas(19), Escena.cena);
-      expect([aLas(20), aLas(21)], everyElement(Escena.drama));
+      expect(aLas(20), Escena.drama);
+      // A las 21 ven las estrellas en el jardín (sin jardín, siguen con
+      // su drama).
+      expect(aLas(21), Escena.estrellas);
+      expect(
+        EstadoCasita.fromMap({
+          'tenemos': ['cuarto_cocina'],
+        }).escena(DateTime(2026, 11, 24, 21, 20)),
+        Escena.drama,
+      );
       expect([aLas(3), aLas(6), aLas(22)], everyElement(isNull));
       // La siesta es en la cama, y se ve que duermen.
       final tres = DateTime(2026, 11, 24, 14, 20);
@@ -765,6 +774,43 @@ void main() {
       expect(Receta.pavo.deTemporada(DateTime(2026, 12, 24)), isTrue);
       expect(Receta.pavo.deTemporada(DateTime(2026, 7, 1)), isFalse);
       expect(Receta.dumplings.deTemporada(DateTime(2026, 7, 1)), isTrue);
+    });
+
+    test('cada cosa de la tienda tiene su dibujo', () {
+      for (final c in Catalogo.cosas) {
+        if (c.esCuarto || c.esEspecial) continue;
+        final archivo = c.esRopa
+            ? 'assets/casita/ropa_${c.id}_naranja.png'
+            : 'assets/casita/${c.id}.png';
+        expect(File(archivo).existsSync(), isTrue, reason: c.id);
+        if (c.lugar == Lugar.comida) {
+          expect(File(c.assetDelante).existsSync(), isTrue, reason: c.id);
+        }
+      }
+      for (final e in Escena.values.where((e) => e.libre)) {
+        expect(File(e.capa(0)).existsSync(), isTrue, reason: e.name);
+      }
+    });
+
+    test('al darles de comer se despiertan y comen', () {
+      final pastel = Catalogo.porId('comida_pastel_chocolate')!;
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', pastel.id],
+      });
+      final noche = DateTime(2026, 11, 24, 23, 30);
+      final capas = e.capas(
+        Cuarto.sala,
+        true,
+        Momento.noche,
+        0,
+        false,
+        noche,
+        true,
+        pastel,
+      );
+      expect(capas, contains('assets/casita/delante_pastel_chocolate.png'));
+      expect(capas, contains('assets/casita/escena_comer_1.png'));
+      expect(capas.any((c) => c.contains('dormidos')), isFalse);
     });
 
     test('cada receta tiene su plato y sus ingredientes se cosechan', () {
@@ -1232,6 +1278,21 @@ void main() {
       expect(find.text('¡Qué rico bañito!'), findsOneWidget);
       await t.pump(const Duration(seconds: 6));
       expect(find.text('Bañar a los gatitos'), findsOneWidget);
+    });
+
+    testWidgets('darles de comer algo que compraron', (t) async {
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(tenemos: {'cuarto_cocina', 'comida_donas'}),
+        ),
+      );
+      await t.tap(find.text('Darles de comer'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Donas'));
+      await t.pumpAndSettle();
+      expect(find.text('¡Ñam! Les encantó'), findsOneWidget);
+      await t.pump(const Duration(seconds: 7));
+      expect(find.text('Darles de comer'), findsOneWidget);
     });
 
     testWidgets('los movimientos dicen quién hizo qué', (t) async {
