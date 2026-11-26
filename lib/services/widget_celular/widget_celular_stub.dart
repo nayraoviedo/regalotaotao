@@ -13,5 +13,6 @@ class WidgetCelular {
     required int pescaditos,
     String? metaNombre,
     int? metaPrecio,
+    int metaAhorrado = 0,
   }) async {}
 }

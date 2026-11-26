@@ -16,7 +16,10 @@ import java.util.Calendar
  *
  * La app (lib/widgets/casita_widget_sync.dart) guarda con home_widget:
  *   img_casita_dia, img_casita_tarde, img_casita_noche (rutas de PNG),
- *   casita_pescaditos, casita_meta_nombre y casita_meta_precio (alcancía).
+ *   casita_pescaditos, casita_meta_nombre, casita_meta_precio y
+ *   casita_meta_ahorrado (alcancía: lo que ya pusieron para la meta).
+ * La alcancía se dibuja con res/drawable-nodpi/widget_alcancia.png (el mismo
+ * chanchito de assets/doodles/alcancia.png; se puede reemplazar).
  * Aquí se elige el dibujo según la hora, igual que en la app
  * (de 7 a 17 de día, 18 y 19 de tarde, de 20 a 6 de noche).
  */
@@ -59,20 +62,27 @@ class CasitaWidget : HomeWidgetProvider() {
         if (ruta == null) {
             v.setTextViewText(R.id.casita_texto, "Abre la app")
             v.setViewVisibility(R.id.casita_alcancia, View.GONE)
+            v.setViewVisibility(R.id.casita_chanchito, View.GONE)
             return
         }
         val pescaditos = datos.getInt("casita_pescaditos", 0)
         val meta = datos.getString("casita_meta_nombre", null)
         val precio = datos.getInt("casita_meta_precio", 0)
+        val ahorrado = datos.getInt("casita_meta_ahorrado", 0)
         if (meta != null && precio > 0) {
-            v.setTextViewText(R.id.casita_texto, "🐷 $meta: $pescaditos/$precio")
+            v.setTextViewText(
+                R.id.casita_texto,
+                if (ahorrado >= precio) "¡Llena! $meta" else "$meta: $ahorrado/$precio",
+            )
+            v.setViewVisibility(R.id.casita_chanchito, View.VISIBLE)
             v.setViewVisibility(R.id.casita_alcancia, View.VISIBLE)
             v.setProgressBar(
                 R.id.casita_alcancia, 100,
-                (pescaditos * 100 / precio).coerceIn(0, 100), false,
+                (ahorrado * 100 / precio).coerceIn(0, 100), false,
             )
         } else {
             v.setTextViewText(R.id.casita_texto, "🐟 $pescaditos pescaditos")
+            v.setViewVisibility(R.id.casita_chanchito, View.GONE)
             v.setViewVisibility(R.id.casita_alcancia, View.GONE)
         }
     }

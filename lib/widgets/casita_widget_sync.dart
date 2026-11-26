@@ -84,6 +84,7 @@ class _CasitaWidgetSyncState extends State<CasitaWidgetSync> {
         pescaditos: estado.pescaditos,
         metaNombre: meta?.nombre,
         metaPrecio: meta?.precio,
+        metaAhorrado: estado.ahorrado,
       );
     } finally {
       _dibujando = false;

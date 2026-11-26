@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/sudoku.dart';
+import '../../services/juntos_service.dart';
 import '../../services/pescaditos_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
@@ -13,19 +15,224 @@ import '../casita/cuarto.dart' show Pescaditos;
 import '../../services/juegos_extras_service.dart';
 import 'festejo.dart';
 
-/// Sudoku para jugar solo (o sola). Se guarda en el celular para seguir
+/// Sudoku: antes de empezar eliges si juegas a solas o en pareja.
+class SudokuScreen extends StatelessWidget {
+  const SudokuScreen({
+    super.key,
+    required this.coupleId,
+    required this.uid,
+    this.partnerName = 'Tu pareja',
+  });
+
+  final String coupleId;
+  final String uid;
+  final String partnerName;
+
+  @override
+  Widget build(BuildContext context) {
+    void abrir(Widget w) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sudoku')),
+      body: SafeArea(
+        top: false,
+        child: StreamBuilder<SudokuPareja?>(
+          stream: JuntosService.instance.watchSudoku(coupleId),
+          builder: (context, snap) => ElegirModoSudoku(
+            partnerName: partnerName,
+            enPareja: snap.data?.jugando == true ? snap.data : null,
+            uid: uid,
+            onSolo: () => abrir(SudokuSoloScreen(coupleId: coupleId, uid: uid)),
+            onPareja: () => abrir(
+              SudokuParejaScreen(
+                coupleId: coupleId,
+                uid: uid,
+                partnerName: partnerName,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Las dos opciones: a solas o en pareja (sin Firebase, para probarla).
+class ElegirModoSudoku extends StatelessWidget {
+  const ElegirModoSudoku({
+    super.key,
+    required this.partnerName,
+    required this.uid,
+    required this.onSolo,
+    required this.onPareja,
+    this.enPareja,
+  });
+
+  final String partnerName;
+  final String uid;
+  final VoidCallback onSolo;
+  final VoidCallback onPareja;
+
+  /// El sudoku en pareja que está en juego (si hay uno).
+  final SudokuPareja? enPareja;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = enPareja;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(20),
+          children: [
+            SizedBox(
+              height: 150,
+              child: Image.asset(
+                'assets/images/juego_sudoku.png',
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox(),
+              ),
+            ),
+            Text(
+              '¿Cómo quieres jugar?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.azul,
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'De las dos formas ganas pescaditos para la casita.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.gris, fontSize: 14),
+            ),
+            const SizedBox(height: 18),
+            _OpcionModo(
+              titulo: 'En pareja',
+              icono: Icons.favorite_border,
+              descripcion: p != null
+                  ? (p.por == uid
+                        ? 'Tienen un sudoku ${p.nivel.nombre.toLowerCase()} '
+                              'a medias. ¡Sigue llenándolo con $partnerName!'
+                        : '¡$partnerName empezó un sudoku para los dos! '
+                              'Entra a poner tus números.')
+                  : 'Un solo tablero para los dos: cada uno pone números '
+                        'desde su celular y lo ven al instante. Los errores '
+                        'y las sugerencias son de los dos.',
+              boton: p != null ? 'Seguir juntos' : 'Jugar en pareja',
+              aviso: p != null && p.por != uid,
+              onTap: onPareja,
+            ),
+            const SizedBox(height: 12),
+            _OpcionModo(
+              titulo: 'A solas',
+              icono: Icons.person_outline,
+              descripcion:
+                  'Tu propio tablero para un ratito tranquilo, con '
+                  'deshacer, notas y sugerencias. Se guarda en tu celular.',
+              boton: 'Jugar a solas',
+              onTap: onSolo,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpcionModo extends StatelessWidget {
+  const _OpcionModo({
+    required this.titulo,
+    required this.icono,
+    required this.descripcion,
+    required this.boton,
+    required this.onTap,
+    this.aviso = false,
+  });
+
+  final String titulo;
+  final IconData icono;
+  final String descripcion;
+  final String boton;
+  final VoidCallback onTap;
+  final bool aviso;
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = aviso ? AppTheme.crema : AppTheme.gris;
+    return Card(
+      margin: EdgeInsets.zero,
+      color: aviso ? AppTheme.azul : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Doodle(
+                    icono,
+                    size: 26,
+                    color: aviso ? AppTheme.amarillo : AppTheme.azul,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      color: aviso ? AppTheme.amarillo : AppTheme.azul,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                descripcion,
+                style: TextStyle(color: texto, fontSize: 14, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: onTap,
+                style: aviso
+                    ? FilledButton.styleFrom(
+                        backgroundColor: AppTheme.amarillo,
+                        foregroundColor: AppTheme.azul,
+                      )
+                    : null,
+                child: Text(boton),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sudoku para jugar a solas. Se guarda en el celular para seguir
 /// después, y completarlo da pescaditos según el nivel.
-class SudokuScreen extends StatefulWidget {
-  const SudokuScreen({super.key, required this.coupleId, required this.uid});
+class SudokuSoloScreen extends StatefulWidget {
+  const SudokuSoloScreen({
+    super.key,
+    required this.coupleId,
+    required this.uid,
+  });
 
   final String coupleId;
   final String uid;
 
   @override
-  State<SudokuScreen> createState() => _SudokuScreenState();
+  State<SudokuSoloScreen> createState() => _SudokuScreenState();
 }
 
-class _SudokuScreenState extends State<SudokuScreen>
+class _SudokuScreenState extends State<SudokuSoloScreen>
     with WidgetsBindingObserver {
   Sudoku? _s;
   int? _sel;
@@ -184,7 +391,7 @@ class _SudokuScreenState extends State<SudokuScreen>
     final s = _s;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sudoku'),
+        title: const Text('Sudoku a solas'),
         actions: [
           if (s != null)
             TextButton(
@@ -253,10 +460,18 @@ class _SudokuScreenState extends State<SudokuScreen>
 
 /// Elegir el nivel (o al azar).
 class ElegirNivel extends StatelessWidget {
-  const ElegirNivel({super.key, required this.onElegir, this.compacto = false});
+  const ElegirNivel({
+    super.key,
+    required this.onElegir,
+    this.compacto = false,
+    this.titulo = 'Un sudoku nuevo',
+    this.subtitulo = 'Llena el tablero para ganar pescaditos para la casita.',
+  });
 
   final ValueChanged<NivelSudoku> onElegir;
   final bool compacto;
+  final String titulo;
+  final String subtitulo;
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +486,7 @@ class ElegirNivel extends StatelessWidget {
           ),
         ),
       Text(
-        'Un sudoku nuevo',
+        titulo,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: AppTheme.azul,
@@ -280,10 +495,10 @@ class ElegirNivel extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 4),
-      const Text(
-        'Llena el tablero para ganar pescaditos para la casita.',
+      Text(
+        subtitulo,
         textAlign: TextAlign.center,
-        style: TextStyle(color: AppTheme.gris, fontSize: 14),
+        style: const TextStyle(color: AppTheme.gris, fontSize: 14),
       ),
       const SizedBox(height: 16),
       FilledButton(
@@ -340,6 +555,314 @@ class ElegirNivel extends StatelessWidget {
   }
 }
 
+/// Sudoku en pareja: un solo tablero en Firestore que llenan los dos a la
+/// vez. Las notas son de cada uno (se guardan en su celular).
+class SudokuParejaScreen extends StatefulWidget {
+  const SudokuParejaScreen({
+    super.key,
+    required this.coupleId,
+    required this.uid,
+    this.partnerName = 'Tu pareja',
+  });
+
+  final String coupleId;
+  final String uid;
+  final String partnerName;
+
+  @override
+  State<SudokuParejaScreen> createState() => _SudokuParejaScreenState();
+}
+
+class _SudokuParejaScreenState extends State<SudokuParejaScreen> {
+  final _svc = JuntosService.instance;
+  late final _partidas = _svc.watchSudoku(widget.coupleId);
+  final _notasDe = <String, List<Set<int>>>{};
+  final _cobradas = <String>{};
+  final _ganado = <String, int>{};
+  int? _sel;
+  bool _notas = false;
+  bool _eligiendo = false;
+  bool _empezando = false;
+  Timer? _reloj;
+
+  String get _c => widget.coupleId;
+  String get _uid => widget.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    // Para que el tiempo avance en pantalla.
+    _reloj = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _reloj?.cancel();
+    super.dispose();
+  }
+
+  String _claveNotas(String id) => 'sudoku_pareja_notas_${_uid}_$id';
+
+  /// Tus notas de ese tablero (se leen del celular la primera vez).
+  List<Set<int>> _notasDel(String id) {
+    final ya = _notasDe[id];
+    if (ya != null) return ya;
+    final notas = List.generate(81, (_) => <int>{});
+    _notasDe[id] = notas;
+    SharedPreferences.getInstance().then((p) {
+      final txt = p.getString(_claveNotas(id));
+      if (txt == null) return;
+      try {
+        final l = jsonDecode(txt) as List;
+        for (var i = 0; i < 81 && i < l.length; i++) {
+          notas[i].addAll([for (final n in l[i] as List) (n as num).toInt()]);
+        }
+        if (mounted) setState(() {});
+      } catch (_) {}
+    }, onError: (_) {});
+    return notas;
+  }
+
+  Future<void> _guardarNotas(String id) async {
+    final n = _notasDe[id];
+    if (n == null) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(
+        _claveNotas(id),
+        jsonEncode([for (final s in n) s.toList()]),
+      );
+    } catch (_) {}
+  }
+
+  void _alVer(SudokuPareja s) {
+    if (s.puedeCobrar(_uid) && _cobradas.add(s.id)) {
+      _svc
+          .cobrarSudoku(_c, _uid, s)
+          .then(
+            (n) {
+              if (!mounted) return;
+              setState(() => _ganado[s.id] = n);
+              festejar(
+                context,
+                titulo: '¡Completaron el sudoku juntos!',
+                ganado: n,
+                extra:
+                    'Tú pusiste ${s.puestosPor(_uid)} y '
+                    '${widget.partnerName} ${s.puestosPor(_otro(s))}. '
+                    'Tiempo: ${Records.tiempo(s.segundos())}',
+              );
+            },
+            onError: (_) {
+              _cobradas.remove(s.id);
+            },
+          );
+    }
+  }
+
+  String _otro(SudokuPareja s) =>
+      s.de.values.firstWhere((u) => u != _uid, orElse: () => '');
+
+  Future<void> _empezar(
+    NivelSudoku nivel, {
+    List<int>? inicial,
+    List<int>? solucion,
+  }) async {
+    setState(() => _empezando = true);
+    // Deja que se pinte el "cargando" antes de armar el sudoku.
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    try {
+      await _svc.empezarSudoku(
+        _c,
+        _uid,
+        nivel,
+        inicial: inicial,
+        solucion: solucion,
+      );
+      _eligiendo = false;
+      _sel = null;
+      _notas = false;
+    } catch (_) {
+      _aviso('No se pudo empezar, intenta otra vez');
+    }
+    if (mounted) setState(() => _empezando = false);
+  }
+
+  Future<void> _jugar(
+    SudokuPareja s,
+    Map<String, Object>? Function(SudokuPareja s) jugada,
+  ) async {
+    try {
+      await _svc.jugarSudoku(_c, s.id, jugada);
+    } catch (_) {
+      _aviso('No se pudo guardar, revisa tu internet');
+    }
+  }
+
+  void _numero(SudokuPareja s, int n) {
+    final i = _sel;
+    if (i == null || !s.jugando) return;
+    if (_notas) {
+      setState(() => s.comoSudoku(_notasDel(s.id)).anotar(i, n));
+      _guardarNotas(s.id);
+      return;
+    }
+    if (s.inicial[i] != 0 || s.valores[i] == s.solucion[i]) return;
+    if (n != s.solucion[i]) {
+      HapticFeedback.heavyImpact();
+    } else {
+      // Quita esa nota de las vecinas (solo en tus notas).
+      final notas = _notasDel(s.id);
+      notas[i].clear();
+      for (var j = 0; j < 81; j++) {
+        if (Sudoku.vecinas(i, j)) notas[j].remove(n);
+      }
+      _guardarNotas(s.id);
+    }
+    _jugar(s, (a) => a.poner(_uid, i, n));
+  }
+
+  void _aviso(String t) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  Future<void> _elegirNivel() async {
+    final nivel = await showModalBottomSheet<NivelSudoku>(
+      context: context,
+      backgroundColor: AppTheme.crema,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: ElegirNivel(
+            onElegir: (n) => Navigator.pop(c, n),
+            compacto: true,
+            titulo: 'Un sudoku nuevo para los dos',
+            subtitulo:
+                'Al completarlo, cada uno gana pescaditos para la casita.',
+          ),
+        ),
+      ),
+    );
+    if (nivel != null) _empezar(nivel);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<SudokuPareja?>(
+      stream: _partidas,
+      builder: (context, snap) {
+        final s = snap.data;
+        if (s != null) _alVer(s);
+        final cargando =
+            _empezando || snap.connectionState == ConnectionState.waiting;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Sudoku en pareja'),
+            actions: [
+              if (s != null && s.jugando)
+                TextButton(onPressed: _elegirNivel, child: const Text('Nuevo')),
+            ],
+          ),
+          body: SafeArea(
+            top: false,
+            child: cargando
+                ? const Center(child: CircularProgressIndicator())
+                : s == null || _eligiendo
+                ? ElegirNivel(
+                    onElegir: _empezar,
+                    titulo: 'Un sudoku para los dos',
+                    subtitulo:
+                        'Un solo tablero: ${widget.partnerName} y tú ponen '
+                        'números desde cada celular y lo ven al instante. '
+                        'Le avisamos cuando lo empieces.',
+                  )
+                : _tablero(s),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tablero(SudokuPareja p) {
+    final s = p.comoSudoku(_notasDel(p.id));
+    final yo = p.puestosPor(_uid);
+    final otro = p.de.length - yo;
+    return SudokuVista(
+      sudoku: s,
+      pareja: true,
+      dePareja: p.dePareja(_uid),
+      seleccionada: _sel,
+      notas: _notas,
+      ganado: _ganado[p.id],
+      pie: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 14,
+          runSpacing: 4,
+          children: [
+            _Quien(color: const Color(0xFF3B6FD6), texto: 'Tú: $yo'),
+            _Quien(
+              color: _Celda.naranja,
+              texto: '${widget.partnerName}: $otro',
+            ),
+          ],
+        ),
+      ),
+      onCelda: (i) => setState(() => _sel = i),
+      onNumero: (n) => _numero(p, n),
+      onDeshacer: () {},
+      onBorrar: () {
+        final i = _sel;
+        if (i == null) return;
+        if (p.valores[i] == 0) {
+          setState(() => _notasDel(p.id)[i].clear());
+          _guardarNotas(p.id);
+          return;
+        }
+        _jugar(p, (a) => a.borrar(i));
+      },
+      onNotas: () => setState(() => _notas = !_notas),
+      onSugerencia: () {
+        final r = p.sugerir(_uid, _sel);
+        if (r == null) return;
+        setState(() => _sel = r.$1);
+        _jugar(p, (a) => a.sugerir(_uid, r.$1)?.$2);
+      },
+      onNuevo: () => setState(() => _eligiendo = true),
+      onReintentar: () =>
+          _empezar(p.nivel, inicial: p.inicial, solucion: p.solucion),
+    );
+  }
+}
+
+/// "Tú: 12" con el color de tus números.
+class _Quien extends StatelessWidget {
+  const _Quien({required this.color, required this.texto});
+  final Color color;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 5),
+      Text(texto, style: const TextStyle(color: AppTheme.gris, fontSize: 13)),
+    ],
+  );
+}
+
 /// El sudoku sin estado propio (para probarlo).
 class SudokuVista extends StatelessWidget {
   const SudokuVista({
@@ -356,9 +879,21 @@ class SudokuVista extends StatelessWidget {
     this.seleccionada,
     this.notas = false,
     this.ganado,
+    this.pareja = false,
+    this.dePareja = const {},
+    this.pie,
   });
 
   final Sudoku sudoku;
+
+  /// Es un sudoku en pareja (cambian los textos del final).
+  final bool pareja;
+
+  /// Celdas que llenó tu pareja (se pintan de otro color).
+  final Set<int> dePareja;
+
+  /// Algo que va debajo de los datos (quién puso cuántos).
+  final Widget? pie;
   final int? seleccionada;
   final bool notas;
   final int? ganado;
@@ -390,6 +925,7 @@ class SudokuVista extends StatelessWidget {
               child: Column(
                 children: [
                   _Datos(sudoku: s),
+                  ?pie,
                   const SizedBox(height: 8),
                   SizedBox(
                     width: lado,
@@ -400,12 +936,14 @@ class SudokuVista extends StatelessWidget {
                           sudoku: s,
                           seleccionada: seleccionada,
                           onCelda: onCelda,
+                          dePareja: dePareja,
                         ),
                         if (fin)
                           Positioned.fill(
                             child: _Final(
                               sudoku: s,
                               ganado: ganado,
+                              pareja: pareja,
                               onNuevo: onNuevo,
                               onReintentar: onReintentar,
                             ),
@@ -497,11 +1035,13 @@ class _Tablero extends StatelessWidget {
     required this.sudoku,
     required this.seleccionada,
     required this.onCelda,
+    this.dePareja = const {},
   });
 
   final Sudoku sudoku;
   final int? seleccionada;
   final ValueChanged<int> onCelda;
+  final Set<int> dePareja;
 
   @override
   Widget build(BuildContext context) {
@@ -532,6 +1072,7 @@ class _Tablero extends StatelessWidget {
                       notas: s.notas[i],
                       fija: s.fija(i),
                       mal: s.mal(i),
+                      deLaPareja: dePareja.contains(i),
                       elegida: sel == i,
                       vecina: sel != null && Sudoku.vecinas(sel, i),
                       mismoNumero:
@@ -582,6 +1123,7 @@ class _Celda extends StatelessWidget {
     required this.notas,
     required this.fija,
     required this.mal,
+    this.deLaPareja = false,
     required this.elegida,
     required this.vecina,
     required this.mismoNumero,
@@ -592,12 +1134,16 @@ class _Celda extends StatelessWidget {
   final Set<int> notas;
   final bool fija;
   final bool mal;
+  final bool deLaPareja;
   final bool elegida;
   final bool vecina;
   final bool mismoNumero;
   final double lado;
 
   static const _rojo = Color(0xFFD9534F);
+
+  /// Los números de tu pareja, en naranja (como su gatito o el tuyo).
+  static const naranja = Color(0xFFE0803A);
 
   @override
   Widget build(BuildContext context) {
@@ -621,6 +1167,8 @@ class _Celda extends StatelessWidget {
               ? _rojo
               : fija
               ? AppTheme.azul
+              : deLaPareja
+              ? naranja
               : const Color(0xFF3B6FD6),
         ),
       );
@@ -811,10 +1359,12 @@ class _Final extends StatelessWidget {
     required this.ganado,
     required this.onNuevo,
     required this.onReintentar,
+    this.pareja = false,
   });
 
   final Sudoku sudoku;
   final int? ganado;
+  final bool pareja;
   final VoidCallback onNuevo;
   final VoidCallback onReintentar;
 
@@ -840,7 +1390,9 @@ class _Final extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            gano ? '¡Lo completaste!' : 'Se acabaron las oportunidades',
+            gano
+                ? (pareja ? '¡Lo completaron juntos!' : '¡Lo completaste!')
+                : 'Se acabaron las oportunidades',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.azul,
@@ -868,10 +1420,13 @@ class _Final extends StatelessWidget {
               ],
             )
           else
-            const Text(
-              'Tuviste 3 errores. ¡No pasa nada, inténtalo otra vez!',
+            Text(
+              pareja
+                  ? 'Entre los dos llegaron a 3 errores. ¡No pasa nada, '
+                        'inténtenlo otra vez!'
+                  : 'Tuviste 3 errores. ¡No pasa nada, inténtalo otra vez!',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.gris),
+              style: const TextStyle(color: AppTheme.gris),
             ),
           if (gano && ganado == 0)
             const Padding(
