@@ -1095,7 +1095,7 @@ service cloud.firestore {
           && docId == 'estado'
           && request.resource.data.keys()
                .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto',
-                         'regalos', 'meta', 'propuesta', 'pushSentFor', 'bebes',
+                         'regalos', 'meta', 'ahorrado', 'aportes', 'propuesta', 'pushSentFor', 'bebes',
                          'sembrado', 'despensa', 'cocinado'])
           // Cuándo se sembró cada semilla: {cosa: milisegundos}.
           && request.resource.data.get('sembrado', {}) is map
@@ -1108,6 +1108,12 @@ service cloud.firestore {
           // Regalos sorpresa envueltos y la meta de la alcancía.
           && request.resource.data.get('regalos', {}) is map
           && request.resource.data.get('meta', '') is string
+          // Alcancía: lo ahorrado sigue en el monedero, pero apartado; nada
+          // que se compre puede dejar el monedero por debajo de eso.
+          && request.resource.data.get('ahorrado', 0) is int
+          && request.resource.data.get('ahorrado', 0) >= 0
+          && request.resource.data.get('pescaditos', 0) >= request.resource.data.get('ahorrado', 0)
+          && request.resource.data.get('aportes', {}) is map
           // La foto pixelada del cuadro: 14 × 12 colores.
           && (!('foto' in request.resource.data)
               || (request.resource.data.foto is list

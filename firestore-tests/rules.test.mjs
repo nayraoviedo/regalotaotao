@@ -293,6 +293,14 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await no('nadie borra un movimiento', deleteDoc(doc(db('B'),'couples/c1/casitaMovs/pomodoro_l1')));
   await no('un movimiento suelto no entra', setDoc(doc(db('A'),'couples/c1/casitaMovs/pomodoro_l2'),{uid:'A',creadoEn:serverTimestamp(),tipo:'pomodoro',cantidad:10,ref:'l1'}));
   await ok('B ve la casita y los pescaditos', getDoc(doc(db('B'),'couples/c1/casita/estado')).then(s=>{ if(s.data().pescaditos!==115) throw new Error('pescaditos='+s.data().pescaditos); }));
+  // Alcancía: ahorran juntos para una meta; lo ahorrado queda apartado.
+  await ok('A pone 60 pescaditos en la alcancía', setDoc(doc(db('A'),'couples/c1/casita/estado'),{meta:'cuarto_jardin',ahorrado:60,aportes:{A:60}},{merge:true}));
+  await ok('B pone 20 más', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{ahorrado:80,'aportes.B':20}));
+  await no('no se ahorra más de lo que tienen', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{ahorrado:200}));
+  await no('lo ahorrado no es negativo', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{ahorrado:-5}));
+  await no('los aportes van en un mapa', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{aportes:'mucho'}));
+  await no('B no gasta lo de la alcancía en otra cosa', ganar('B','compra_lampara_luna',{tipo:'compra',cantidad:-40,ref:'lampara_luna'},75,{tenemos:['cuadro_corazon','sofa_azul','sofa_rosa','lampara_luna']}));
+  await ok('quitan la meta y lo ahorrado queda libre', updateDoc(doc(db('A'),'couples/c1/casita/estado'),{meta:deleteField(),ahorrado:deleteField(),aportes:deleteField()}));
   // Cartas sorpresa animadas: 30 pescaditos, carta y pago juntos.
   const sorpresa = (u, id, cantidad, pescaditos, carta={}) => {
     const d = db(u); const b = writeBatch(d);

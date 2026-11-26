@@ -25,8 +25,10 @@ void main() {
     final yo = alarmaDePrivada(nota())!;
     expect(yo.cuando, luego);
     expect(yo.texto, 'Regar las plantas');
-    expect(alarmaDePrivada(nota(para: 'ambos'))!.texto,
-        'De los dos: Regar las plantas');
+    expect(
+      alarmaDePrivada(nota(para: 'ambos'))!.texto,
+      'De los dos: Regar las plantas',
+    );
     // A mi pareja le suena en su celular (se lo manda el Worker).
     expect(alarmaDePrivada(nota(para: 'pareja')), isNull);
     // Compartida: suena su copia de los dos.
@@ -35,10 +37,14 @@ void main() {
 
   test('nota de los dos: les suena a los dos', () {
     expect(alarmaDeCompartida(nota(), 'ana')!.titulo, '⏰ Recordatorio');
-    expect(alarmaDeCompartida(nota(), 'beto')!.titulo,
-        '⏰ Recordatorio de tu pareja');
-    expect(alarmaDeCompartida(nota(), 'beto')!.texto,
-        'De los dos: Regar las plantas');
+    expect(
+      alarmaDeCompartida(nota(), 'beto')!.titulo,
+      '⏰ Recordatorio de tu pareja',
+    );
+    expect(
+      alarmaDeCompartida(nota(), 'beto')!.texto,
+      'De los dos: Regar las plantas',
+    );
   });
 
   test('se recuerda hasta un día después de sonar (para no repetirla)', () {
@@ -54,10 +60,7 @@ void main() {
       id: 'l',
       authorId: 'ana',
       text: '  ',
-      items: const [
-        ItemDeLista('Leche', hecho: true),
-        ItemDeLista('Pan'),
-      ],
+      items: const [ItemDeLista('Leche', hecho: true), ItemDeLista('Pan')],
     );
     expect(deQueTrata(lista), 'Pan');
   });

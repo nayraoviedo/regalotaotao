@@ -19,18 +19,37 @@
         android:contentDescription="La casita de los gatitos"
         android:scaleType="fitCenter" />
 
-    <TextView
-        android:id="@+id/casita_texto"
+    <!-- La alcancía: chanchito (res/drawable-nodpi/widget_alcancia.png,
+         el mismo doodle de la app; se puede reemplazar por otro PNG). -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:fontFamily="casual"
-        android:maxLines="1"
-        android:text="Abre la app"
-        android:textColor="@color/taotao_widget_azul"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/casita_chanchito"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginEnd="4dp"
+            android:contentDescription="Alcancía"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_alcancia"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/casita_texto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="casual"
+            android:maxLines="1"
+            android:text="Abre la app"
+            android:textColor="@color/taotao_widget_azul"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/casita_alcancia"

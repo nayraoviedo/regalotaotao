@@ -56,10 +56,10 @@ class TarjetaCasita extends StatelessWidget {
       return '🐟 Tu pareja quiere comprar ${p.queCosa!.nombre}. ¿Le das el sí?';
     }
     if (estado.metaCosa case final m?) {
-      return estado.pescaditos >= m.precio
-          ? '🐷 ¡Ya les alcanza para ${m.nombre}!'
+      return estado.alcanciaLlena
+          ? '🐷 ¡La alcancía está llena! Pidan el sí para ${m.nombre}'
           : '🐷 Ahorrando para ${m.nombre}: '
-                '${estado.pescaditos} de ${m.precio}';
+                '${estado.ahorrado} de ${m.precio}';
     }
     return 'Ganen pescaditos juntos y decoren la casa de los gatitos';
   }
