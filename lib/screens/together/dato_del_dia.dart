@@ -6,11 +6,20 @@ import '../../theme.dart';
 
 /// Tarjetita en "Nosotros" con el dato curioso de tu pareja de hoy.
 class DatoDelDia extends StatelessWidget {
-  const DatoDelDia({super.key, required this.dato, required this.nombre});
+  const DatoDelDia({
+    super.key,
+    required this.dato,
+    required this.nombre,
+    this.total = 0,
+  });
 
   /// El dato de hoy, o null si tu pareja todavía no escribió ninguno.
   final DatoCurioso? dato;
   final String nombre;
+
+  /// Cuántos datos escribió en total (si es uno solo, se avisa que irán
+  /// cambiando cuando escriba más).
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +72,14 @@ class DatoDelDia extends StatelessWidget {
             d.texto,
             style: TextStyle(color: AppTheme.azul, fontSize: 16, height: 1.35),
           ),
+          if (total == 1) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Por ahora $nombre escribió solo este. Cuando escriba más, '
+              'verás uno distinto cada día.',
+              style: const TextStyle(color: AppTheme.gris, fontSize: 12),
+            ),
+          ],
         ],
       ),
     );

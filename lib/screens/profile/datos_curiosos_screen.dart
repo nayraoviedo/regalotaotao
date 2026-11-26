@@ -4,6 +4,7 @@ import '../../services/datos_curiosos_service.dart';
 import '../../widgets/doodle.dart';
 import '../../theme.dart';
 import '../../widgets/editar_texto.dart';
+import '../../widgets/hoy_builder.dart';
 
 /// Tarjeta del perfil que lleva a escribir tus datos curiosos.
 class DatosCuriososCard extends StatelessWidget {
@@ -122,11 +123,12 @@ class _DatosCuriososViewState extends State<DatosCuriososView> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      HoyBuilder(hoy: widget.hoy, builder: _build);
+
+  Widget _build(BuildContext context, DateTime dia) {
     final datos = widget.datos;
-    final hoy = datos == null
-        ? null
-        : DatoCurioso.delDia(datos, widget.hoy ?? DateTime.now());
+    final hoy = datos == null ? null : DatoCurioso.delDia(datos, dia);
     return Scaffold(
       appBar: AppBar(title: const Text('Datos curiosos sobre mí')),
       body: ListView(

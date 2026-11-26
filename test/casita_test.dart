@@ -508,8 +508,11 @@ void main() {
       expect(huerto.cosechables(ahora).map((c) => c.id), ['tomatera']);
       // Cada ingrediente sale de una semilla de la tienda, y cada uno se
       // usa en alguna receta.
+      // (lo básico no se siembra: lo trae el repartidor).
       for (final i in Ingrediente.values) {
-        expect(Catalogo.porId(i.semilla)?.semilla, isTrue, reason: i.name);
+        if (!i.delRepartidor) {
+          expect(Catalogo.porId(i.semilla)?.semilla, isTrue, reason: i.name);
+        }
         expect(
           Receta.values.any((r) => r.ingredientes.containsKey(i)),
           isTrue,
@@ -518,7 +521,7 @@ void main() {
       }
       final e = EstadoCasita.fromMap({
         'tenemos': ['cuarto_cocina'],
-        'despensa': {'tomate': 3, 'lechuga': 0},
+        'despensa': {'tomate': 3, 'lechuga': 0, 'sal': 1},
         'cocinado': {
           'receta': 'sopaTomate',
           'en': ahora.millisecondsSinceEpoch,
@@ -842,6 +845,14 @@ void main() {
     test('cada receta tiene su plato y sus ingredientes se cosechan', () {
       final ids = Catalogo.cosas.map((c) => c.id).toSet();
       for (final i in Ingrediente.values) {
+        if (i.delRepartidor) {
+          expect(
+            File('assets/casita/ingrediente_${i.name}.png').existsSync(),
+            isTrue,
+            reason: i.name,
+          );
+          continue;
+        }
         expect(ids, contains(i.semilla), reason: i.name);
         expect(File('assets/casita/${i.semilla}.png').existsSync(), isTrue);
         expect(
@@ -856,6 +867,61 @@ void main() {
           isTrue,
           reason: r.name,
         );
+      }
+    });
+
+    test('el repartidor llega cada lunes con lo básico', () {
+      // Del lunes 23 al domingo 29 de noviembre es la misma semana.
+      expect(Repartidor.semana(DateTime(2026, 11, 23, 8)), '2026-11-23');
+      expect(Repartidor.semana(DateTime(2026, 11, 26, 20)), '2026-11-23');
+      expect(Repartidor.semana(DateTime(2026, 11, 29, 23)), '2026-11-23');
+      expect(Repartidor.semana(DateTime(2026, 11, 30)), '2026-11-30');
+      // Cruza de mes y de año.
+      expect(Repartidor.semana(DateTime(2027, 1, 2)), '2026-12-28');
+
+      final jueves = DateTime(2026, 11, 26, 10);
+      // Sin cocina no viene (no hay dónde guardar).
+      expect(EstadoCasita.vacio.repartidorEsperando(jueves), isFalse);
+      final conCocina = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina'],
+      });
+      expect(conCocina.repartidorEsperando(jueves), isTrue);
+      final recibido = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina'],
+        'reparto': '2026-11-23',
+      });
+      expect(recibido.repartidorEsperando(jueves), isFalse);
+      // El lunes siguiente vuelve.
+      expect(recibido.repartidorEsperando(DateTime(2026, 11, 30, 9)), isTrue);
+
+      // Trae sal, leche, queso, carne… y todo se usa en alguna receta.
+      expect(
+        Repartidor.caja.keys,
+        containsAll([
+          Ingrediente.sal,
+          Ingrediente.leche,
+          Ingrediente.queso,
+          Ingrediente.carne,
+        ]),
+      );
+      for (final i in Ingrediente.basicos) {
+        expect(i.semilla, isEmpty);
+        expect(Ingrediente.deSemilla(''), isNull);
+        expect(Repartidor.caja[i], greaterThan(0));
+      }
+    });
+
+    test('rollos de canela y pizzas con lo del repartidor', () {
+      final pizzas = Receta.values.where((r) => r.nombre.startsWith('pizza'));
+      expect(pizzas.length, greaterThanOrEqualTo(8));
+      final e = EstadoCasita.fromMap({
+        'despensa': {'trigo': 3, 'canela': 3, 'mantequilla': 3, 'azucar': 3},
+      });
+      expect(e.puedeCocinar(Receta.rollosCanela), isTrue);
+      expect(e.puedeCocinar(Receta.pizzaCuatroQuesos), isFalse);
+      // Lo que pica el que ayuda siempre es algo del huerto.
+      for (final r in Receta.values) {
+        expect(r.principal.delRepartidor, isFalse, reason: r.name);
       }
     });
 
@@ -1344,6 +1410,56 @@ void main() {
       await t.tap(find.text('Comprar'));
       await t.pumpAndSettle();
       expect(compras.single.$1.id, 'cuarto_cocina');
+    });
+
+    testWidgets('al repartidor se le paga la caja con pescaditos', (t) async {
+      var recibidas = 0;
+      Widget vista(String? reparto, int pescaditos) => MaterialApp(
+        home: CasitaView(
+          estado: EstadoCasita(
+            pescaditos: pescaditos,
+            tenemos: const {'cuarto_cocina'},
+            reparto: reparto,
+          ),
+          movimientos: const [],
+          me: me,
+          partner: null,
+          onComprar: (c, g) async {},
+          onPoner: (l, c) async {},
+          onVestir: (g, p, c) async {},
+          onRecibirReparto: () async {
+            recibidas++;
+            return true;
+          },
+          hoy: DateTime(2026, 11, 26, 10),
+        ),
+      );
+      final pagar = textoDoodle('Pagar 60 🐟 y recibir la caja');
+      // Sin pescaditos suficientes no se puede: hay que jugar primero.
+      await t.pumpWidget(vista(null, 45));
+      expect(find.text('¡Toc, toc! Llegó el repartidor'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is TextoDoodle && w.texto.startsWith('Les faltan 15 🐟'),
+        ),
+        findsOneWidget,
+      );
+      await t.tap(pagar);
+      await t.pump();
+      expect(recibidas, 0);
+      // Con 60 o más, se paga y se recibe.
+      await t.pumpWidget(vista(null, 80));
+      await t.tap(pagar);
+      await t.pump();
+      expect(recibidas, 1);
+      expect(
+        find.textContaining('Guardaron la caja', findRichText: true),
+        findsOneWidget,
+      );
+      // Ya la recibieron esta semana: no vuelve hasta el lunes.
+      await t.pumpWidget(vista('2026-11-23', 20));
+      await t.pumpAndSettle();
+      expect(find.text('¡Toc, toc! Llegó el repartidor'), findsNothing);
     });
 
     testWidgets('adoptar un bebé y ponerle nombre', (t) async {

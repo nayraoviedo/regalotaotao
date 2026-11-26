@@ -617,6 +617,45 @@ class PescaditosService {
     });
   }
 
+  /// Le pagan al repartidor ([Repartidor.precio] pescaditos) y lo básico
+  /// va a la despensa. Devuelve false si la pareja ya la había recibido;
+  /// lanza [SinPescaditos] si no alcanza.
+  Future<bool> recibirReparto(
+    String coupleId,
+    String uid, {
+    DateTime? hoy,
+  }) async {
+    final ref = _estado(coupleId);
+    final semana = Repartidor.semana(hoy ?? DateTime.now());
+    final movRef = _movs(coupleId).doc('reparto_$semana');
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      if (estado.reparto == semana) return false;
+      const precio = Repartidor.precio;
+      // Lo apartado en la alcancía no se toca.
+      if (estado.libres < precio) {
+        throw SinPescaditos(precio - estado.libres);
+      }
+      tx.set(movRef, {
+        'tipo': Movimiento.reparto,
+        'uid': uid,
+        'cantidad': -precio,
+        'ref': semana,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      tx.set(ref, {
+        'pescaditos': estado.pescaditos - precio,
+        'ultimoMov': movRef.id,
+        'despensa': {
+          for (final e in Repartidor.caja.entries)
+            e.key.name: estado.hay(e.key) + e.value,
+        },
+        'reparto': semana,
+      }, SetOptions(merge: true));
+      return true;
+    });
+  }
+
   /// Cocinan [receta] con lo de la despensa. Devuelve false si ya no
   /// alcanza (por ejemplo, la pareja cocinó otra cosa justo antes).
   Future<bool> cocinar(String coupleId, Receta receta) async {

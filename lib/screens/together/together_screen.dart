@@ -14,6 +14,7 @@ import 'fondo_flotante.dart';
 import 'gatitos.dart';
 import 'hitos.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/hoy_builder.dart';
 import '../../widgets/texto_doodle.dart';
 
 const _meses = [
@@ -121,9 +122,13 @@ class DiasJuntosView extends StatelessWidget {
   final Widget? capsula;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      HoyBuilder(hoy: hoy, builder: _build);
+
+  /// [today] cambia solo a medianoche, así el contador y el dato curioso
+  /// se renuevan aunque la pantalla se quede abierta.
+  Widget _build(BuildContext context, DateTime today) {
     final start = couple.startDate;
-    final today = hoy ?? DateTime.now();
     final dias = start == null
         ? null
         : DateTime(
@@ -174,6 +179,7 @@ class DiasJuntosView extends StatelessWidget {
                           DatoDelDia(
                             dato: DatoCurioso.delDia(datosPareja!, today),
                             nombre: partner?.name ?? 'tu pareja',
+                            total: DatoCurioso.ordenados(datosPareja!).length,
                           ),
                         ],
                         if (capsula case final c?) ...[
