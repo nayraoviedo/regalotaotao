@@ -2068,6 +2068,9 @@ class Movimiento {
   static const respira = 'respira';
   static const juego = 'juego';
   static const dibujo = 'dibujo';
+  static const memorama = 'memorama';
+  static const rompecabezas = 'rompe';
+  static const sudoku = 'sudoku';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';

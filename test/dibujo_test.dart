@@ -225,7 +225,7 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('Dibuja y adivina con Beto'), findsOneWidget);
+      expect(find.textContaining('memorama, rompecabezas y sudoku'), findsOneWidget);
     });
 
     testWidgets('la sección muestra el juego de dibujar', (t) async {
@@ -237,6 +237,10 @@ void main() {
             partnerName: 'Ana',
             ronda: ronda(),
             onDibujo: () {},
+            onMemorama: () {},
+            onRompecabezas: () {},
+            onSudoku: () {},
+            onFotos: () {},
           ),
         ),
       );

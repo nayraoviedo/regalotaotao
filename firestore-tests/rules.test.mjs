@@ -392,6 +392,59 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no la marca como rendida', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'rendida',terminadaEn:serverTimestamp()}));
   await ok('A la termina', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'cancelada',terminadaEn:serverTimestamp()}));
 }
+// Juegos juntos: fotos, memorama, rompecabezas y sudoku.
+{
+  const h = new Date();
+  const hoy = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
+  await ok('A sube una foto para jugar', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f1'),{por:'A',jpg:'abc',creadaEn:serverTimestamp()}));
+  await no('A no sube una foto a nombre de B', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f2'),{por:'B',jpg:'abc',creadaEn:serverTimestamp()}));
+  await no('A no sube una foto gigante', setDoc(doc(db('A'),'couples/c1/fotosJuegos/f2'),{por:'A',jpg:'x'.repeat(200001),creadaEn:serverTimestamp()}));
+  await no('C no ve las fotos', getDoc(doc(db('C'),'couples/c1/fotosJuegos/f1')));
+  await no('B no borra la foto de A', deleteDoc(doc(db('B'),'couples/c1/fotosJuegos/f1')));
+  await ok('A borra su foto', deleteDoc(doc(db('A'),'couples/c1/fotosJuegos/f1')));
+
+  // Memorama: cartas 0-7 y 8-15 son las mismas.
+  const cartas = [...Array(8).keys(), ...Array(8).keys()].map(i => 'sticker_' + i);
+  const M = 'couples/c1/memoramas/m1';
+  await ok('A empieza un memorama', setDoc(doc(db('A'),M),{por:'A',cartas,turno:'A',abiertas:[],parejas:{},estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('B no voltea en el turno de A', updateDoc(doc(db('B'),M),{abiertas:[0]}));
+  await ok('A voltea una', updateDoc(doc(db('A'),M),{abiertas:[0]}));
+  await ok('A voltea otra (no es pareja)', updateDoc(doc(db('A'),M),{abiertas:[0,1]}));
+  await no('A no voltea una tercera', updateDoc(doc(db('A'),M),{abiertas:[0,1,2]}));
+  await no('no se quedan con cartas que no son pareja', updateDoc(doc(db('A'),M),{abiertas:[],'parejas.0':'A','parejas.1':'A'}));
+  await no('A no sigue si falló', updateDoc(doc(db('A'),M),{abiertas:[],turno:'A'}));
+  await ok('B cierra las cartas y le toca', updateDoc(doc(db('B'),M),{abiertas:[],turno:'B'}));
+  await ok('B voltea 2', updateDoc(doc(db('B'),M),{abiertas:[2]}));
+  await ok('B voltea 10', updateDoc(doc(db('B'),M),{abiertas:[2,10]}));
+  await no('B no se las da a A', updateDoc(doc(db('B'),M),{abiertas:[],'parejas.2':'A','parejas.10':'A'}));
+  await ok('B se queda la pareja', updateDoc(doc(db('B'),M),{abiertas:[],'parejas.2':'B','parejas.10':'B'}));
+  await no('B no voltea una encontrada', updateDoc(doc(db('B'),M),{abiertas:[2]}));
+  await no('A no cobra un memorama sin terminar', updateDoc(doc(db('A'),M),{'cobros.A':'x'}));
+
+  // Rompecabezas.
+  const R = 'couples/c1/rompecabezas/r1';
+  await ok('A empieza un rompecabezas', setDoc(doc(db('A'),R),{por:'A',foto:'asset:assets/images/inicio_cielo.png',lado:3,orden:[1,2,0,4,5,3,7,8,6],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('A no hace uno de 7 × 7', setDoc(doc(db('A'),'couples/c1/rompecabezas/r0'),{por:'A',foto:'x',lado:7,orden:[...Array(49).keys()],turno:'A',movs:0,estado:'jugando',creadaEn:serverTimestamp()}));
+  await no('B no mueve en el turno de A', updateDoc(doc(db('B'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'A',movs:1}));
+  await no('A no se inventa piezas', updateDoc(doc(db('A'),R),{orden:[0,0,0,4,5,3,7,8,6],turno:'B',movs:1}));
+  await ok('A cambia dos piezas', updateDoc(doc(db('A'),R),{orden:[2,1,0,4,5,3,7,8,6],turno:'B',movs:1}));
+  await ok('B termina el rompecabezas', updateDoc(doc(db('B'),R),{orden:[0,1,2,3,4,5,6,7,8],turno:'B',movs:2,estado:'terminada',terminadaEn:serverTimestamp()}));
+  const hay = (await getDoc(doc(db('A'),'couples/c1/casita/estado'))).data()?.pescaditos ?? 0;
+  const cobrar = (u, tipo, slot, cantidad, total, partida, extra={}) => {
+    const d = db(u); const b = writeBatch(d); const id = `${tipo}_${hoy}_${u}_${slot}`;
+    b.set(doc(d,'couples/c1/casitaMovs',id), {uid:u, creadoEn:serverTimestamp(), tipo, cantidad, ref:hoy, slot, ...(partida?{partida}:{}), ...extra});
+    b.set(doc(d,'couples/c1/casita/estado'), {pescaditos:total, ultimoMov:id}, {merge:true});
+    if (partida) b.update(doc(d,'couples/c1/rompecabezas',partida), {[`cobros.${u}`]:id});
+    return b.commit();
+  };
+  await no('A no cobra 30 por el rompecabezas', cobrar('A','rompe',1,30,hay+30,'r1'));
+  await ok('A gana 8 por el rompecabezas', cobrar('A','rompe',1,8,hay+8,'r1'));
+  await no('A no cobra el rompecabezas dos veces', cobrar('A','rompe',2,8,hay+16,'r1'));
+  await ok('B también gana 8', cobrar('B','rompe',1,8,hay+16,'r1'));
+  await ok('A gana 12 por un sudoku difícil', cobrar('A','sudoku',1,12,hay+28,null,{nivel:'dificil'}));
+  await no('A no cobra 15 por un sudoku fácil', cobrar('A','sudoku',2,15,hay+43,null,{nivel:'facil'}));
+  await no('A no cobra un sudoku en un lugar 4', cobrar('A','sudoku',4,5,hay+33,null,{nivel:'facil'}));
+}
 await ok('A se desvincula de B', unlink('A','B','c1'));
 await ok('B ya no tiene pareja', getDoc(doc(db('B'),'users','B')).then(s=>{ if(s.data().coupleId!==null) throw new Error('coupleId='+s.data().coupleId); }));
 await no('A ya no lee el perfil de B', getDoc(doc(db('A'),'users','B')));

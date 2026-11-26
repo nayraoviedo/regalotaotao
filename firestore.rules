@@ -759,6 +759,124 @@ service cloud.firestore {
         }
       }
 
+      // ---------- Juegos juntos: fotos, memorama y rompecabezas ----------
+      // fotosJuegos/{id}: fotos chiquitas (JPG en base64) que sube cada uno;
+      // solo quien la subió la borra.
+      match /fotosJuegos/{fotoId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys().hasOnly(['por', 'jpg', 'creadaEn'])
+          && request.resource.data.por == me()
+          && request.resource.data.jpg is string
+          && request.resource.data.jpg.size() > 0
+          && request.resource.data.jpg.size() <= 200000
+          && request.resource.data.creadaEn == request.time;
+        allow update: if false;
+        allow delete: if isMember(coupleId) && resource.data.por == me();
+      }
+
+      function otroDe(uid) {
+        let m = coupleDoc(coupleId).data.members;
+        return m[0] == uid ? m[1] : m[0];
+      }
+      function cobraPartida() {
+        let antes = resource.data.get('cobros', {});
+        return resource.data.estado == 'terminada'
+          && !(me() in antes)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cobros'])
+          && request.resource.data.cobros.diff(antes).affectedKeys().hasOnly([me()])
+          && request.resource.data.cobros[me()] is string;
+      }
+
+      // memoramas/{id}: 16 cartas; en tu turno abres dos. Después, si son
+      // pareja se quedan con quien las encontró (y sigue); si no, le toca
+      // al otro. Esa "resolución" la puede hacer cualquiera de los dos (por
+      // si quien jugaba se fue).
+      match /memoramas/{partidaId} {
+        function cambia() {
+          return request.resource.data.diff(resource.data).affectedKeys();
+        }
+        function abre() {
+          let a = resource.data.abiertas;
+          let b = request.resource.data.abiertas;
+          let i = b[b.size() - 1];
+          return resource.data.estado == 'jugando'
+            && resource.data.turno == me()
+            && cambia().hasOnly(['abiertas'])
+            && a.size() < 2
+            && b.size() == a.size() + 1
+            && (a.size() == 0 || b[0] == a[0])
+            && i is int && i >= 0 && i < 16
+            && !(string(i) in resource.data.parejas)
+            && !(i in a);
+        }
+        function resuelve() {
+          let a = resource.data.abiertas;
+          let d = request.resource.data;
+          let pareja = resource.data.cartas[a[0]] == resource.data.cartas[a[1]];
+          let total = resource.data.parejas.size() + 2;
+          return resource.data.estado == 'jugando'
+            && a.size() == 2
+            && d.abiertas.size() == 0
+            && (pareja
+              ? (cambia().hasOnly(['abiertas', 'parejas', 'estado', 'terminadaEn'])
+                && d.parejas.diff(resource.data.parejas).affectedKeys()
+                     .hasOnly([string(a[0]), string(a[1])])
+                && d.parejas[string(a[0])] == resource.data.turno
+                && d.parejas[string(a[1])] == resource.data.turno
+                && d.get('estado', 'jugando') == (total >= 16 ? 'terminada' : 'jugando'))
+              : (cambia().hasOnly(['abiertas', 'turno'])
+                && d.turno == otroDe(resource.data.turno)));
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['por', 'cartas', 'turno', 'abiertas', 'parejas', 'estado', 'creadaEn'])
+          && request.resource.data.por == me()
+          && request.resource.data.turno == me()
+          && request.resource.data.cartas is list
+          && request.resource.data.cartas.size() == 16
+          && request.resource.data.abiertas == []
+          && request.resource.data.parejas == {}
+          && request.resource.data.estado == 'jugando'
+          && request.resource.data.creadaEn == request.time;
+        allow update: if isMember(coupleId) && (abre() || resuelve() || cobraPartida());
+        allow delete: if false;
+      }
+
+      // rompecabezas/{id}: las piezas mezcladas (orden); en tu turno
+      // cambias dos de lugar. Si pones una en su sitio sigues tú.
+      match /rompecabezas/{partidaId} {
+        function mueve() {
+          let d = request.resource.data;
+          return resource.data.estado == 'jugando'
+            && resource.data.turno == me()
+            && d.diff(resource.data).affectedKeys()
+                 .hasOnly(['orden', 'turno', 'movs', 'estado', 'terminadaEn'])
+            && d.orden.size() == resource.data.orden.size()
+            && d.orden.toSet() == resource.data.orden.toSet()
+            && (d.turno == me() || d.turno == otroDe(me()))
+            && d.movs == resource.data.movs + 1
+            && d.estado in ['jugando', 'terminada'];
+        }
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys()
+               .hasOnly(['por', 'foto', 'lado', 'orden', 'turno', 'movs', 'estado', 'creadaEn'])
+          && request.resource.data.por == me()
+          && request.resource.data.turno == me()
+          && request.resource.data.lado in [3, 4, 5]
+          && request.resource.data.orden is list
+          && request.resource.data.orden.size() == request.resource.data.lado * request.resource.data.lado
+          && request.resource.data.foto is string
+          && request.resource.data.foto.size() <= 200
+          && request.resource.data.movs == 0
+          && request.resource.data.estado == 'jugando'
+          && request.resource.data.creadaEn == request.time;
+        allow update: if isMember(coupleId) && (mueve() || cobraPartida());
+        allow delete: if false;
+      }
+
       // ---------- Casita de los gatitos y pescaditos ----------
       // casita/estado: monedero compartido (pescaditos), lo que compraron
       // (tenemos), lo que está puesto (puestos) y la ropita (ropa).
@@ -872,6 +990,24 @@ service cloud.firestore {
               && diaReciente(d.ref)
               && d.ronda is string
               && dibujoCobrable(d))
+            // Memorama y rompecabezas terminados: 8 a cada uno, 3 al día.
+            || ((d.tipo == 'memorama' || d.tipo == 'rompe')
+              && d.cantidad == 8
+              && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && d.slot is int && d.slot >= 1 && d.slot <= 3
+              && movId == d.tipo + '_' + d.ref + '_' + me() + '_' + string(d.slot)
+              && diaReciente(d.ref)
+              && d.partida is string
+              && partidaCobrable(d))
+            // Sudoku completado (se juega en el celular): según el nivel,
+            // 3 al día.
+            || (d.tipo == 'sudoku'
+              && d.nivel in ['facil', 'medio', 'dificil', 'experto']
+              && d.cantidad == {'facil': 5, 'medio': 8, 'dificil': 12, 'experto': 15}[d.nivel]
+              && d.ref is string && d.ref.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+              && d.slot is int && d.slot >= 1 && d.slot <= 3
+              && movId == 'sudoku_' + d.ref + '_' + me() + '_' + string(d.slot)
+              && diaReciente(d.ref))
             || (d.tipo == 'pomodoro'
               && d.ref is string
               && movId == 'pomodoro_' + d.ref
@@ -904,6 +1040,14 @@ service cloud.firestore {
             && a.size() == 5 && b.size() == 5
             && d.cantidad == 4 + 2 * (igual(a, b, 0) + igual(a, b, 1) + igual(a, b, 2)
                                       + igual(a, b, 3) + igual(a, b, 4));
+        }
+        function partidaCobrable(d) {
+          let col = d.tipo == 'memorama' ? 'memoramas' : 'rompecabezas';
+          let path = /databases/$(database)/documents/couples/$(coupleId)/$(col)/$(d.partida);
+          let antes = get(path).data;
+          return antes.estado == 'terminada'
+            && !(me() in antes.get('cobros', {}))
+            && getAfter(path).data.get('cobros', {}).get(me(), '') == movId;
         }
         function dibujoCobrable(d) {
           let path = /databases/$(database)/documents/couples/$(coupleId)/dibujos/$(d.ronda);

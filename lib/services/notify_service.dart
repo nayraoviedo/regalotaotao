@@ -19,6 +19,8 @@ enum NotifyKind {
   propuesta,
   juego,
   dibujo,
+  memorama,
+  rompecabezas,
   notaLeida,
 }
 

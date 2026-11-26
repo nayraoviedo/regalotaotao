@@ -5,7 +5,12 @@ import '../../models/couple.dart';
 import '../../services/dibujo_service.dart';
 import '../../theme.dart';
 import '../../widgets/doodle.dart';
+import '../../services/juntos_service.dart';
 import 'dibujo_screen.dart';
+import 'fotos_juegos_screen.dart';
+import 'memorama_screen.dart';
+import 'rompecabezas_screen.dart';
+import 'sudoku_screen.dart';
 
 /// "Juegos juntos": juegos para pasar el rato (aparte de los juegos de
 /// preguntas). Completar cualquiera da pescaditos.
@@ -26,16 +31,40 @@ class JuegosJuntosScreen extends StatelessWidget {
     final partnerName = partner?.name ?? 'Tu pareja';
     void abrir(Widget w) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
+    final svc = JuntosService.instance;
     return Scaffold(
       appBar: AppBar(title: const Text('Juegos juntos')),
       body: StreamBuilder<Ronda?>(
         stream: DibujoService.instance.watchActual(couple.id),
-        builder: (context, s) => JuegosJuntosVista(
-          uid: me.uid,
-          partnerName: partnerName,
-          ronda: s.data,
-          onDibujo: () =>
-              abrir(DibujoScreen(me: me, couple: couple, partner: partner)),
+        builder: (context, d) => StreamBuilder<Memorama?>(
+          stream: svc.watchMemorama(couple.id),
+          builder: (context, m) => StreamBuilder<Rompecabezas?>(
+            stream: svc.watchRompecabezas(couple.id),
+            builder: (context, r) => JuegosJuntosVista(
+              uid: me.uid,
+              partnerName: partnerName,
+              ronda: d.data,
+              memorama: m.data,
+              rompecabezas: r.data,
+              onDibujo: () =>
+                  abrir(DibujoScreen(me: me, couple: couple, partner: partner)),
+              onMemorama: () => abrir(
+                MemoramaScreen(me: me, couple: couple, partner: partner),
+              ),
+              onRompecabezas: () => abrir(
+                RompecabezasScreen(me: me, couple: couple, partner: partner),
+              ),
+              onSudoku: () =>
+                  abrir(SudokuScreen(coupleId: couple.id, uid: me.uid)),
+              onFotos: () => abrir(
+                FotosJuegosScreen(
+                  coupleId: couple.id,
+                  uid: me.uid,
+                  partnerName: partnerName,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -49,19 +78,35 @@ class JuegosJuntosVista extends StatelessWidget {
     required this.uid,
     required this.partnerName,
     required this.onDibujo,
+    required this.onMemorama,
+    required this.onRompecabezas,
+    required this.onSudoku,
+    required this.onFotos,
     this.ronda,
+    this.memorama,
+    this.rompecabezas,
   });
 
   final String uid;
   final String partnerName;
   final Ronda? ronda;
+  final Memorama? memorama;
+  final Rompecabezas? rompecabezas;
   final VoidCallback onDibujo;
+  final VoidCallback onMemorama;
+  final VoidCallback onRompecabezas;
+  final VoidCallback onSudoku;
+  final VoidCallback onFotos;
 
   @override
   Widget build(BuildContext context) {
     final r = ronda;
     final teEspera = r != null && r.enJuego && !r.dibujo(uid);
     final estasDibujando = r != null && r.enJuego && r.dibujo(uid);
+    final m = memorama;
+    final mEnJuego = m != null && !m.terminada;
+    final rc = rompecabezas;
+    final rEnJuego = rc != null && !rc.terminada;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
       children: [
@@ -88,9 +133,73 @@ class JuegosJuntosVista extends StatelessWidget {
               : 'Jugar',
           onTap: onDibujo,
         ),
+        const SizedBox(height: 14),
+        TarjetaJuegoJuntos(
+          titulo: 'Memorama',
+          dibujo: JuegosJuntos.dibujoMemorama,
+          descripcion: mEnJuego
+              ? (m.turno == uid
+                    ? '¡Te toca! Van ${m.puntos(uid)} a '
+                          '${m.parejas.length ~/ 2 - m.puntos(uid)}.'
+                    : 'Le toca a $partnerName. Van ${m.puntos(uid)} a '
+                          '${m.parejas.length ~/ 2 - m.puntos(uid)}.')
+              : 'Encuentren las parejas por turnos. Las cartas son sus '
+                    'fotos.',
+          aviso: mEnJuego && m.turno == uid,
+          boton: mEnJuego
+              ? (m.turno == uid ? '¡Te toca!' : 'Ver partida')
+              : 'Jugar',
+          onTap: onMemorama,
+        ),
+        const SizedBox(height: 14),
+        TarjetaJuegoJuntos(
+          titulo: 'Rompecabezas para 2',
+          dibujo: JuegosJuntos.dibujoRompecabezas,
+          descripcion: rEnJuego
+              ? (rc.turno == uid
+                    ? '¡Te toca mover una pieza! Llevan ${rc.enSuLugar} de '
+                          '${rc.orden.length}.'
+                    : 'Le toca a $partnerName. Llevan ${rc.enSuLugar} de '
+                          '${rc.orden.length}.')
+              : 'Armen una foto de ustedes entre los dos, una pieza por '
+                    'turno.',
+          aviso: rEnJuego && rc.turno == uid,
+          boton: rEnJuego
+              ? (rc.turno == uid ? '¡Te toca!' : 'Ver rompecabezas')
+              : 'Jugar',
+          onTap: onRompecabezas,
+        ),
+        const SizedBox(height: 14),
+        TarjetaJuegoJuntos(
+          titulo: 'Sudoku',
+          dibujo: JuegosJuntos.dibujoSudoku,
+          descripcion:
+              'Para jugar a solas un ratito: nivel al azar, notas y '
+              'sugerencias. Completarlo también da pescaditos.',
+          boton: 'Jugar',
+          onTap: onSudoku,
+        ),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: onFotos,
+          icon: Doodle(
+            Icons.photo_library_outlined,
+            color: AppTheme.azul,
+            size: 22,
+          ),
+          label: const Text('Nuestras fotos para jugar'),
+        ),
       ],
     );
   }
+}
+
+/// Dibujos de las tarjetas (PNG con fondo transparente, reemplazables).
+class JuegosJuntos {
+  JuegosJuntos._();
+  static const dibujoMemorama = 'assets/images/juego_memorama.png';
+  static const dibujoRompecabezas = 'assets/images/juego_rompecabezas.png';
+  static const dibujoSudoku = 'assets/images/juego_sudoku.png';
 }
 
 class TarjetaJuegoJuntos extends StatelessWidget {
@@ -270,7 +379,7 @@ class TarjetaJuntos extends StatelessWidget {
                       aviso
                           ? '¡$partnerName está dibujando para ti! '
                                 'Ven a adivinar'
-                          : 'Dibuja y adivina con $partnerName en vivo',
+                          : 'Dibuja y adivina, memorama, rompecabezas y sudoku',
                       style: TextStyle(
                         color: aviso ? AppTheme.crema : AppTheme.gris,
                         fontSize: 13,

@@ -10,6 +10,9 @@ Luego se exportan a PNG (1350x840) en assets/images/ con:  node exportar.mjs
                        le lleva el turno a tu pareja
   juego_dibujo.png     "Dibuja y adivina": el naranja pinta un pescadito en
                        su caballete y el blanco piensa qué es
+  juego_memorama.png   memorama: cartas boca abajo y una pareja de corazones
+  juego_rompecabezas.png  rompecabezas: los dos ponen la última pieza
+  juego_sudoku.png     sudoku: el blanco piensa con su lápiz frente a un tablero
   juego_resultado.png  resultados: chocan las patitas, con corazones y un
                        pescadito
 
@@ -199,9 +202,90 @@ def dibujo():
                  g.sombra(450, 330), extras, a, b, pincel(376, 236, 0.9, 38))
 
 
+def carta_dorso(x, y, s=1.0, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-40" y="-54" width="80" height="108" rx="12" fill="{AZUL}" '
+            f'stroke="{AMARILLO}" stroke-width="5"/>'
+            f'<path d="M8 -20 A22 22 0 1 0 8 20 A17 17 0 1 1 8 -20Z" fill="{CREMA}"/>'
+            + g.chispa(20, -28, 0.5) + '</g>')
+
+
+def carta_frente(x, y, s=1.0, rot=0, color=CORAL):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<rect x="-40" y="-54" width="80" height="108" rx="12" fill="{CREMA}" '
+            f'stroke="{AZUL}" stroke-width="5"/>'
+            + g.corazon(0, -2, 0.75, color) + '</g>')
+
+
+def memorama():
+    a = g.gatito("naranja", 250, 282, rot=-3, lado_cola=-1, cab_rot=6,
+                 cab=dict(ojo="felices", bocam="feliz", sonrojo=1.3),
+                 brazos=[((52, 60), (130, -20), (104, 50))])
+    b = g.gatito("blanco", 660, 282, rot=3, lado_cola=1, cab_rot=-6,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.1),
+                 brazos=[((-52, 60), (-130, -20), (-104, 50))])
+    cartas = (carta_dorso(400, 250, 0.9, -8) + carta_dorso(500, 255, 0.9, 6)
+              + carta_frente(380, 120, 0.95, -12) + carta_frente(525, 115, 0.95, 10)
+              + g.chispa(452, 70, 1.2) + g.chispa(300, 60, 0.8, CELESTE)
+              + g.chispa(620, 60, 0.9))
+    return g.svg("Memorama: los gatitos encuentran una pareja de corazones",
+                 g.sombra(450, 330), a, b, cartas)
+
+
+def pieza(x, y, s=1.0, rot=0, color=CELESTE, borde=AZUL):
+    d = ("M-40 -40 L-12 -40 Q-14 -58 0 -58 Q14 -58 12 -40 L40 -40 L40 -12 "
+         "Q58 -14 58 0 Q58 14 40 12 L40 40 L-40 40 Z")
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<path d="{d}" fill="{color}" stroke="{borde}" stroke-width="6" '
+            'stroke-linejoin="round"/></g>')
+
+
+def rompecabezas():
+    a = g.gatito("naranja", 250, 282, rot=-2, lado_cola=-1, cab_rot=8,
+                 cab=dict(ojo="abiertos", mirar=1, bocam="feliz", sonrojo=1.2),
+                 brazos=[((52, 56), (140, -30), (110, 30))])
+    b = g.gatito("blanco", 660, 282, rot=2, lado_cola=1, cab_rot=-8,
+                 cab=dict(ojo="felices", bocam="feliz", sonrojo=1.3),
+                 brazos=[((-52, 56), (-140, -30), (-110, 30))])
+    tablero = (f'<rect x="355" y="130" width="190" height="190" rx="16" fill="{CREMA}" '
+               f'stroke="{AZUL}" stroke-width="6"/>'
+               + pieza(400, 175, 0.95, 0, "#F4C95D") + pieza(500, 175, 0.95, 90, ROSA)
+               + pieza(400, 275, 0.95, -90, "#7BBF8E")
+               + pieza(505, 268, 0.95, 12, CELESTE)
+               + g.chispa(560, 110, 1.1) + g.corazon(450, 80, 0.6, CORAL)
+               + g.chispa(330, 100, 0.8, CELESTE))
+    return g.svg("Rompecabezas: los gatitos ponen la última pieza juntos",
+                 g.sombra(450, 330), tablero, a, b)
+
+
+def sudoku():
+    b = g.gatito("blanco", 640, 282, rot=2, lado_cola=1, cab_rot=-10,
+                 cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa", sonrojo=1.0),
+                 brazos=[((-40, 64), (-34, -10), (-80, 30))])
+    celdas = []
+    nums = {(0, 0): 5, (1, 2): 3, (2, 1): 8, (0, 2): 1, (2, 2): 9, (1, 0): 7}
+    for f in range(3):
+        for c in range(3):
+            x, y = 250 + c * 70, 70 + f * 70
+            celdas.append(f'<rect x="{x}" y="{y}" width="70" height="70" fill="none" '
+                          f'stroke="#C9D7EE" stroke-width="3"/>')
+            if (f, c) in nums:
+                celdas.append(f'<text x="{x + 35}" y="{y + 50}" text-anchor="middle" '
+                              f'font-family="Nunito, Arial" font-weight="700" font-size="44" '
+                              f'fill="{AZUL if (f + c) % 2 else "#3B6FD6"}">{nums[(f, c)]}</text>')
+    tablero = (f'<rect x="240" y="60" width="230" height="230" rx="14" fill="#FFFFFF" '
+               f'stroke="{AZUL}" stroke-width="6"/>' + "".join(celdas)
+               + f'<rect x="250" y="70" width="210" height="210" fill="none" stroke="{AZUL}" stroke-width="5"/>'
+               + g.chispa(200, 90, 1.2) + g.corazon(520, 120, 0.55, ROSA, 12)
+               + g.chispa(500, 50, 0.8, CELESTE))
+    return g.svg("Sudoku: el gatito blanco piensa frente al tablero",
+                 g.sombra(450, 330), tablero, b)
+
+
 if __name__ == "__main__":
     for nombre, f in [("probable", probable), ("adivina", adivina),
                       ("esperando", esperando), ("resultado", resultado),
-                      ("dibujo", dibujo)]:
+                      ("dibujo", dibujo), ("memorama", memorama),
+                      ("rompecabezas", rompecabezas), ("sudoku", sudoku)]:
         (AQUI / f"juego_{nombre}.svg").write_text(f())
     print("listo")

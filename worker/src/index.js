@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "notaLeida" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "memorama" | "rompecabezas" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -471,6 +471,25 @@ const KINDS = {
     message: (name) => ({
       title: "🎨 ¡Ven a adivinar!",
       body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
+    }),
+  },
+  // Memorama y rompecabezas: la pareja empezó una partida.
+  memorama: {
+    collection: "memoramas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🃏 ¿Un memorama?",
+      body: `${name} empezó un memorama con sus fotos. Entra a jugar por turnos`,
+    }),
+  },
+  rompecabezas: {
+    collection: "rompecabezas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🧩 Armemos un rompecabezas",
+      body: `${name} empezó un rompecabezas para los dos. Entra a poner tus piezas`,
     }),
   },
   // Tu pareja abrió la nota privada que le compartiste. Aquí quien llama

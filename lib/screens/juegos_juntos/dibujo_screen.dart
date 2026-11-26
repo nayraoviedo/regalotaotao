@@ -230,7 +230,7 @@ class _EnVivoState extends State<_EnVivo> {
     if (r.dibujo(widget.uid) && texto.trim().isNotEmpty) {
       final c = Dibujos.clave(texto);
       if (c.contains(r.clave) || Dibujos.adivina(texto, r.clave)) {
-        _aviso('¡Shhh! No le digas la palabra 🤫');
+        _aviso('¡Shhh! No le digas la palabra');
         return;
       }
     }
