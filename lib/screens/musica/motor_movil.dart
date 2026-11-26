@@ -6,6 +6,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import 'motor_js.dart';
 import 'motor_youtube.dart';
+import 'pedir_lista.dart';
 
 MotorYoutube crearMotor() => _MotorMovil();
 
@@ -84,6 +85,39 @@ var tt = ttCrear(document.getElementById('p'), function (m) {
   @override
   void cargar(String videoId, double segundo, {required bool tocar}) =>
       _js("tt.cargar('$videoId', ${segundo.toStringAsFixed(2)}, $tocar)");
+
+  @override
+  void cargarBilibili(
+    String bvid,
+    int parte,
+    double segundo, {
+    double? duracion,
+    required bool tocar,
+  }) {
+    if (!RegExp(r'^BV[0-9A-Za-z]{10}$').hasMatch(bvid)) return;
+    _js(
+      "tt.cargarBili('$bvid', $parte, ${segundo.toStringAsFixed(2)}, "
+      '${(duracion ?? 0).toStringAsFixed(2)}, $tocar)',
+    );
+  }
+
+  @override
+  void recargar() => _js('tt.recargar()');
+
+  @override
+  Future<List<String>> lista(String listaId) {
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(listaId)) {
+      return Future.value(const []);
+    }
+    return pedirLista(
+      listaId,
+      _avisos.stream,
+      () => _js(
+        "ttLista('$listaId', function (m) {"
+        ' try { Taotao.postMessage(m); } catch (e) {} })',
+      ),
+    );
+  }
 
   @override
   void tocar() => _js('tt.tocar()');

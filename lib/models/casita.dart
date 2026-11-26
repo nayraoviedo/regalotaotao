@@ -36,10 +36,6 @@ class Casita {
   /// Pomodoros por persona y por día que dan pescaditos.
   static const pomodorosPorDia = 4;
 
-  /// Desde cuánto una compra es "grande": la tiene que aprobar la pareja
-  /// antes de gastar (los regalos sorpresa no, para no arruinar la sorpresa).
-  static const compraGrande = 100;
-
   /// Marcas en [EstadoCasita.capas]: ahí van los gatitos bebés (no son un
   /// PNG del tamaño del cuarto, se mueven).
   static const bebesPaseando = '#bebes';
@@ -51,18 +47,21 @@ class Casita {
 
   /// Lo que cuesta mandar una carta sorpresa animada.
   static const precioCartaSorpresa = 30;
-  static bool necesitaAprobacion(Cosa c) => c.precio > compraGrande;
 
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
 
-  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes.
+  /// Cosas con dos dibujos que se turnan (`{id}_2`): los visitantes y los
+  /// kois.
   static const animadas = {
     'pajarito_azul',
     'pajarito_canario',
     'pajarito_rosa',
     'pecera_pececito',
     'pecera_pareja',
+    'pecera_koi',
+    'estanque_koi',
+    'estanque_koi_loto',
   };
 
   /// Cosas que se prenden de noche (tienen su halo `luz_{id}`).
@@ -134,6 +133,12 @@ enum Escena {
   pelotas(Cuarto.juegos, 'jugando con pelotitas'),
   huerto(Cuarto.huerto, 'regando el huerto'),
   besitos(Cuarto.sala, 'dándose besitos'),
+  pintar(Cuarto.huerto, 'pintando un cuadro'),
+  videojuegos(Cuarto.juegos, 'jugando videojuegos'),
+  galletas(Cuarto.cocina, 'horneando galletas'),
+
+  /// A las 21, en el jardín (si lo tienen; si no, siguen con su drama).
+  estrellas(Cuarto.jardin, 'viendo las estrellas', libre: false),
 
   /// De madrugada: el naranja come en la cocina y el blanco duerme.
   medianoche(Cuarto.cocina, 'comiendo a medianoche', libre: false),
@@ -212,7 +217,14 @@ enum Ingrediente {
   cebolla('cebollas', 'cebolla', 'cebollas', '🧅'),
   sandia('sandias', 'sandía', 'sandías', '🍉'),
   quinua('quinua', 'puñado de quinua', 'puñados de quinua', '🌾'),
-  arandano('arandanos', 'arándano', 'arándanos', '🫐');
+  arandano('arandanos', 'arándano', 'arándanos', '🫐'),
+  trigo('trigo', 'puñado de trigo', 'puñados de trigo', '🍞'),
+  albahaca('albahaca', 'ramita de albahaca', 'ramitas de albahaca', '🌿'),
+  pimiento('pimientos', 'pimiento', 'pimientos', '🫑'),
+  arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
+  ajo('ajos', 'ajo', 'ajos', '🧄'),
+  palta('paltos', 'aguacate (palta)', 'aguacates (paltas)', '🥑'),
+  berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
 
@@ -232,7 +244,10 @@ enum Ingrediente {
   }
 
   /// Para el botón: "Recoger tomates", "Recoger quinua".
-  String get alRecoger => this == quinua ? 'quinua' : varios;
+  String get alRecoger => switch (this) {
+    quinua || trigo || arroz || albahaca => name,
+    _ => varios,
+  };
 
   /// "1 tomate", "3 tomates".
   String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
@@ -329,9 +344,221 @@ enum Receta {
     'ensalada de frutas',
     {Ingrediente.fresa: 1, Ingrediente.sandia: 1, Ingrediente.arandano: 1},
     {Comida.desayuno},
+  ),
+  dumplings(
+    'dumplings',
+    'dumplings',
+    {Ingrediente.cebolla: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cuy(
+    'cuy',
+    'cuy con papas',
+    {Ingrediente.papa: 2, Ingrediente.choclo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  humintas('humintas', 'humintas', {Ingrediente.choclo: 2}, {Comida.desayuno}),
+  ensaladaQuinua(
+    'ensalada_quinua',
+    'ensalada de quinua',
+    {Ingrediente.quinua: 1, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  purePapas(
+    'pure_papas',
+    'puré de papas',
+    {Ingrediente.papa: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaVerduras(
+    'sopa_verduras',
+    'sopa de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.papa: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  smoothieArandanos(
+    'smoothie_arandanos',
+    'smoothie de arándanos',
+    {Ingrediente.arandano: 1, Ingrediente.fresa: 1},
+    {Comida.desayuno},
+  ),
+  kimchi(
+    'kimchi',
+    'kimchi',
+    {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  // ---- Sopas ----
+  minestrone(
+    'minestrone',
+    'minestrone',
+    {Ingrediente.tomate: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaCebolla(
+    'sopa_cebolla',
+    'sopa de cebolla',
+    {Ingrediente.cebolla: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaPollo(
+    'sopa_pollo',
+    'sopa de pollo',
+    {Ingrediente.papa: 1, Ingrediente.choclo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaFideo(
+    'sopa_fideo',
+    'sopa de fideo',
+    {Ingrediente.trigo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaVerduras(
+    'crema_verduras',
+    'crema de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.arveja: 1, Ingrediente.papa: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaMiso(
+    'sopa_miso',
+    'sopa miso',
+    {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaZanahoria(
+    'crema_zanahoria',
+    'crema de zanahoria',
+    {Ingrediente.zanahoria: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaAjo(
+    'sopa_ajo',
+    'sopa de ajo',
+    {Ingrediente.ajo: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  // ---- Famosas del mundo ----
+  pizzaMargarita(
+    'pizza_margarita',
+    'pizza margarita',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 1, Ingrediente.albahaca: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  paella(
+    'paella',
+    'paella',
+    {Ingrediente.arroz: 2, Ingrediente.pimiento: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  lasana(
+    'lasana',
+    'lasaña',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  espaguetisPesto(
+    'espaguetis_pesto',
+    'espaguetis al pesto',
+    {Ingrediente.trigo: 1, Ingrediente.albahaca: 2, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  risotto(
+    'risotto',
+    'risotto',
+    {Ingrediente.arroz: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  guacamole(
+    'guacamole',
+    'guacamole con totopos',
+    {Ingrediente.palta: 2, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ratatouille(
+    'ratatouille',
+    'ratatouille',
+    {Ingrediente.berenjena: 1, Ingrediente.pimiento: 1, Ingrediente.tomate: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  arrozFrito(
+    'arroz_frito',
+    'arroz frito chino',
+    {Ingrediente.arroz: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  gazpacho(
+    'gazpacho',
+    'gazpacho',
+    {Ingrediente.tomate: 2, Ingrediente.pimiento: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  bibimbap(
+    'bibimbap',
+    'bibimbap',
+    {Ingrediente.arroz: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  curryCalabaza(
+    'curry_calabaza',
+    'curry de calabaza',
+    {Ingrediente.calabaza: 1, Ingrediente.arroz: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  panAjo(
+    'pan_ajo',
+    'pan de ajo',
+    {Ingrediente.trigo: 1, Ingrediente.ajo: 1},
+    {Comida.desayuno},
+  ),
+  crepasFresa(
+    'crepas_fresa',
+    'crepas con fresa',
+    {Ingrediente.trigo: 1, Ingrediente.fresa: 2},
+    {Comida.desayuno},
+  ),
+  tostadaPalta(
+    'tostada_palta',
+    'tostada de aguacate (palta)',
+    {Ingrediente.trigo: 1, Ingrediente.palta: 1},
+    {Comida.desayuno},
+  ),
+  // ---- Solo en su fiesta ----
+  pavo(
+    'pavo',
+    'pavo al horno',
+    {Ingrediente.papa: 1, Ingrediente.zanahoria: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.accionGracias, Festividad.navidad},
+  ),
+  picana(
+    'picana',
+    'picana navideña',
+    {Ingrediente.choclo: 1, Ingrediente.papa: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.navidad},
+  ),
+  fideosLargaVida(
+    'fideos_larga_vida',
+    'fideos de larga vida',
+    {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.anioNuevoChino},
   );
 
-  const Receta(this.dibujo, this.nombre, this.ingredientes, this.comidas);
+  const Receta(
+    this.dibujo,
+    this.nombre,
+    this.ingredientes,
+    this.comidas, {
+    this.fiestas = const {},
+  });
+
+  /// Si es comida de fiesta: solo se cocina mientras dura alguna de estas.
+  final Set<Festividad> fiestas;
+
+  /// ¿Se puede cocinar [hoy]? (lo de fiesta, solo en su fecha).
+  bool deTemporada(DateTime hoy) =>
+      fiestas.isEmpty || fiestas.any((f) => f.activaEn(hoy) != null);
 
   final String dibujo;
   final String nombre;
@@ -584,6 +811,7 @@ class Cosa {
     this.zonaPropia,
     this.cuarto,
     this.fiesta,
+    this.otraFiesta,
     this.deEpoca = false,
     this.especial,
     this.semilla = false,
@@ -612,6 +840,14 @@ class Cosa {
   /// Si es de temporada: solo se compra mientras dura esta festividad.
   final Festividad? fiesta;
 
+  /// Otra festividad en la que también se vende (el pavo: Acción de
+  /// Gracias y Navidad).
+  final Festividad? otraFiesta;
+
+  /// "Navidad" o "Navidad y Acción de Gracias".
+  String get fiestasTexto =>
+      [fiesta?.nombre, otraFiesta?.nombre].nonNulls.join(' y ');
+
   /// Ropa de época o de otras culturas (va en su propia vitrina).
   final bool deEpoca;
 
@@ -622,7 +858,8 @@ class Cosa {
   /// ¿Se puede comprar [hoy]? (lo de temporada, solo en su fecha).
   bool aLaVenta(DateTime hoy, {DateTime? inicioPareja}) =>
       fiesta == null ||
-      fiesta!.activaEn(hoy, inicioPareja: inicioPareja) != null;
+      fiesta!.activaEn(hoy, inicioPareja: inicioPareja) != null ||
+      otraFiesta?.activaEn(hoy, inicioPareja: inicioPareja) != null;
 
   /// Dónde queda en el dibujo, si no es la zona de siempre de su lugar.
   final ZonaCasita? zonaPropia;
@@ -645,6 +882,11 @@ class Cosa {
 
   /// PNG del mueble. La ropita tiene uno por gatito ([assetRopa]).
   String get asset => Casita.asset(id);
+
+  /// La comida delante de los gatitos, cuando tú les das de comer
+  /// (`delante_<comida>.png`, ver `generar_acciones.py`).
+  String get assetDelante =>
+      Casita.asset('delante_${id.substring('comida_'.length)}');
   String assetRopa(String gatito) => Casita.asset('ropa_${id}_$gatito');
 }
 
@@ -675,12 +917,14 @@ class Catalogo {
     Cosa('cuadro_pescadito', 'Cuadro de pescadito', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_corazon', 'Cuadro de corazón', 30, lugar: Lugar.cuadro),
     Cosa('cuadro_foto', 'Foto de los dos', 60, lugar: Lugar.cuadro),
+    Cosa('cuadro_koi', 'Cuadro de kois', 40, lugar: Lugar.cuadro),
     // Visitantes (en la repisa de la ventana)
     Cosa('pajarito_azul', 'Pajarito azul', 100, lugar: Lugar.pajarito),
     Cosa('pajarito_canario', 'Canario', 100, lugar: Lugar.pajarito),
     Cosa('pajarito_rosa', 'Pajarito rosado', 120, lugar: Lugar.pajarito),
     Cosa('pecera_pececito', 'Pecera con pececito', 120, lugar: Lugar.pecera),
     Cosa('pecera_pareja', 'Pecera de dos peces', 180, lugar: Lugar.pecera),
+    Cosa('pecera_koi', 'Pecera con kois', 150, lugar: Lugar.pecera),
     // Luces
     Cosa('lampara_pie', 'Lámpara de pie', 50, lugar: Lugar.lampara),
     Cosa(
@@ -736,6 +980,28 @@ class Catalogo {
     Cosa('gorro_pescador', 'Gorro de pescador', 45, parte: Parte.cabeza),
     Cosa('sombrero_paja', 'Sombrero de paja', 50, parte: Parte.cabeza),
     Cosa('gorro_marinero', 'Gorro de marinero', 45, parte: Parte.cabeza),
+    Cosa('gorro_chef', 'Gorro de chef', 50, parte: Parte.cabeza),
+    Cosa('sombrero_vaquero', 'Sombrero vaquero', 60, parte: Parte.cabeza),
+    Cosa('gorro_rana', 'Gorro de ranita', 50, parte: Parte.cabeza),
+    Cosa('gorro_pompon', 'Gorrito con pompón', 45, parte: Parte.cabeza),
+    Cosa('baberito', 'Baberito para comer', 30, parte: Parte.cuello),
+    // Ropa de pareja y accesorios
+    Cosa('sueter_corazon', 'Suéter con corazón', 120, parte: Parte.cuerpo),
+    Cosa('pijama_sol', 'Pijama de sol', 110, parte: Parte.cuerpo),
+    Cosa('pijama_luna', 'Pijama de luna', 110, parte: Parte.cuerpo),
+    Cosa('poleron_pareja', 'Polerón de pareja', 100, parte: Parte.cuerpo),
+    Cosa(
+      'sueter_navidad',
+      'Suéter navideño',
+      120,
+      parte: Parte.cuerpo,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa('alitas', 'Alitas de ángel', 250, parte: Parte.cuello),
+    Cosa('mochilita', 'Mochilita', 150, parte: Parte.cuello),
+    Cosa('collar_placa', 'Collar con placa', 90, parte: Parte.cuello),
+    Cosa('lacito', 'Lacito', 50, parte: Parte.cabeza),
+    Cosa('corona_oro', 'Corona de oro', 1500, parte: Parte.cabeza),
 
     // Cuartos nuevos
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
@@ -813,6 +1079,14 @@ class Catalogo {
     Cosa('columpio', 'Columpio', 100, lugar: Lugar.asiento),
     Cosa('estanque_peces', 'Estanque con peces', 90, lugar: Lugar.estanque),
     Cosa('estanque_fuente', 'Fuente', 110, lugar: Lugar.estanque),
+    // Kois: uno naranja y uno blanquito, como ellos.
+    Cosa('estanque_koi', 'Estanque de kois', 140, lugar: Lugar.estanque),
+    Cosa(
+      'estanque_koi_loto',
+      'Kois con flores de loto',
+      170,
+      lugar: Lugar.estanque,
+    ),
 
     // Baño
     Cosa('pared_bano_menta', 'Azulejos menta', 0, lugar: Lugar.paredBano),
@@ -961,6 +1235,43 @@ class Catalogo {
       lugar: Lugar.fondoHuerto,
       semilla: true,
     ),
+    Cosa('trigo', 'Semillas de trigo', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'albahaca',
+      'Semillas de albahaca',
+      20,
+      lugar: Lugar.bancal,
+      semilla: true,
+    ),
+    Cosa(
+      'pimientos',
+      'Semillas de pimiento',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('arroz', 'Semillas de arroz', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'ajos',
+      'Dientes de ajo para sembrar',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'paltos',
+      'Semilla de aguacate (palta)',
+      40,
+      lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa(
+      'berenjenas',
+      'Semillas de berenjena',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
 
     // ---- Más para la sala ----
     Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
@@ -1013,6 +1324,31 @@ class Catalogo {
     Cosa('comida_papas_fritas', 'Papas fritas', 20, lugar: Lugar.comida),
     Cosa('comida_pastel', 'Pastel de fresa', 25, lugar: Lugar.comida),
     Cosa('comida_helado', 'Copa de helado', 20, lugar: Lugar.comida),
+    Cosa(
+      'comida_pastel_chocolate',
+      'Pastel de chocolate',
+      25,
+      lugar: Lugar.comida,
+    ),
+    Cosa('comida_gaseosa_cola', 'Gaseosa de cola', 15, lugar: Lugar.comida),
+    Cosa('comida_dumplings', 'Dumplings', 25, lugar: Lugar.comida),
+    Cosa('comida_anticuchos', 'Anticuchos', 25, lugar: Lugar.comida),
+    Cosa('comida_donas', 'Donas', 20, lugar: Lugar.comida),
+    Cosa('comida_te_burbujas', 'Té de burbujas', 20, lugar: Lugar.comida),
+    Cosa('comida_bao', 'Bao al vapor', 20, lugar: Lugar.comida),
+    Cosa('comida_sopa_mani', 'Sopa de maní', 25, lugar: Lugar.comida),
+    Cosa('comida_hot_dog', 'Hot dog', 20, lugar: Lugar.comida),
+    Cosa('comida_onigiri', 'Onigiri', 20, lugar: Lugar.comida),
+    Cosa('comida_churros', 'Churros con chocolate', 20, lugar: Lugar.comida),
+    Cosa('comida_waffles', 'Waffles con fresa', 20, lugar: Lugar.comida),
+    Cosa(
+      'comida_galletas_gatito',
+      'Galletas de gatito',
+      15,
+      lugar: Lugar.comida,
+    ),
+    Cosa('comida_malteada_fresa', 'Malteada de fresa', 20, lugar: Lugar.comida),
+    Cosa('comida_tteokbokki', 'Tteokbokki', 25, lugar: Lugar.comida),
 
     // ---- Más para el dormitorio ----
     Cosa('pared_dorm_celeste', 'Pared celeste', 0, lugar: Lugar.paredDorm),
@@ -1027,6 +1363,138 @@ class Catalogo {
     Cosa('cielo_dia', 'Cielo de día', 0, lugar: Lugar.cielo),
     Cosa('cielo_atardecer', 'Atardecer', 80, lugar: Lugar.cielo),
     Cosa('cielo_noche', 'Noche estrellada', 80, lugar: Lugar.cielo),
+
+    // ---- Tienda grande (26-11-2026): para tener qué comprar un buen rato ----
+    // Sala
+    Cosa('pared_cielo', 'Pared celeste cielo', 70, lugar: Lugar.pared),
+    Cosa('pared_vainilla', 'Pared vainilla', 70, lugar: Lugar.pared),
+    Cosa('pared_corazones', 'Pared de corazoncitos', 90, lugar: Lugar.pared),
+    Cosa('pared_noche', 'Pared de noche estrellada', 110, lugar: Lugar.pared),
+    Cosa('piso_parquet', 'Piso de parquet', 90, lugar: Lugar.piso),
+    Cosa('piso_gris', 'Piso gris', 80, lugar: Lugar.piso),
+    Cosa('sofa_lila', 'Sofá lila', 160, lugar: Lugar.sofa),
+    Cosa('sofa_menta', 'Sofá menta', 160, lugar: Lugar.sofa),
+    Cosa('sofa_terracota', 'Sofá terracota', 170, lugar: Lugar.sofa),
+    Cosa('sofa_cielo', 'Sofá celeste', 160, lugar: Lugar.sofa),
+    Cosa('sofa_negro', 'Sofá negro', 200, lugar: Lugar.sofa),
+    Cosa('sofa_crema', 'Sofá crema', 180, lugar: Lugar.sofa),
+    Cosa('planta_helecho', 'Helecho', 70, lugar: Lugar.planta),
+    Cosa('planta_bonsai', 'Bonsái', 150, lugar: Lugar.planta),
+    Cosa('planta_girasol', 'Girasoles en maceta', 80, lugar: Lugar.planta),
+    // Cocina
+    Cosa('refri_lila', 'Refri lila', 140, lugar: Lugar.refri),
+    Cosa('refri_amarillo', 'Refri amarillo', 140, lugar: Lugar.refri),
+    Cosa('refri_negro', 'Refri negro', 180, lugar: Lugar.refri),
+    Cosa('refri_durazno', 'Refri durazno', 140, lugar: Lugar.refri),
+    Cosa('refri_celeste', 'Refri celeste', 140, lugar: Lugar.refri),
+    Cosa('estufa_rosa', 'Cocina rosada con tetera', 160, lugar: Lugar.estufa),
+    Cosa('estufa_menta', 'Cocina menta con sartén', 160, lugar: Lugar.estufa),
+    Cosa('estufa_roja', 'Cocina roja', 170, lugar: Lugar.estufa),
+    Cosa('cocina_lena', 'Cocina a leña', 260, lugar: Lugar.estufa),
+    Cosa('estufa_moderna', 'Cocina moderna', 300, lugar: Lugar.estufa),
+    Cosa('mesa_rosa', 'Mesa rosada', 90, lugar: Lugar.mesa),
+    Cosa('mesa_menta', 'Mesa menta', 90, lugar: Lugar.mesa),
+    Cosa('mesa_lila', 'Mesa lila', 90, lugar: Lugar.mesa),
+    Cosa('mesa_amarilla', 'Mesa amarilla', 90, lugar: Lugar.mesa),
+    Cosa('pared_cocina_lila', 'Azulejos lila', 70, lugar: Lugar.paredCocina),
+    Cosa(
+      'pared_cocina_durazno',
+      'Azulejos durazno',
+      70,
+      lugar: Lugar.paredCocina,
+    ),
+    Cosa('piso_cocina_celeste', 'Piso celeste', 70, lugar: Lugar.pisoCocina),
+    Cosa('piso_cocina_rosa', 'Piso rosado', 70, lugar: Lugar.pisoCocina),
+    Cosa('repisa_especias', 'Repisa de especias', 60, lugar: Lugar.repisa),
+    Cosa('repisa_plantitas', 'Repisa con plantitas', 70, lugar: Lugar.repisa),
+    Cosa(
+      'comedero_croquetas',
+      'Platito con croquetas',
+      50,
+      lugar: Lugar.comedero,
+    ),
+    Cosa('comedero_atun', 'Platito con atún', 60, lugar: Lugar.comedero),
+    Cosa('comedero_leche', 'Platito con leche', 40, lugar: Lugar.comedero),
+    Cosa(
+      'comedero_pasto',
+      'Platito con pasto para gatos',
+      40,
+      lugar: Lugar.comedero,
+    ),
+    // Dormitorio
+    Cosa('cama_lunas', 'Cama de lunas', 220, lugar: Lugar.cama),
+    Cosa('cama_nubes', 'Cama de nubes', 220, lugar: Lugar.cama),
+    Cosa('cama_flores', 'Cama de flores', 220, lugar: Lugar.cama),
+    Cosa('cama_cuadros', 'Cama a cuadros', 200, lugar: Lugar.cama),
+    Cosa('cama_huellitas', 'Cama de huellitas', 240, lugar: Lugar.cama),
+    Cosa('cama_lucecitas', 'Cama con lucecitas', 450, lugar: Lugar.cama),
+    Cosa('cama_dosel', 'Cama con dosel', 600, lugar: Lugar.cama),
+    Cosa('ropero_lila', 'Ropero lila', 180, lugar: Lugar.ropero),
+    Cosa('ropero_menta', 'Ropero menta', 180, lugar: Lugar.ropero),
+    Cosa('ropero_rosa', 'Ropero rosado', 180, lugar: Lugar.ropero),
+    Cosa('velador_lectura', 'Velador con libros', 90, lugar: Lugar.velador),
+    Cosa(
+      'velador_despertador',
+      'Velador con despertador',
+      70,
+      lugar: Lugar.velador,
+    ),
+    Cosa('velador_cactus', 'Velador con cactus', 60, lugar: Lugar.velador),
+    Cosa('pared_dorm_menta', 'Pared menta', 70, lugar: Lugar.paredDorm),
+    Cosa('pared_dorm_durazno', 'Pared durazno', 70, lugar: Lugar.paredDorm),
+    Cosa('piso_dorm_celeste', 'Alfombrado celeste', 80, lugar: Lugar.pisoDorm),
+    Cosa('piso_dorm_lila', 'Alfombrado lila', 80, lugar: Lugar.pisoDorm),
+    Cosa('cuadro_luna', 'Cuadro de la luna', 60, lugar: Lugar.cuadroCama),
+    Cosa(
+      'cuadro_gatitos',
+      'Cuadro de los gatitos',
+      80,
+      lugar: Lugar.cuadroCama,
+    ),
+    // Jardín
+    Cosa('arbol_naranjo', 'Naranjo', 200, lugar: Lugar.arbol),
+    Cosa('arbol_limonero', 'Limonero', 200, lugar: Lugar.arbol),
+    Cosa('arbol_durazno', 'Durazno', 220, lugar: Lugar.arbol),
+    Cosa('flores_hortensias', 'Hortensias', 60, lugar: Lugar.flores),
+    Cosa('flores_amapolas', 'Amapolas', 50, lugar: Lugar.flores),
+    // Baño
+    Cosa('tina_menta', 'Tina menta', 200, lugar: Lugar.tina),
+    Cosa('tina_lila', 'Tina lila', 200, lugar: Lugar.tina),
+    Cosa('tina_dorada', 'Tina dorada', 700, lugar: Lugar.tina),
+    Cosa(
+      'pared_bano_durazno',
+      'Pared de baño durazno',
+      60,
+      lugar: Lugar.paredBano,
+    ),
+    Cosa(
+      'pared_bano_cielo',
+      'Pared de baño celeste',
+      60,
+      lugar: Lugar.paredBano,
+    ),
+    Cosa('piso_bano_lila', 'Baldosas lila', 60, lugar: Lugar.pisoBano),
+    Cosa('piso_bano_menta', 'Baldosas menta', 60, lugar: Lugar.pisoBano),
+    // Cuarto de juegos
+    Cosa('piano', 'Piano', 900, lugar: Lugar.pelotero),
+    Cosa('bateria', 'Batería', 650, lugar: Lugar.pelotero),
+    Cosa('arpa', 'Arpa', 800, lugar: Lugar.pelotero),
+    Cosa('rincon_lectura', 'Rincón de lectura', 350, lugar: Lugar.pelotero),
+    Cosa('estante_libros', 'Estante de libros', 120, lugar: Lugar.estante),
+    Cosa(
+      'temporada_pesebre',
+      'Pesebre',
+      150,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'temporada_pinata',
+      'Piñata',
+      120,
+      lugar: Lugar.temporada,
+      fiesta: Festividad.aniversario,
+    ),
 
     // ---- Especiales: temas de la app y stickers para las notas ----
     Cosa('tema_sakura', 'Tema rosa sakura', 100, especial: Especial.tema),
@@ -1136,6 +1604,71 @@ class Catalogo {
     Cosa('laurel', 'Corona de laurel', 60, parte: Parte.cabeza, deEpoca: true),
 
     // ---- De temporada (solo se compran en su festividad) ----
+    // Comida de las fiestas (va en la mesa de la cocina).
+    Cosa(
+      'comida_uvas',
+      'Las doce uvas',
+      15,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevo,
+    ),
+    Cosa(
+      'comida_pescado_vapor',
+      'Pescado al vapor',
+      30,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'comida_nian_gao',
+      'Nian gao',
+      20,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'comida_bombones',
+      'Bombones de corazón',
+      20,
+      lugar: Lugar.comida,
+      fiesta: Festividad.sanValentin,
+    ),
+    Cosa(
+      'comida_zongzi',
+      'Zongzi',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.barcoDragon,
+    ),
+    Cosa(
+      'comida_pavo',
+      'Pavo al horno',
+      35,
+      lugar: Lugar.comida,
+      fiesta: Festividad.accionGracias,
+      otraFiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'comida_pie_calabaza',
+      'Pie de calabaza',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.accionGracias,
+    ),
+    Cosa(
+      'comida_picana',
+      'Picana navideña',
+      30,
+      lugar: Lugar.comida,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'comida_paneton',
+      'Panetón con chocolate',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.navidad,
+    ),
     Cosa(
       'adorno_anio_nuevo',
       'Banderín de estrellas',
@@ -1505,8 +2038,16 @@ class EstadoCasita {
   /// Alcancía: id de la [Cosa] para la que están ahorrando juntos.
   final String? meta;
 
-  /// Compra grande esperando que la pareja la apruebe.
+  /// Compra que uno quiso hacer en pareja, esperando el sí del otro.
+  /// Usa [pendiente]: esta puede quedar vieja si ya la compraron.
   final Propuesta? propuesta;
+
+  /// La propuesta que de verdad sigue esperando: si ya tienen esa cosa
+  /// (la compraron por otro lado), no hay nada que aprobar.
+  Propuesta? get pendiente => switch (propuesta) {
+    final p? when p.queCosa != null && !tiene(p.queCosa!) => p,
+    _ => null,
+  };
 
   /// Nombres de los gatitos bebés: `{calico: 'Mochi'}`.
   final Map<String, String> nombres;
@@ -1797,7 +2338,8 @@ class EstadoCasita {
   /// - De 0 a 2 el naranja se levanta a comer a la cocina mientras el
   ///   blanco duerme (si hay cocina y dónde dormir). Hasta las 7 duermen.
   /// - 7 bañito, 8 desayuno, 9 besitos, 12 cocinan y 13 almuerzan, 14 y 15 siesta,
-  ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 y 21 ven su drama, y
+  ///   16 y 17 picnic, 18 cocinan y 19 cenan, 20 ven su drama, 21 ven las
+  ///   estrellas en el jardín (si no hay jardín, siguen con el drama), y
   ///   desde las 22 duermen.
   /// - En los ratos libres (o si no tienen el cuarto de la rutina) hacen
   ///   algo en el cuarto donde andan.
@@ -1810,6 +2352,7 @@ class EstadoCasita {
           : null;
     }
     if (h < 7 || h >= 22) return null;
+    if (h == 21 && sePuede(Escena.estrellas)) return Escena.estrellas;
     if (_rutina(h) case final e? when sePuede(e)) return e;
     if (h >= 20) return null;
     final rato =
@@ -1883,6 +2426,7 @@ class EstadoCasita {
     bool banando = false,
     DateTime? ahora,
     bool conGatitos = true,
+    Cosa? comiendo,
   ]) {
     final bebes = bebesEn(cuarto, ahora);
     String dibujo(Cosa c) => switch (etapa(c, ahora)) {
@@ -1898,11 +2442,15 @@ class EstadoCasita {
     final escena = conMuebles && ahora != null ? this.escena(ahora) : null;
     final enEsta = escena != null && cuartoDe(escena) == cuarto ? escena : null;
     // Con el botón de bañarlos, o en el bañito de la mañana.
+    // Si les estás dando de comer, se despiertan y comen (ver [comiendo]).
     final enLaTina =
+        comiendo == null &&
         (banando || enEsta == Escena.bano) &&
         conMuebles &&
         sePuedenBanar(cuarto);
-    final aqui = enLaTina || enEsta == Escena.siesta ? null : enEsta;
+    final aqui = enLaTina || enEsta == Escena.siesta || comiendo != null
+        ? null
+        : enEsta;
     // A medianoche el blanco duerme solito.
     final soloBlanco =
         escena == Escena.medianoche &&
@@ -1910,6 +2458,7 @@ class EstadoCasita {
         dondeDuermen == cuarto;
     final duermen =
         !enLaTina &&
+        comiendo == null &&
         conMuebles &&
         (enEsta == Escena.siesta ||
             (aqui == null && (soloBlanco || this.duermen(cuarto, momento))));
@@ -1953,11 +2502,18 @@ class EstadoCasita {
             if (prenda(g, p) case final c?) c.assetRopa(g),
         ],
         if (aqui != null) ...capasEscena(aqui, tick, ahora!),
+        if (comiendo != null) ...[
+          Casita.asset('escena_comer_${tick % 4 < 2 ? 1 : 2}'),
+          comiendo.assetDelante,
+        ],
       ],
       // Los bebés pasean (o duermen) encima del piso: ver [PaseoBebe].
       if (conMuebles && bebes.isNotEmpty)
         momento == Momento.noche ? Casita.bebesDurmiendo : Casita.bebesPaseando,
       if (momento != Momento.dia) Casita.asset(momento.name),
+      // Las estrellas brillan encima de la noche.
+      if (conGatitos && aqui == Escena.estrellas)
+        Casita.asset('escena_estrellas_cielo_${tick % 4 < 2 ? 1 : 2}'),
       // El brillo de la tele en la penumbra.
       if (conGatitos && aqui == Escena.drama && momento != Momento.dia)
         Casita.asset('escena_drama_luz_${tick % 4 < 2 ? 1 : 2}'),
@@ -2053,6 +2609,12 @@ class Movimiento {
   static const animo = 'animo';
   static const respira = 'respira';
   static const juego = 'juego';
+  static const dibujo = 'dibujo';
+  static const memorama = 'memorama';
+  static const rompecabezas = 'rompe';
+  static const sudoku = 'sudoku';
+  static const telefono = 'telefono';
+  static const rachaJuegos = 'rachajuegos';
   static const pomodoro = 'pomodoro';
   static const racha = 'racha';
   static const compra = 'compra';
@@ -2087,6 +2649,12 @@ class Movimiento {
     animo => 'contó cómo se siente',
     respira => 'respiró con los gatitos',
     juego => 'jugó un juego de pareja',
+    dibujo => 'jugó a dibujar y adivinar',
+    memorama => 'terminó un memorama',
+    rompecabezas => 'armó un rompecabezas',
+    sudoku => 'completó un sudoku',
+    telefono => 'jugó al teléfono descompuesto',
+    rachaJuegos => 'jugaron juntos varios días seguidos (bonus)',
     pomodoro => 'completó un pomodoro',
     racha => 'llegó a una racha nueva (bonus)',
     compra => switch (Catalogo.porId(ref)) {

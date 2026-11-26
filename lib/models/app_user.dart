@@ -11,6 +11,7 @@ class AppUser {
     this.gatito,
     this.gatitoEn,
     this.cumple,
+    this.foto,
   });
 
   final String uid;
@@ -36,6 +37,13 @@ class AppUser {
   /// Su cumpleaños, 'MM-DD' (ver `Cumple`). `null` si no lo puso.
   final String? cumple;
 
+  /// La foto de perfil que eligió en la app: un JPG cuadrado en base64
+  /// (se ve redondo), o [fotoGatito] si quiere que se vea su gatito.
+  /// `null` si no eligió ninguna: entonces se usa [photoUrl] o la inicial.
+  final String? foto;
+
+  static const fotoGatito = 'gatito';
+
   String get initial =>
       name.isEmpty ? '?' : String.fromCharCode(name.runes.first).toUpperCase();
 
@@ -51,6 +59,7 @@ class AppUser {
       gatito: d['gatito'] as String?,
       gatitoEn: (d['gatitoEn'] as Timestamp?)?.toDate(),
       cumple: d['cumple'] as String?,
+      foto: d['foto'] as String?,
     );
   }
 }

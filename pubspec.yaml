@@ -52,6 +52,8 @@ dependencies:
   audioplayers: ^6.8.1
   flutter_local_notifications: ^22.3.3
   timezone: ^0.11.2
+  image: ^4.13.1
+  file_picker: ^13.4.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -90,6 +92,8 @@ flutter:
     # Dibujos de las categorías de la recomendación del día.
     - assets/recomendaciones/
     - assets/casita/
+    # Frasco de la cápsula del tiempo (ver capsula_screen.dart).
+    - assets/capsula/
     # Pasteles de cumpleaños y aniversario (generar_pasteles.py).
     - assets/cartas/
     # Tutorial de bienvenida (ver lib/screens/tutorial/tutorial_screen.dart).
@@ -103,6 +107,9 @@ flutter:
     - family: Manuscrita
       fonts:
         - asset: assets/fonts/DancingScript-Bold.ttf
+    - family: LetraNota
+      fonts:
+        - asset: assets/fonts/PatrickHand-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

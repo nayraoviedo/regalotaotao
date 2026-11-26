@@ -398,7 +398,16 @@ void main() {
       expect([aLas(16), aLas(17)], everyElement(Escena.picnic));
       expect(aLas(18), Escena.cocinando);
       expect(aLas(19), Escena.cena);
-      expect([aLas(20), aLas(21)], everyElement(Escena.drama));
+      expect(aLas(20), Escena.drama);
+      // A las 21 ven las estrellas en el jardín (sin jardín, siguen con
+      // su drama).
+      expect(aLas(21), Escena.estrellas);
+      expect(
+        EstadoCasita.fromMap({
+          'tenemos': ['cuarto_cocina'],
+        }).escena(DateTime(2026, 11, 24, 21, 20)),
+        Escena.drama,
+      );
       expect([aLas(3), aLas(6), aLas(22)], everyElement(isNull));
       // La siesta es en la cama, y se ve que duermen.
       final tres = DateTime(2026, 11, 24, 14, 20);
@@ -743,11 +752,84 @@ void main() {
       expect(activa(Festividad.carnaval, DateTime(2027, 2, 6)), isTrue);
       expect(activa(Festividad.aniversario, DateTime(2027, 3, 10)), isTrue);
       expect(activa(Festividad.primavera, DateTime(2027, 9, 21)), isTrue);
+      // Acción de Gracias: cuarto jueves de noviembre.
+      expect(Festividad.accionDeGraciasDe(2026), DateTime(2026, 11, 26));
+      expect(Festividad.accionDeGraciasDe(2027), DateTime(2027, 11, 25));
+      expect(activa(Festividad.accionGracias, DateTime(2026, 11, 26)), isTrue);
       final proximas = Festividad.proximas(DateTime(2026, 11, 23));
-      expect(proximas.first.$1, Festividad.navidad);
+      expect(proximas.first.$1, Festividad.accionGracias);
+      expect(proximas[1].$1, Festividad.navidad);
       // Cada festividad tiene cosas a la venta.
       for (final f in Festividad.values) {
         expect(Catalogo.cosas.where((c) => c.fiesta == f), isNotEmpty);
+      }
+    });
+
+    test('la comida de fiesta solo se vende y se cocina en su fecha', () {
+      final pavo = Catalogo.cosas.firstWhere((c) => c.id == 'comida_pavo');
+      expect(pavo.aLaVenta(DateTime(2026, 11, 26)), isTrue);
+      expect(pavo.aLaVenta(DateTime(2026, 12, 20)), isTrue);
+      expect(pavo.aLaVenta(DateTime(2026, 11, 10)), isFalse);
+      expect(pavo.fiestasTexto, 'Acción de Gracias y Navidad');
+      expect(Receta.pavo.deTemporada(DateTime(2026, 12, 24)), isTrue);
+      expect(Receta.pavo.deTemporada(DateTime(2026, 7, 1)), isFalse);
+      expect(Receta.dumplings.deTemporada(DateTime(2026, 7, 1)), isTrue);
+    });
+
+    test('cada cosa de la tienda tiene su dibujo', () {
+      for (final c in Catalogo.cosas) {
+        if (c.esCuarto || c.esEspecial) continue;
+        final archivo = c.esRopa
+            ? 'assets/casita/ropa_${c.id}_naranja.png'
+            : 'assets/casita/${c.id}.png';
+        expect(File(archivo).existsSync(), isTrue, reason: c.id);
+        if (c.lugar == Lugar.comida) {
+          expect(File(c.assetDelante).existsSync(), isTrue, reason: c.id);
+        }
+      }
+      for (final e in Escena.values.where((e) => e.libre)) {
+        expect(File(e.capa(0)).existsSync(), isTrue, reason: e.name);
+      }
+    });
+
+    test('al darles de comer se despiertan y comen', () {
+      final pastel = Catalogo.porId('comida_pastel_chocolate')!;
+      final e = EstadoCasita.fromMap({
+        'tenemos': ['cuarto_cocina', pastel.id],
+      });
+      final noche = DateTime(2026, 11, 24, 23, 30);
+      final capas = e.capas(
+        Cuarto.sala,
+        true,
+        Momento.noche,
+        0,
+        false,
+        noche,
+        true,
+        pastel,
+      );
+      expect(capas, contains('assets/casita/delante_pastel_chocolate.png'));
+      expect(capas, contains('assets/casita/escena_comer_1.png'));
+      expect(capas.any((c) => c.contains('dormidos')), isFalse);
+    });
+
+    test('cada receta tiene su plato y sus ingredientes se cosechan', () {
+      final ids = Catalogo.cosas.map((c) => c.id).toSet();
+      for (final i in Ingrediente.values) {
+        expect(ids, contains(i.semilla), reason: i.name);
+        expect(File('assets/casita/${i.semilla}.png').existsSync(), isTrue);
+        expect(
+          File('assets/casita/picando_${i.name}_naranja.png').existsSync(),
+          isTrue,
+          reason: i.name,
+        );
+      }
+      for (final r in Receta.values) {
+        expect(
+          File('assets/casita/plato_${r.dibujo}.png').existsSync(),
+          isTrue,
+          reason: r.name,
+        );
       }
     });
 
@@ -908,7 +990,7 @@ void main() {
       expect(metas.last, isNull);
     });
 
-    testWidgets('al comprar se elige: para los dos o regalar', (t) async {
+    testWidgets('al comprar se elige: yo, en pareja o regalar', (t) async {
       final compras = <(Cosa, String?)>[];
       final regalos = <(Cosa, String?, String)>[];
       await t.pumpWidget(
@@ -920,8 +1002,8 @@ void main() {
       );
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
-      // Las dos opciones, y por defecto es para los dos (no se impone regalar).
-      expect(textoDoodle('🏠 Para los dos'), findsOneWidget);
+      // Por defecto lo compras tú; en pareja o regalar es si quieres.
+      expect(textoDoodle('🛒 Yo lo compro'), findsOneWidget);
       expect(textoDoodle('🎁 Regalar'), findsOneWidget);
       expect(
         find.text('Va directo a la casita, para los dos.'),
@@ -992,7 +1074,7 @@ void main() {
       expect(abiertos.single.id, 'sofa_rosa');
     });
 
-    testWidgets('una compra grande la aprueba la pareja', (t) async {
+    testWidgets('cada uno compra solo; en pareja es opcional', (t) async {
       final propuestas = <Cosa>[];
       final compras = <(Cosa, String?)>[];
       await t.pumpWidget(
@@ -1003,27 +1085,40 @@ void main() {
           aprobadas: [],
         ),
       );
-      // Lo chiquito se compra directo.
-      await t.ensureVisible(find.text('Planta'));
-      await t.tap(find.text('Planta'));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Cactus'));
-      await t.pumpAndSettle();
-      expect(find.text('Comprar'), findsOneWidget);
-      await t.tap(find.text('Todavía no'));
-      await t.pumpAndSettle();
-
-      // Lo grande (más de 100) se le pide a la pareja.
+      // Aunque sea grande, por defecto lo compras tú de una vez.
       await t.ensureVisible(find.text('Sofá'));
       await t.tap(find.text('Sofá'));
       await t.pumpAndSettle();
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
-      expect(find.textContaining('Xixi tiene que aprobarla'), findsOneWidget);
+      expect(find.text('Comprar'), findsOneWidget);
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'sofa_azul');
+      expect(propuestas, isEmpty);
+
+      // Si quieres, le pides el sí a tu pareja.
+      await t.ensureVisible(find.text('Planta'));
+      await t.tap(find.text('Planta'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Cactus'));
+      await t.pumpAndSettle();
+      await t.tap(textoDoodle('🤝 En pareja'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('cuando te dé el sí'), findsOneWidget);
       await t.tap(find.text('Pedirle el sí'));
       await t.pumpAndSettle();
-      expect(propuestas.single.id, 'sofa_azul');
-      expect(compras, isEmpty);
+      expect(propuestas.single.id, 'planta_cactus');
+      expect(compras, hasLength(1));
+    });
+
+    test('una propuesta ya comprada no sigue pidiendo el sí', () {
+      const p = Propuesta(id: 'p1', cosa: 'cuarto_cocina', de: 'a');
+      expect(const EstadoCasita(propuesta: p).pendiente, isNotNull);
+      expect(
+        const EstadoCasita(propuesta: p, tenemos: {'cuarto_cocina'}).pendiente,
+        isNull,
+      );
     });
 
     testWidgets('la pareja ve la propuesta y la aprueba', (t) async {
@@ -1183,6 +1278,21 @@ void main() {
       expect(find.text('¡Qué rico bañito!'), findsOneWidget);
       await t.pump(const Duration(seconds: 6));
       expect(find.text('Bañar a los gatitos'), findsOneWidget);
+    });
+
+    testWidgets('darles de comer algo que compraron', (t) async {
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(tenemos: {'cuarto_cocina', 'comida_donas'}),
+        ),
+      );
+      await t.tap(find.text('Darles de comer'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Donas'));
+      await t.pumpAndSettle();
+      expect(find.text('¡Ñam! Les encantó'), findsOneWidget);
+      await t.pump(const Duration(seconds: 7));
+      expect(find.text('Darles de comer'), findsOneWidget);
     });
 
     testWidgets('los movimientos dicen quién hizo qué', (t) async {

@@ -1,9 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../models/app_user.dart';
+import '../screens/notes/tablero/nota_vista.dart' show fotoBytes;
+import '../screens/together/gatitos.dart';
 import '../theme.dart';
 
-/// Foto de perfil redonda. Si no hay foto (o no carga), muestra la inicial.
+/// Foto de perfil redonda: la que eligió en la app (o su gatito); si no,
+/// la de Google; y si no hay ninguna (o no carga), la inicial.
 class UserAvatar extends StatelessWidget {
   const UserAvatar(this.user, {super.key, this.size = 48, this.border = true});
 
@@ -26,6 +29,38 @@ class UserAvatar extends StatelessWidget {
         ),
       ),
     );
+    final foto = user?.foto;
+    final Widget google = url == null || url.isEmpty
+        ? fallback
+        : Image.network(
+            url,
+            fit: BoxFit.cover,
+            // En web, si la imagen no permite CORS se usa un <img>.
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+            errorBuilder: (_, _, _) => fallback,
+          );
+    final Widget contenido;
+    if (foto == AppUser.fotoGatito) {
+      contenido = ColoredBox(
+        color: AppTheme.amarillo.withValues(alpha: 0.45),
+        child: Padding(
+          padding: EdgeInsets.only(top: size * 0.1),
+          child: GatitoImagen(
+            Gatito.deId(user?.gatito) ?? Gatito.naranja,
+            size: size,
+          ),
+        ),
+      );
+    } else if (foto != null && foto.isNotEmpty) {
+      contenido = Image.memory(
+        fotoBytes(foto),
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => google,
+      );
+    } else {
+      contenido = google;
+    }
     return Container(
       width: size,
       height: size,
@@ -34,17 +69,7 @@ class UserAvatar extends StatelessWidget {
         color: Colors.white,
         shape: BoxShape.circle,
       ),
-      child: ClipOval(
-        child: url == null || url.isEmpty
-            ? fallback
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                // En web, si la imagen no permite CORS se usa un <img>.
-                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-                errorBuilder: (_, _, _) => fallback,
-              ),
-      ),
+      child: ClipOval(child: contenido),
     );
   }
 }

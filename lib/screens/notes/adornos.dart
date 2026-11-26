@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/pescaditos_service.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/elegir_imagen.dart';
 import '../../widgets/texto_doodle.dart';
 import 'tablero/formas.dart';
 import 'tablero/nota_vista.dart' show fotoBytes;
@@ -31,14 +31,13 @@ class Adornos {
     final mensajero = ScaffoldMessenger.of(context);
     void aviso(String t) => mensajero.showSnackBar(SnackBar(content: Text(t)));
     try {
-      final img = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 720,
-        maxHeight: 720,
-        imageQuality: 65,
+      final bytes = await ElegirImagen.elegir(
+        context,
+        maxLado: 720,
+        calidad: 65,
       );
-      if (img == null) return null;
-      final b64 = base64Encode(await img.readAsBytes());
+      if (bytes == null) return null;
+      final b64 = base64Encode(bytes);
       if (b64.length > maxFoto) {
         aviso('Esa foto es muy pesada. Prueba con otra más chiquita.');
         return null;

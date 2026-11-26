@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 
 import '../models/carta.dart';
 import '../models/casita.dart';
+import '../models/dibujo.dart';
 import '../models/juegos.dart';
+import '../models/juntos.dart';
+import '../models/sudoku.dart';
 import 'db.dart';
 import 'notify_service.dart';
 
@@ -175,6 +178,158 @@ class PescaditosService {
     return ganado;
   }
 
+  /// Ronda adivinada de "Dibuja y adivina": quien dibujó y quien adivinó
+  /// ganan [Dibujos.premio] cada uno, en las primeras
+  /// [Dibujos.rondasConPremio] rondas del día (lugares
+  /// `dibujo_{día}_{uid}_{1..3}`). Devuelve cuánto se ganó.
+  Future<int> ganarDibujo(String coupleId, String uid, String rondaId) async {
+    final hoy = dia();
+    final estadoRef = _estado(coupleId);
+    final rondaRef = Db.coupleSub(coupleId, 'dibujos').doc(rondaId);
+    final lugares = [
+      for (var i = 1; i <= Dibujos.rondasConPremio; i++)
+        _movs(coupleId).doc('dibujo_${hoy}_${uid}_$i'),
+    ];
+    final ganado = await Db.instance.runTransaction<int>((tx) async {
+      final ronda = Ronda.fromDoc(await tx.get(rondaRef));
+      if (ronda == null || !ronda.puedeCobrar(uid)) return 0;
+      final estado = await tx.get(estadoRef);
+      DocumentReference<Map<String, dynamic>>? libre;
+      var slot = 0;
+      for (var i = 0; i < lugares.length; i++) {
+        if (!(await tx.get(lugares[i])).exists) {
+          libre = lugares[i];
+          slot = i + 1;
+          break;
+        }
+      }
+      if (libre == null) {
+        tx.update(rondaRef, {'cobros.$uid': Ronda.sinPremio});
+        return 0;
+      }
+      const cantidad = Dibujos.premio;
+      tx.set(libre, {
+        'tipo': Movimiento.dibujo,
+        'uid': uid,
+        'cantidad': cantidad,
+        'ref': hoy,
+        'ronda': rondaId,
+        'slot': slot,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      final cambios = <String, Object?>{
+        'pescaditos':
+            ((estado.data()?['pescaditos'] as num?)?.toInt() ?? 0) + cantidad,
+        'ultimoMov': libre.id,
+      };
+      if (estado.exists) {
+        tx.update(estadoRef, cambios);
+      } else {
+        tx.set(estadoRef, cambios);
+      }
+      tx.update(rondaRef, {'cobros.$uid': libre.id});
+      return cantidad;
+    });
+    if (ganado > 0) {
+      ultimaGanancia.value = Ganancia(ganado, 'por dibujar y adivinar juntos');
+    }
+    return ganado;
+  }
+
+  /// Terminaron juntos un memorama o un rompecabezas ([tipo] es
+  /// [Movimiento.memorama] o [Movimiento.rompecabezas], y [coleccion] donde
+  /// está la partida): cada uno gana [Juntos.premio], en las primeras
+  /// [Juntos.partidasConPremio] del día (`{tipo}_{día}_{uid}_{1..3}`).
+  Future<int> ganarJuntos(
+    String coupleId,
+    String uid, {
+    required String tipo,
+    required String coleccion,
+    required String partidaId,
+    required String motivo,
+  }) async {
+    final hoy = dia();
+    final estadoRef = _estado(coupleId);
+    final partidaRef = Db.coupleSub(coupleId, coleccion).doc(partidaId);
+    final lugares = [
+      for (var i = 1; i <= Juntos.partidasConPremio; i++)
+        _movs(coupleId).doc('${tipo}_${hoy}_${uid}_$i'),
+    ];
+    final ganado = await Db.instance.runTransaction<int>((tx) async {
+      final partida = (await tx.get(partidaRef)).data();
+      if (partida == null ||
+          partida['estado'] != 'terminada' ||
+          ((partida['cobros'] as Map?)?.containsKey(uid) ?? false)) {
+        return 0;
+      }
+      final estado = await tx.get(estadoRef);
+      DocumentReference<Map<String, dynamic>>? libre;
+      var slot = 0;
+      for (var i = 0; i < lugares.length; i++) {
+        if (!(await tx.get(lugares[i])).exists) {
+          libre = lugares[i];
+          slot = i + 1;
+          break;
+        }
+      }
+      if (libre == null) {
+        tx.update(partidaRef, {'cobros.$uid': 'tope'});
+        return 0;
+      }
+      const cantidad = Juntos.premio;
+      tx.set(libre, {
+        'tipo': tipo,
+        'uid': uid,
+        'cantidad': cantidad,
+        'ref': hoy,
+        'partida': partidaId,
+        'slot': slot,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+      final cambios = <String, Object?>{
+        'pescaditos':
+            ((estado.data()?['pescaditos'] as num?)?.toInt() ?? 0) + cantidad,
+        'ultimoMov': libre.id,
+      };
+      if (estado.exists) {
+        tx.update(estadoRef, cambios);
+      } else {
+        tx.set(estadoRef, cambios);
+      }
+      tx.update(partidaRef, {'cobros.$uid': libre.id});
+      return cantidad;
+    });
+    if (ganado > 0) ultimaGanancia.value = Ganancia(ganado, motivo);
+    return ganado;
+  }
+
+  /// Completó un sudoku: pescaditos según el nivel, en los primeros
+  /// [Juntos.partidasConPremio] del día (`sudoku_{día}_{uid}_{1..3}`).
+  /// Devuelve cuánto ganó (0 si ya no quedaban).
+  Future<int> ganarSudoku(
+    String coupleId,
+    String uid,
+    NivelSudoku nivel,
+  ) async {
+    final hoy = dia();
+    for (var i = 1; i <= Juntos.partidasConPremio; i++) {
+      final n = await _ganar(
+        coupleId,
+        uid,
+        id: 'sudoku_${hoy}_${uid}_$i',
+        tipo: Movimiento.sudoku,
+        cantidad: nivel.premio,
+        ref: hoy,
+        motivo: 'por completar un sudoku',
+        extra: {'slot': i, 'nivel': nivel.name},
+      );
+      if (n > 0) return n;
+      final ya = await _movs(coupleId).doc('sudoku_${hoy}_${uid}_$i').get();
+      if (!ya.exists) return 0; // no se pudo guardar
+    }
+    return 0;
+  }
+
   static String _lugarJuego(String dia, String uid, int i) =>
       'juego_${dia}_${uid}_$i';
 
@@ -308,8 +463,17 @@ class PescaditosService {
     await Db.instance.runTransaction((tx) async {
       final estado = await tx.get(estadoRef);
       final mov = await tx.get(movRef);
-      if (mov.exists) return; // ya la habían comprado
       final d = estado.data() ?? const <String, dynamic>{};
+      // Si había una propuesta de esta misma cosa, ya no espera nada.
+      final cierraPropuesta =
+          aprobada || (d['propuesta'] as Map?)?['cosa'] == cosa.id;
+      if (mov.exists) {
+        // Ya la habían comprado: solo se limpia la propuesta que quedó.
+        if (cierraPropuesta && estado.exists) {
+          tx.update(estadoRef, {'propuesta': FieldValue.delete()});
+        }
+        return;
+      }
       final hay = (d['pescaditos'] as num?)?.toInt() ?? 0;
       if (hay < cosa.precio) throw SinPescaditos(cosa.precio - hay);
       tx.set(movRef, {
@@ -324,8 +488,8 @@ class PescaditosService {
         'pescaditos': hay - cosa.precio,
         'ultimoMov': movRef.id,
         'tenemos': FieldValue.arrayUnion([cosa.id]),
-        // Al aprobar una compra grande, la propuesta se cierra.
-        if (aprobada) 'propuesta': FieldValue.delete(),
+        // Al comprar lo que se había propuesto, la propuesta se cierra.
+        if (cierraPropuesta) 'propuesta': FieldValue.delete(),
         // Con esto se llenó la alcancía.
         if (d['meta'] == cosa.id) 'meta': FieldValue.delete(),
         // Las semillas empiezan a crecer al comprarlas.
@@ -467,7 +631,8 @@ class PescaditosService {
         'bebes': {bebe.colorBebe: nombre},
       }, SetOptions(merge: true));
 
-  /// Propone una compra grande: la pareja la tiene que aprobar.
+  /// Comprar en pareja (opcional): en vez de comprar de una vez, le pide
+  /// el sí a la pareja y se compra cuando lo aprueba.
   Future<void> proponer(
     String coupleId,
     String uid,

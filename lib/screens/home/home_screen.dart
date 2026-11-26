@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
@@ -37,11 +38,14 @@ import 'inicio_view.dart';
 import 'invitacion_pomodoro.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
+import 'saludos.dart';
+import '../capsula/capsula_inicio.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
 import '../casita/casa_en_corte.dart';
 import '../juegos/juegos_screen.dart';
+import '../juegos_juntos/juegos_juntos_screen.dart';
 import '../../widgets/texto_doodle.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -130,12 +134,20 @@ class _HomeBodyState extends State<_HomeBody> {
   final _premiosRevisados = <String>{};
   bool _celebrando = false;
 
+  // ---- Compra en pareja: tu pareja te pide el sí ----
+  StreamSubscription<EstadoCasita>? _casitaSub;
+  String? _casitaDe;
+
+  /// Propuestas que ya te mostramos en una ventanita (no se repiten).
+  final _propuestasVistas = <String>{};
+
   @override
   void initState() {
     super.initState();
     _contarTeExtrano();
     _ciclo = AppLifecycleListener(onResume: _contarTeExtrano);
     _escucharRacha();
+    _escucharPropuestas();
     _tutorialPrimeraVez();
   }
 
@@ -154,12 +166,14 @@ class _HomeBodyState extends State<_HomeBody> {
   void didUpdateWidget(_HomeBody old) {
     super.didUpdateWidget(old);
     _escucharRacha();
+    _escucharPropuestas();
   }
 
   @override
   void dispose() {
     _ciclo.dispose();
     _rachaSub?.cancel();
+    _casitaSub?.cancel();
     _racha.dispose();
     super.dispose();
   }
@@ -195,6 +209,88 @@ class _HomeBodyState extends State<_HomeBody> {
           _racha.value = r;
           _revisarPremio(r);
         }, onError: (_) {});
+  }
+
+  void _escucharPropuestas() {
+    final coupleId = widget.couple.id;
+    if (_casitaDe == coupleId) return;
+    _casitaDe = coupleId;
+    _casitaSub?.cancel();
+    _casitaSub = PescaditosService.instance
+        .watch(coupleId)
+        .listen(_revisarPropuesta, onError: (_) {});
+  }
+
+  /// Cuando tu pareja quiere comprar algo en pareja, te sale una
+  /// ventanita para darle el sí (una vez por propuesta, aunque cierres la
+  /// app; si dices "Después", sigue esperando en la casita).
+  Future<void> _revisarPropuesta(EstadoCasita estado) async {
+    final p = estado.pendiente;
+    final me = widget.me.uid;
+    if (p == null || p.de == me || _celebrando) return;
+    if (!_propuestasVistas.add(p.id)) return;
+    final clave = 'propuestaVista_${widget.couple.id}_$me';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(clave) == p.id) return;
+      await prefs.setString(clave, p.id);
+    } catch (_) {
+      // Sin almacenamiento: igual se muestra (una vez en esta sesión).
+    }
+    if (!mounted) return;
+    final cosa = p.queCosa!;
+    final pareja = widget.partner?.name ?? 'Tu pareja';
+    final alcanza = estado.pescaditos >= cosa.precio;
+    final respuesta = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TextoDoodle('🐟 ¿Le das el sí?'),
+        content: Text(
+          '$pareja quiere comprar ${cosa.nombre} para la casita. '
+          'Cuesta ${cosa.precio} pescaditos y tienen ${estado.pescaditos}.'
+          '${alcanza ? '' : '\n\nTodavía no les alcanza: pueden seguir '
+                    'ahorrando juntos.'}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Después'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ahora no'),
+          ),
+          if (alcanza)
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('¡Sí, comprarlo!'),
+            ),
+        ],
+      ),
+    );
+    if (respuesta == null || !mounted) return;
+    final servicio = PescaditosService.instance;
+    final coupleId = widget.couple.id;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (respuesta) {
+        await servicio.aprobar(coupleId, me, p);
+        messenger.showSnackBar(
+          SnackBar(content: Text('¡${cosa.nombre} ya está en la casita!')),
+        );
+      } else {
+        await servicio.descartarPropuesta(coupleId);
+      }
+    } on SinPescaditos catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Les faltan ${e.faltan} pescaditos')),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo, intenta otra vez')),
+      );
+    }
   }
 
   /// Al llegar a 7, 30, 60… días, cada uno recibe su premio una vez.
@@ -315,7 +411,7 @@ class _HomeBodyState extends State<_HomeBody> {
 
   bool _mandandoMimo = false;
 
-  /// Manda un beso o un abrazo y muestra a los gatitos haciéndolo.
+  /// Manda un beso, un abrazo o el cascabel y muestra a los gatitos haciéndolo.
   Future<void> _mandarMimo(Mimo mimo) async {
     if (_mandandoMimo) return;
     _mandandoMimo = true;
@@ -325,6 +421,12 @@ class _HomeBodyState extends State<_HomeBody> {
     try {
       if (mimo == Mimo.beso) {
         await TogetherService.instance.sendKiss(
+          widget.couple.id,
+          from: me.uid,
+          to: _partnerUid,
+        );
+      } else if (mimo == Mimo.cascabel) {
+        await TogetherService.instance.sendBell(
           widget.couple.id,
           from: me.uid,
           to: _partnerUid,
@@ -411,6 +513,14 @@ class _HomeBodyState extends State<_HomeBody> {
               onTap: () =>
                   _open(JuegosScreen(me: me, couple: couple, partner: partner)),
             ),
+            juegosJuntos: JuntosInicio(
+              coupleId: couple.id,
+              uid: me.uid,
+              partnerName: partnerName,
+              onTap: () => _open(
+                JuegosJuntosScreen(me: me, couple: couple, partner: partner),
+              ),
+            ),
             musica: MusicaInicio(
               coupleId: couple.id,
               uid: me.uid,
@@ -426,6 +536,21 @@ class _HomeBodyState extends State<_HomeBody> {
             celebracion: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Buenos días / buenas noches con el gatito.
+                SaludoInicio(
+                  coupleId: couple.id,
+                  uid: me.uid,
+                  partnerUid: partnerUid,
+                  partnerName: partnerName,
+                  miGatito: miGatito,
+                  suGatito: suGatito,
+                ),
+                // Una cápsula del tiempo que ya se puede abrir.
+                CapsulaListaInicio(
+                  coupleId: couple.id,
+                  uid: me.uid,
+                  partnerName: partnerName,
+                ),
                 CelebracionesHoy(
                   uid: me.uid,
                   partnerName: partnerName,
@@ -509,18 +634,26 @@ class _HomeBodyState extends State<_HomeBody> {
       partnerName: partnerName,
       suGatito: suGatito,
       onDevolver: _mandarMimo,
-      child: AvisoPescaditos(
-        child: HomeTabs(
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-          inicio: inicio,
-          nosotros: TogetherScreen(couple: couple),
-          notas: NotesScreen(
-            me: me,
-            coupleId: couple.id,
-            partnerUid: partnerUid,
+      child: LlegadaDeSaludos(
+        uid: me.uid,
+        coupleId: couple.id,
+        partnerUid: partnerUid,
+        partnerName: partnerName,
+        miGatito: miGatito,
+        suGatito: suGatito,
+        child: AvisoPescaditos(
+          child: HomeTabs(
+            index: _tab,
+            onChanged: (i) => setState(() => _tab = i),
+            inicio: inicio,
+            nosotros: TogetherScreen(couple: couple),
+            notas: NotesScreen(
+              me: me,
+              coupleId: couple.id,
+              partnerUid: partnerUid,
+            ),
+            perfil: ProfileScreen(me: me, partner: partner, couple: couple),
           ),
-          perfil: ProfileScreen(me: me, partner: partner, couple: couple),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
@@ -172,51 +173,127 @@ class _Contenido extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = note.items;
-    final letra = NotasStyle.letra.copyWith(
-      fontSize: NotasStyle.letra.fontSize! * escala * (items == null ? 1 : 0.9),
+    final titulo = note.title?.trim() ?? '';
+    final hayTitulo = titulo.isNotEmpty;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final escalaTexto = MediaQuery.textScalerOf(context);
+        // En las formas chiquitas (gatito, ranita, estrella) la letra baja
+        // un poco para que entren más palabras, sin volverse ilegible.
+        final ajuste = (c.maxWidth / 150).clamp(0.82, 1.0);
+        final letra = NotasStyle.letra.copyWith(
+          fontSize:
+              NotasStyle.letra.fontSize! *
+              escala *
+              ajuste *
+              (items == null ? 1 : 0.92),
+        );
+        final letraTitulo = NotasStyle.titulo.copyWith(
+          fontSize: NotasStyle.titulo.fontSize! * escala * ajuste,
+          decoration: items != null ? TextDecoration.underline : null,
+          decorationColor: NotasStyle.celeste,
+        );
+        final alinear = centrado && items == null
+            ? TextAlign.center
+            : TextAlign.start;
+
+        // Cuántos renglones entran de cada cosa, para cortar con "…" en
+        // vez de dejar una palabra partida a la mitad.
+        double alto(String t, TextStyle st, int lineas) => (TextPainter(
+          text: TextSpan(text: t, style: st),
+          textDirection: TextDirection.ltr,
+          textAlign: alinear,
+          maxLines: lineas,
+          ellipsis: '…',
+          textScaler: escalaTexto,
+        )..layout(maxWidth: c.maxWidth)).height;
+        final renglon = escalaTexto.scale(letra.fontSize!) * letra.height!;
+        final renglonTitulo =
+            escalaTexto.scale(letraTitulo.fontSize!) * letraTitulo.height!;
+        final disponible = c.maxHeight;
+
+        // El título usa hasta 2 renglones; si así no queda espacio para al
+        // menos 2 renglones del contenido, se queda en 1.
+        final hayContenido = note.text.trim().isNotEmpty || items != null;
+        var lineasTitulo = 0;
+        var altoTitulo = 0.0;
+        if (hayTitulo) {
+          lineasTitulo = (disponible / renglonTitulo).floor().clamp(1, 2);
+          altoTitulo = alto(titulo, letraTitulo, lineasTitulo);
+          if (hayContenido &&
+              lineasTitulo == 2 &&
+              disponible - altoTitulo < renglon * 2) {
+            lineasTitulo = 1;
+            altoTitulo = alto(titulo, letraTitulo, 1);
+          }
+        }
+        final resto = disponible - altoTitulo;
+        final lineasTexto = math.max(0, (resto / renglon + 0.05).floor());
+        // Cada pendiente es un renglón más su cajita con aire.
+        final altoPendiente =
+            renglon + escalaTexto.scale(letra.fontSize!) * 0.85 * 0.24;
+        final pendientes = math.max(0, (resto / altoPendiente + 0.05).floor());
+
+        final hijos = <Widget>[
+          if (hayTitulo)
+            Text(
+              titulo,
+              textAlign: alinear,
+              maxLines: lineasTitulo,
+              overflow: TextOverflow.ellipsis,
+              style: letraTitulo,
+            ),
+          if (items == null && note.text.isNotEmpty && lineasTexto > 0)
+            Text(
+              note.text.trim(),
+              textAlign: centrado ? TextAlign.center : TextAlign.start,
+              maxLines: lineasTexto,
+              overflow: TextOverflow.ellipsis,
+              style: letra,
+            ),
+          if (items != null && pendientes > 0)
+            ..._pendientesQueCaben(items, letra, pendientes),
+        ];
+        return ClipRect(
+          child: Column(
+            crossAxisAlignment: centrado && items == null
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: hijos,
+          ),
+        );
+      },
     );
-    final hijos = <Widget>[
-      if (note.title != null)
-        Text(
-          note.title!,
-          textAlign: centrado && items == null
-              ? TextAlign.center
-              : TextAlign.start,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: letra.copyWith(
-            fontSize: letra.fontSize! * 1.12,
-            decoration: items != null ? TextDecoration.underline : null,
-            decorationColor: NotasStyle.celeste,
+  }
+
+  /// Los pendientes que entran (uno por renglón); si sobran, avisa cuántos.
+  List<Widget> _pendientesQueCaben(
+    List<ItemDeLista> items,
+    TextStyle letra,
+    int caben,
+  ) {
+    caben = caben.clamp(0, items.length);
+    final sobran = items.length - caben;
+    final mostrar = sobran > 0 && caben > 0 ? caben - 1 : caben;
+    final faltan = items.length - mostrar;
+    return [
+      for (var i = 0; i < mostrar; i++)
+        _Pendiente(
+          item: items[i],
+          letra: letra,
+          onTap: onToggle == null ? null : () => onToggle!(i),
+        ),
+      if (faltan > 0 && mostrar < items.length && caben > 0)
+        Padding(
+          padding: EdgeInsets.only(top: letra.fontSize! * 0.1),
+          child: Text(
+            faltan == 1 ? '+1 más…' : '+$faltan más…',
+            maxLines: 1,
+            style: letra.copyWith(color: NotasStyle.gris),
           ),
         ),
-      if (items == null && note.text.isNotEmpty)
-        Text(
-          note.text,
-          textAlign: centrado ? TextAlign.center : TextAlign.start,
-          style: letra,
-        ),
-      if (items != null)
-        for (var i = 0; i < items.length; i++)
-          _Pendiente(
-            item: items[i],
-            letra: letra,
-            onTap: onToggle == null ? null : () => onToggle!(i),
-          ),
     ];
-    // Lo que no cabe se corta, como una hojita llena.
-    return ClipRect(
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: centrado && items == null
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: hijos,
-        ),
-      ),
-    );
   }
 }
 
@@ -250,7 +327,7 @@ class _Pendiente extends StatelessWidget {
           Expanded(
             child: Text(
               item.texto,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: letra.copyWith(
                 color: item.hecho

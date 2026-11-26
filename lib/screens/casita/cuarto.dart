@@ -22,7 +22,11 @@ class CuartoCasita extends StatelessWidget {
     this.onBebe,
     this.ahora,
     this.conGatitos = true,
+    this.comiendo,
   });
+
+  /// La comida que les estás dando (ver [EstadoCasita.capas]).
+  final Cosa? comiendo;
 
   /// En false los gatitos grandes no están (andan en otro cuarto).
   final bool conGatitos;
@@ -82,6 +86,7 @@ class CuartoCasita extends StatelessWidget {
           banando,
           ahora,
           conGatitos,
+          comiendo,
         )) ...[
           if (a == Casita.bebesPaseando ||
               a == Casita.bebesDurmiendo ||
@@ -138,12 +143,16 @@ class CuartoVivo extends StatefulWidget {
     this.ahora,
     this.banando = false,
     this.onBebe,
+    this.comiendo,
   });
 
   final EstadoCasita estado;
   final Cuarto cuarto;
   final ToqueCasita? onToque;
   final bool banando;
+
+  /// La comida que les estás dando.
+  final Cosa? comiendo;
   final ValueChanged<Cosa>? onBebe;
 
   /// Para fijar la hora (en las pruebas). Si falta, la hora real.
@@ -190,6 +199,7 @@ class _CuartoVivoState extends State<CuartoVivo> {
       tick: quieto ? 0 : _tick,
       banando: widget.banando,
       onBebe: widget.onBebe,
+      comiendo: widget.comiendo,
       ahora: widget.ahora ?? DateTime.now(),
     );
   }

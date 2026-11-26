@@ -149,6 +149,35 @@ class TogetherService {
           .snapshots()
           .map((d) => DailyCard.fromData(d.data(), deck: questions));
 
+  /// Días anteriores de la pregunta del día, entre [desde] y [hasta]
+  /// (incluidos), del más nuevo al más viejo. Se pide por rango de fechas
+  /// (los ids son `yyyy-MM-dd`), así se lee poquito cada vez.
+  Future<List<DiaRespondido>> historial(
+    String coupleId, {
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
+    final q = await Db.coupleSub(coupleId, 'dailyAnswers')
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: todayKey(desde))
+        .where(FieldPath.documentId, isLessThanOrEqualTo: todayKey(hasta))
+        .get();
+    final dias = [
+      for (final d in q.docs)
+        DiaRespondido(d.id, DailyCard.fromData(d.data(), deck: questions)),
+    ]..sort((a, b) => b.dia.compareTo(a.dia));
+    return dias;
+  }
+
+  /// El primer día en que sacaron una carta (para saber hasta dónde hay
+  /// historial). `null` si nunca jugaron.
+  Future<String?> primerDia(String coupleId) async {
+    final q = await Db.coupleSub(
+      coupleId,
+      'dailyAnswers',
+    ).orderBy(FieldPath.documentId).limit(1).get();
+    return q.docs.isEmpty ? null : q.docs.first.id;
+  }
+
   /// Saca un naipe al azar para hoy. Si tu pareja ya lo sacó, devuelve
   /// ese mismo, así los dos responden la misma pregunta.
   ///
@@ -357,7 +386,21 @@ class TogetherService {
     NotifyService.instance.send(NotifyKind.kiss, coupleId, ref.id);
   }
 
-  /// Los últimos besos o abrazos de la pareja (de los dos), para mostrar la
+  /// Cascabel para la pareja, en `couples/{id}/cascabeles`: un tilín para
+  /// llamar su atención.
+  Future<void> sendBell(
+    String coupleId, {
+    required String from,
+    required String to,
+  }) async {
+    final ref = await Db.coupleSub(
+      coupleId,
+      'cascabeles',
+    ).add({'from': from, 'to': to, 'createdAt': FieldValue.serverTimestamp()});
+    NotifyService.instance.send(NotifyKind.bell, coupleId, ref.id);
+  }
+
+  /// Los últimos besos, abrazos o cascabeles de la pareja (de los dos), para mostrar la
   /// animación al que los recibe. Solo 5, para leer poquito.
   Stream<List<MimoRecibido>> watchMimos(String coupleId, Mimo mimo) =>
       Db.coupleSub(coupleId, mimo.coleccion)

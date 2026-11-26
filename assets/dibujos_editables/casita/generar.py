@@ -574,7 +574,7 @@ def ropa_bufanda(c, x, y):
 
 
 def ropa_gorrito(c, x, y):
-    c.sprite(x + 4, y - 6, [
+    c.sprite(x + 4, y - 4, [
         "......ww....",
         ".....wwww...",
         "....bbbbb...",
@@ -587,7 +587,7 @@ def ropa_gorrito(c, x, y):
 
 
 def ropa_corona(c, x, y):
-    c.sprite(x + 6, y - 4, [
+    c.sprite(x + 6, y - 1, [
         "y..y..y.",
         "yy.yy.yy",
         "yyyyyyyy",

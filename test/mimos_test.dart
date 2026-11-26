@@ -80,8 +80,9 @@ void main() {
     await tester.tap(find.text('Te extraño'));
     await tester.tap(find.text('Beso'));
     await tester.tap(find.text('Abrazo'));
+    await tester.tap(find.text('Cascabel'));
     expect(extrana, 1);
-    expect(mimos, [Mimo.beso, Mimo.abrazo]);
+    expect(mimos, [Mimo.beso, Mimo.abrazo, Mimo.cascabel]);
   });
 
   testWidgets('quien recibe puede devolver el beso', (tester) async {

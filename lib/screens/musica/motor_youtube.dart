@@ -16,6 +16,24 @@ abstract class MotorYoutube {
 
   /// Carga una canción en ese segundo; si [tocar], empieza a sonar.
   void cargar(String videoId, double segundo, {required bool tocar});
+
+  /// Carga un video de Bilibili (su reproductor incrustado). [duracion]
+  /// sirve para avisar cuándo termina (Bilibili no avisa).
+  void cargarBilibili(
+    String bvid,
+    int parte,
+    double segundo, {
+    double? duracion,
+    required bool tocar,
+  });
+
+  /// Vuelve a abrir el video de Bilibili en el segundo que va (si el
+  /// navegador no lo dejó sonar).
+  void recargar();
+
+  /// Ids de las canciones de una lista de YouTube (vacía si no se pudo).
+  Future<List<String>> lista(String listaId);
+
   void tocar();
   void pausar();
   void ir(double segundo);

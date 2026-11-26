@@ -363,7 +363,7 @@ def r_guan(c, x, y):
 
 
 def r_chullu(c, x, y):
-    c.sprite(x + 3, y - 4, [
+    c.sprite(x + 3, y - 2, [
         "......yy......",
         "....rrrrrr....",
         "..rrwwwwwwrr..",
@@ -376,7 +376,7 @@ def r_chullu(c, x, y):
 
 
 def r_sombrero_copa(c, x, y):
-    c.sprite(x + 5, y - 6, [
+    c.sprite(x + 5, y - 2, [
         "..kkkkkk..",
         "..kkkkkk..",
         "..kkkkkk..",
@@ -395,7 +395,7 @@ def r_laurel(c, x, y):
 
 
 def r_casco(c, x, y):
-    c.sprite(x + 3, y - 5, [
+    c.sprite(x + 3, y - 3, [
         "......rr......",
         ".....rrrr.....",
         "....ssssss....",
@@ -416,12 +416,12 @@ ROPA_EPOCA = {
 
 # ================================================================ ropita de fiestas
 def r_gorro_fiesta(c, x, y):
-    c.sprite(x + 7, y - 9, ["...y...", "..rr...", "..rpr..", ".prrp..", ".rrprr.", "rprrrpr", "ggggggg"],
+    c.sprite(x + 7, y - 3, ["...y...", "..rr...", "..rpr..", ".prrp..", ".rrprr.", "rprrrpr", "ggggggg"],
              {"y": AMARILLO, "r": ROSA, "p": AZUL_CLARO, "g": DORADO})
 
 
 def r_gorro_leon(c, x, y):
-    c.sprite(x + 3, y - 5, [
+    c.sprite(x + 3, y - 2, [
         "..yy......yy..",
         ".yrry....yrry.",
         "yrrrrrrrrrrrry",
@@ -448,8 +448,8 @@ def r_antifaz(c, x, y):
 
 def r_orejas_conejo(c, x, y):
     for dx in (5, 12):
-        c.sprite(x + dx, y - 9, [".ww.", "wppw", "wppw", "wppw", "wppw", "wwww"], {"w": BLANCO, "p": ROSA_CLARO})
-    c.hline(x + 4, y - 3, 13, BLANCO)
+        c.sprite(x + dx, y - 3, [".ww.", "wppw", "wppw", "wppw", "wppw", "wwww"], {"w": BLANCO, "p": ROSA_CLARO})
+    c.hline(x + 4, y + 3, 13, BLANCO)
 
 
 def r_cordon(c, x, y):
@@ -482,7 +482,7 @@ def r_bufanda_otono(c, x, y):
 
 
 def r_sombrero_brujo(c, x, y):
-    c.sprite(x + 3, y - 10, [
+    c.sprite(x + 3, y - 5, [
         "........kk....",
         ".......kkk....",
         "......kkkk....",
@@ -495,7 +495,7 @@ def r_sombrero_brujo(c, x, y):
 
 
 def r_gorro_santa(c, x, y):
-    c.sprite(x + 4, y - 8, [
+    c.sprite(x + 4, y - 4, [
         "..........ww",
         "........rrww",
         "......rrrr..",

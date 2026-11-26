@@ -7,6 +7,7 @@ import 'package:web/web.dart' as web;
 
 import 'motor_js.dart';
 import 'motor_youtube.dart';
+import 'pedir_lista.dart';
 
 MotorYoutube crearMotor() => _MotorWeb();
 
@@ -96,6 +97,39 @@ class _MotorWeb implements MotorYoutube {
       videoId.toJS,
       segundo.toJS,
       tocar.toJS,
+    ),
+  );
+
+  @override
+  void cargarBilibili(
+    String bvid,
+    int parte,
+    double segundo, {
+    double? duracion,
+    required bool tocar,
+  }) => _hacer(
+    (o) => o.callMethodVarArgs<JSAny?>('cargarBili'.toJS, [
+      bvid.toJS,
+      parte.toJS,
+      segundo.toJS,
+      (duracion ?? 0).toJS,
+      tocar.toJS,
+    ]),
+  );
+
+  @override
+  void recargar() => _hacer((o) => o.callMethod<JSAny?>('recargar'.toJS));
+
+  @override
+  Future<List<String>> lista(String listaId) => pedirLista(
+    listaId,
+    _avisos.stream,
+    () => globalContext.callMethod<JSAny?>(
+      'ttLista'.toJS,
+      listaId.toJS,
+      ((JSString m) {
+        if (!_avisos.isClosed) _avisos.add(m.toDart);
+      }).toJS,
     ),
   );
 

@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 enum Mimo {
   teExtrano('Te extraño', 'missYou'),
   beso('Beso', 'besos'),
-  abrazo('Abrazo', 'abrazos');
+  abrazo('Abrazo', 'abrazos'),
+  cascabel('Cascabel', 'cascabeles');
 
   const Mimo(this.boton, this.coleccion);
 
@@ -18,6 +19,7 @@ enum Mimo {
   String enviado(String pareja) => switch (this) {
     Mimo.beso => 'Le mandaste un beso a $pareja',
     Mimo.abrazo => 'Le mandaste un abrazo a $pareja',
+    Mimo.cascabel => '¡Tilín, tilín! $pareja ya lo escuchó',
     Mimo.teExtrano => 'Le avisamos a $pareja',
   };
 
@@ -25,11 +27,20 @@ enum Mimo {
   String recibido(String pareja) => switch (this) {
     Mimo.beso => '$pareja te mandó un beso',
     Mimo.abrazo => '$pareja te mandó un abrazo',
+    Mimo.cascabel => '$pareja hizo sonar su cascabel para ti',
     Mimo.teExtrano => '$pareja te extraña',
+  };
+
+  /// Botón para devolverlo, en la ventana de quien lo recibe.
+  String get devolver => switch (this) {
+    Mimo.beso => 'Devolver el beso',
+    Mimo.abrazo => 'Devolver el abrazo',
+    Mimo.cascabel => 'Sonar mi cascabel también',
+    Mimo.teExtrano => 'Yo también te extraño',
   };
 }
 
-/// Un beso o abrazo guardado en Firestore.
+/// Un beso, abrazo o cascabel guardado en Firestore.
 class MimoRecibido {
   const MimoRecibido({
     required this.id,

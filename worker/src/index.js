@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "memorama" | "rompecabezas" | "telefono" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -35,6 +35,11 @@ const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 const MAX_AGE_SECONDS = 15 * 60; // solo documentos recientes
 // Canal de Android con importancia alta (lib/services/push_service.dart).
 const ANDROID_CHANNEL = "mimos_pareja";
+// Canal de los avisos de las notas: suena con el maullido (recurso raw
+// "maullido" de la app). También lo crea lib/services/push_service.dart.
+const CANAL_NOTAS = "notas_maullido";
+// Recordatorios de las notas: suenan como alarma (maullido_alarma, ~10 s).
+const CANAL_RECORDATORIOS = "recordatorios_alarma";
 
 export default {
   // Cada minuto: recordatorios de las notas.
@@ -47,6 +52,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/" && request.method === "GET") {
       return reply(200, { ok: true, app: "taotao-notificaciones" });
+    }
+    if (url.pathname === "/bilibili" && request.method === "GET") {
+      return infoBilibili(url);
     }
     if (url.pathname !== "/notify" || request.method !== "POST") {
       return reply(404, { error: "no_encontrado" });
@@ -97,6 +105,7 @@ const NOMBRES_CASITA = {
   cuadro_pescadito: "el cuadro de pescadito",
   cuadro_corazon: "el cuadro de corazón",
   cuadro_foto: "una foto de los dos",
+  cuadro_koi: "un cuadro de kois",
   lampara_pie: "una lámpara de pie",
   lampara_guirnalda: "una guirnalda de luces",
   lampara_luna: "la lámpara de luna",
@@ -151,6 +160,13 @@ const NOMBRES_CASITA = {
   sandias: "semillas de sandía",
   quinua: "semillas de quinua",
   arandanos: "semillas de arándano",
+  trigo: "semillas de trigo",
+  albahaca: "semillas de albahaca",
+  pimientos: "semillas de pimiento",
+  arroz: "semillas de arroz",
+  ajos: "dientes de ajo para sembrar",
+  paltos: "una semilla de aguacate (palta)",
+  berenjenas: "semillas de berenjena",
   bebe_naranja: "un gatito bebé naranja",
   bebe_ragdoll: "un gatito bebé ragdoll",
   bebe_atigrado: "un gatito bebé gris atigrado",
@@ -207,6 +223,8 @@ const NOMBRES_CASITA = {
   columpio: "un columpio",
   estanque_peces: "un estanque con peces",
   estanque_fuente: "una fuente",
+  estanque_koi: "un estanque de kois",
+  estanque_koi_loto: "un estanque de kois con flores de loto",
   pared_lavanda: "pared lavanda",
   pared_durazno: "pared durazno",
   sofa_verde: "sofá verde",
@@ -232,6 +250,30 @@ const NOMBRES_CASITA = {
   comida_papas_fritas: "papas fritas",
   comida_pastel: "pastel de fresa",
   comida_helado: "copa de helado",
+  comida_pastel_chocolate: "pastel de chocolate",
+  comida_gaseosa_cola: "gaseosa de cola",
+  comida_dumplings: "dumplings",
+  comida_anticuchos: "anticuchos",
+  comida_donas: "donas",
+  comida_te_burbujas: "té de burbujas",
+  comida_bao: "bao al vapor",
+  comida_sopa_mani: "sopa de maní",
+  comida_hot_dog: "hot dog",
+  comida_onigiri: "onigiri",
+  comida_churros: "churros con chocolate",
+  comida_waffles: "waffles con fresa",
+  comida_galletas_gatito: "galletas de gatito",
+  comida_malteada_fresa: "malteada de fresa",
+  comida_tteokbokki: "tteokbokki",
+  comida_uvas: "las doce uvas",
+  comida_pescado_vapor: "pescado al vapor",
+  comida_nian_gao: "nian gao",
+  comida_bombones: "bombones de corazón",
+  comida_zongzi: "zongzi",
+  comida_pavo: "pavo al horno",
+  comida_pie_calabaza: "pie de calabaza",
+  comida_picana: "picana navideña",
+  comida_paneton: "panetón con chocolate",
   pared_dorm_lila: "pared lila",
   pared_dorm_crema: "pared crema",
   pared_dorm_noche: "pared de noche",
@@ -276,6 +318,98 @@ const NOMBRES_CASITA = {
   gorro_pescador: "gorro de pescador",
   sombrero_paja: "sombrero de paja",
   gorro_marinero: "gorro de marinero",
+  gorro_chef: "gorro de chef",
+  sombrero_vaquero: "sombrero vaquero",
+  gorro_rana: "gorro de ranita",
+  gorro_pompon: "gorrito con pompón",
+  baberito: "baberito para comer",
+  pared_cielo: "pared celeste cielo",
+  pared_vainilla: "pared vainilla",
+  pared_corazones: "pared de corazoncitos",
+  pared_noche: "pared de noche estrellada",
+  piso_parquet: "piso de parquet",
+  piso_gris: "piso gris",
+  sofa_lila: "sofá lila",
+  sofa_menta: "sofá menta",
+  sofa_terracota: "sofá terracota",
+  sofa_cielo: "sofá celeste",
+  sofa_negro: "sofá negro",
+  sofa_crema: "sofá crema",
+  planta_helecho: "helecho",
+  planta_bonsai: "bonsái",
+  planta_girasol: "girasoles en maceta",
+  refri_lila: "refri lila",
+  refri_amarillo: "refri amarillo",
+  refri_negro: "refri negro",
+  refri_durazno: "refri durazno",
+  refri_celeste: "refri celeste",
+  estufa_rosa: "cocina rosada con tetera",
+  estufa_menta: "cocina menta con sartén",
+  estufa_roja: "cocina roja",
+  cocina_lena: "cocina a leña",
+  estufa_moderna: "cocina moderna",
+  mesa_rosa: "mesa rosada",
+  mesa_menta: "mesa menta",
+  mesa_lila: "mesa lila",
+  mesa_amarilla: "mesa amarilla",
+  pared_cocina_lila: "azulejos lila",
+  pared_cocina_durazno: "azulejos durazno",
+  piso_cocina_celeste: "piso celeste",
+  piso_cocina_rosa: "piso rosado",
+  repisa_especias: "repisa de especias",
+  repisa_plantitas: "repisa con plantitas",
+  comedero_croquetas: "platito con croquetas",
+  comedero_atun: "platito con atún",
+  comedero_leche: "platito con leche",
+  comedero_pasto: "platito con pasto para gatos",
+  cama_lunas: "cama de lunas",
+  cama_nubes: "cama de nubes",
+  cama_flores: "cama de flores",
+  cama_cuadros: "cama a cuadros",
+  cama_huellitas: "cama de huellitas",
+  cama_lucecitas: "cama con lucecitas",
+  cama_dosel: "cama con dosel",
+  ropero_lila: "ropero lila",
+  ropero_menta: "ropero menta",
+  ropero_rosa: "ropero rosado",
+  velador_lectura: "velador con libros",
+  velador_despertador: "velador con despertador",
+  velador_cactus: "velador con cactus",
+  pared_dorm_menta: "pared menta",
+  pared_dorm_durazno: "pared durazno",
+  piso_dorm_celeste: "alfombrado celeste",
+  piso_dorm_lila: "alfombrado lila",
+  cuadro_luna: "cuadro de la luna",
+  cuadro_gatitos: "cuadro de los gatitos",
+  arbol_naranjo: "naranjo",
+  arbol_limonero: "limonero",
+  arbol_durazno: "durazno",
+  flores_hortensias: "hortensias",
+  flores_amapolas: "amapolas",
+  tina_menta: "tina menta",
+  tina_lila: "tina lila",
+  tina_dorada: "tina dorada",
+  pared_bano_durazno: "pared de baño durazno",
+  pared_bano_cielo: "pared de baño celeste",
+  piso_bano_lila: "baldosas lila",
+  piso_bano_menta: "baldosas menta",
+  piano: "piano",
+  bateria: "batería",
+  arpa: "arpa",
+  rincon_lectura: "rincón de lectura",
+  estante_libros: "estante de libros",
+  temporada_pesebre: "pesebre",
+  temporada_pinata: "piñata",
+  sueter_corazon: "suéter con corazón",
+  pijama_sol: "pijama de sol",
+  pijama_luna: "pijama de luna",
+  poleron_pareja: "polerón de pareja",
+  sueter_navidad: "suéter navideño",
+  alitas: "alitas de ángel",
+  mochilita: "mochilita",
+  collar_placa: "collar con placa",
+  lacito: "lacito",
+  corona_oro: "corona de oro",
   tema_sakura: "el tema rosa sakura",
   tema_menta: "el tema menta",
   tema_lavanda: "el tema lavanda",
@@ -290,6 +424,7 @@ const NOMBRES_CASITA = {
   pajarito_rosa: "pajarito rosado",
   pecera_pececito: "pecera con pececito",
   pecera_pareja: "pecera de dos peces",
+  pecera_koi: "pecera con kois",
   hanfu: "hanfu",
   guan: "moño con guan",
   kimono: "kimono",
@@ -393,6 +528,45 @@ const KINDS = {
     dedupeKey: () => "enviado",
     message: (name) => ({ title: "😘 Un beso para ti", body: `${name} te mandó un beso` }),
   },
+  bell: {
+    collection: "cascabeles",
+    check: (d, uid, partner) => d.from === uid && d.to === partner,
+    dedupeKey: () => "enviado",
+    message: (name) => ({ title: "🔔 ¡Tilín, tilín!", body: `${name} hizo sonar su cascabel para ti` }),
+  },
+  // Cápsula del tiempo: al enterrarla y cada vez que alguien guarda algo.
+  capsula: {
+    collection: "capsulas",
+    check: (d, uid) => d.ultimo === uid && (d.creadaPor === uid || (d.aportes?.[uid] || 0) > 0),
+    dedupeKey: (d) =>
+      String(Object.values(d.aportes || {}).reduce((a, b) => a + (Number(b) || 0), 0)),
+    message: (name, d) => {
+      const titulo = String(d.titulo || "su cápsula").slice(0, 60);
+      const nada = Object.keys(d.aportes || {}).length === 0;
+      return nada
+        ? {
+            title: "⏳ Una cápsula del tiempo",
+            body: `${name} enterró la cápsula «${titulo}». Guarda algo tú también: se abre ${cuandoSeAbre(d.abrirEl)}`,
+          }
+        : {
+            title: "⏳ Algo nuevo en la cápsula",
+            body: `${name} guardó un secreto en «${titulo}». Lo verán juntos ${cuandoSeAbre(d.abrirEl)}`,
+          };
+    },
+  },
+  // Buenos días y buenas noches.
+  saludo: {
+    collection: "saludos",
+    check: (d, uid, partner) =>
+      d.from === uid && d.to === partner && (d.tipo === "dias" || d.tipo === "noches"),
+    dedupeKey: () => "enviado",
+    message: (name, d) => {
+      const texto = typeof d.texto === "string" && d.texto.trim() ? `: «${d.texto.trim().slice(0, 140)}»` : "";
+      return d.tipo === "dias"
+        ? { title: "☀️ ¡Buenos días!", body: `${name} te da los buenos días${texto || " 🐾"}` }
+        : { title: "🌙 Buenas noches", body: `${name} te desea dulces sueños${texto || " 💤"}` };
+    },
+  },
   compra: {
     collection: "casitaMovs",
     check: (d, uid) => d.uid === uid && d.tipo === "compra",
@@ -451,6 +625,89 @@ const KINDS = {
       };
     },
   },
+  // Dibuja y adivina: la pareja empezó a dibujar para ti.
+  dibujo: {
+    collection: "dibujos",
+    check: (d, uid) => d.dibuja === uid && d.estado === "dibujando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🎨 ¡Ven a adivinar!",
+      body: `${name} está dibujando algo para ti. Entra a verlo en vivo y adivina qué es`,
+    }),
+  },
+  // Memorama y rompecabezas: la pareja empezó una partida.
+  memorama: {
+    collection: "memoramas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🃏 ¿Un memorama?",
+      body: `${name} empezó un memorama con sus fotos. Entra a jugar por turnos`,
+    }),
+  },
+  rompecabezas: {
+    collection: "rompecabezas",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🧩 Armemos un rompecabezas",
+      body: `${name} empezó un rompecabezas para los dos. Entra a poner tus piezas`,
+    }),
+  },
+  // Teléfono descompuesto: avisa al empezar, cuando a la pareja le toca
+  // su siguiente turno y cuando ya pueden ver cómo cambiaron las frases.
+  telefono: {
+    collection: "telefonos",
+    check: (d, uid, partner) => {
+      const p = d.progreso || {};
+      const yo = p[uid] || 0;
+      const otro = p[partner] || 0;
+      if (yo === 0) return d.por === uid && otro === 0 && d.estado === "jugando";
+      if (d.estado === "terminada") return true;
+      return otro < 4 && (otro === 0 || yo >= otro);
+    },
+    dedupeKey: (d) => `${d.estado}-${JSON.stringify(
+      Object.entries(d.progreso || {}).sort(([a], [b]) => (a < b ? -1 : 1)),
+    )}`,
+    message: (name, d) =>
+      d.estado === "terminada"
+        ? {
+            title: "📞 ¡Ya pueden ver sus frases!",
+            body: `${name} terminó el teléfono descompuesto. Entra a ver cuánto cambiaron`,
+          }
+        : Object.keys(d.progreso || {}).length === 0
+          ? {
+              title: "📞 ¿Un teléfono descompuesto?",
+              body: `${name} empezó una partida. Escribe una frase secreta y dibújala`,
+            }
+          : {
+              title: "📞 ¡Te toca!",
+              body: `${name} ya hizo su parte del teléfono descompuesto`,
+            },
+  },
+  // Tu pareja abrió la nota privada que le compartiste. Aquí quien llama
+  // es quien la leyó, y el aviso va para quien la escribió.
+  notaLeida: {
+    collection: "notes",
+    check: (d, uid, partner) =>
+      d.fromPrivate === true &&
+      d.authorId === partner &&
+      d.leidaPor === uid &&
+      d.leidaEn != null &&
+      d.avisarLeida !== false,
+    dedupeKey: (d) => `leida-${JSON.stringify(d.leidaEn)}`,
+    message: (name, d) => {
+      const titulo = String(d.title || d.text || "").trim().replace(/\s+/g, " ");
+      return {
+        // Canal con maullido de las notas (PR #81); sin él va al de siempre.
+        canal: "notas",
+        title: "👀 Leyó tu nota",
+        body: titulo
+          ? `${name} ya leyó tu nota "${titulo.length > 40 ? titulo.slice(0, 40) + "…" : titulo}" 💌`
+          : `${name} ya leyó la nota que le compartiste 💌`,
+      };
+    },
+  },
   letter: {
     collection: "letters",
     check: (d, uid, partner) => d.from === uid && d.to === partner && d.openedAt == null,
@@ -488,6 +745,17 @@ export function mensajeDeFiesta(name, d) {
         title: `${emoji} ¡Feliz ${que}!`,
         body: `${name} te mandó una carta de ${que} 💌`,
       };
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+  "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// "el 26 de noviembre de 2027" (la fecha de la cápsula, en UTC).
+export function cuandoSeAbre(iso) {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "el día que eligieron";
+  const d = new Date(t);
+  return `el ${d.getUTCDate()} de ${MESES[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
 }
 
 // "un pastel, un ramo de flores y una carta", para el aviso.
@@ -578,14 +846,71 @@ async function pushToUser(sa, fs, uid, msg) {
   const user = await fs.get(`users/${uid}`);
   const tokens = [...new Set((user?.data.fcmTokens || []).filter(Boolean))];
   if (tokens.length === 0) return 0;
-  const results = await Promise.all(tokens.map((t) => sendPush(sa, t, msg)));
+  // La app nueva avisa que ya sabe hacer sonar los recordatorios como
+  // alarma (lib/services/push_service.dart).
+  const m = { ...msg, comoAlarma: user?.data.recordatoriosComoAlarma === true };
+  const results = await Promise.all(tokens.map((t) => sendPush(sa, t, m)));
   const dead = tokens.filter((_, i) => results[i] === "dead");
   if (dead.length) await fs.removeFromArray(`users/${uid}`, "fcmTokens", dead);
   return results.filter((r) => r === "ok").length;
 }
 
 // ---------- Firebase Cloud Messaging (HTTP v1) ----------
-async function sendPush(sa, token, { title, body }) {
+// Arma el mensaje de FCM. Un recordatorio para quien tiene la app nueva
+// (`comoAlarma`) va como datos: la app lo hace sonar como alarma (con
+// pantalla completa y sin parar hasta apagarla) y no lo repite si ese
+// celular ya tenía la alarma programada. En la web sale como aviso normal.
+export function mensajeFcm(token, { title, body, canal, nota, cuando, comoAlarma }) {
+  if (canal === "recordatorio" && comoAlarma) {
+    return {
+      token,
+      data: {
+        tipo: "recordatorio",
+        title,
+        body,
+        nota: nota || "",
+        cuando: cuando == null ? "" : String(cuando),
+      },
+      android: { priority: "HIGH", ttl: "86400s" },
+      webpush: {
+        headers: { Urgency: "high", TTL: "86400" },
+        notification: { title, body },
+      },
+    };
+  }
+  const [canalAndroid, sonido] =
+    canal === "recordatorio" ? [CANAL_RECORDATORIOS, "maullido_alarma"]
+    : canal === "notas" ? [CANAL_NOTAS, "maullido"]
+    : [ANDROID_CHANNEL, null];
+  return {
+    token,
+    notification: { title, body },
+    // Que llegue al instante aunque el celular esté en reposo:
+    // prioridad alta y el canal "Mimos de tu pareja" (importancia
+    // alta, lo crea la app). Sin canal, Android usaba el canal
+    // "Varios" de Firebase, que no avisa enseguida ni suena.
+    android: {
+      priority: "HIGH",
+      ttl: "86400s",
+      notification: {
+        channel_id: canalAndroid,
+        icon: "ic_notificacion",
+        notification_priority: "PRIORITY_MAX",
+        // En Android 8+ manda el sonido del canal; esto es para los
+        // celulares más viejos.
+        ...(sonido ? { sound: sonido } : { default_sound: true }),
+        default_vibrate_timings: true,
+        visibility: "PUBLIC",
+      },
+    },
+    // En la web (navegador): mensaje urgente.
+    webpush: { headers: { Urgency: "high", TTL: "86400" } },
+  };
+}
+
+// `canal: "notas"` manda el aviso al canal del maullido y
+// `canal: "recordatorio"` al de la alarma de maullidos.
+async function sendPush(sa, token, msg) {
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
     {
@@ -594,30 +919,7 @@ async function sendPush(sa, token, { title, body }) {
         Authorization: `Bearer ${await googleAccessToken(sa)}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: { title, body },
-          // Que llegue al instante aunque el celular esté en reposo:
-          // prioridad alta y el canal "Mimos de tu pareja" (importancia
-          // alta, lo crea la app). Sin canal, Android usaba el canal
-          // "Varios" de Firebase, que no avisa enseguida ni suena.
-          android: {
-            priority: "HIGH",
-            ttl: "86400s",
-            notification: {
-              channel_id: ANDROID_CHANNEL,
-              icon: "ic_notificacion",
-              notification_priority: "PRIORITY_MAX",
-              default_sound: true,
-              default_vibrate_timings: true,
-              visibility: "PUBLIC",
-            },
-          },
-          // En la web (navegador): mensaje urgente.
-          webpush: { headers: { Urgency: "high", TTL: "86400" } },
-        },
-      }),
+      body: JSON.stringify({ message: mensajeFcm(token, msg) }),
     },
   );
   if (res.ok) return "ok";
@@ -870,6 +1172,72 @@ export async function verifyIdToken(token, projectId, getKey = publicKey) {
   return p.sub;
 }
 
+// ---------- Bilibili (Música juntos) ----------
+// En la web el navegador no deja que Taotao le pregunte a Bilibili el
+// nombre y la duración de un video (CORS), así que se pregunta aquí.
+// También abre los links cortos b23.tv. Solo lee datos públicos.
+const BV_RE = /^BV1[0-9A-Za-z]{9}$/;
+const UA_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+export async function infoBilibili(url, hacerFetch = fetch) {
+  let bvid = url.searchParams.get("bvid") || "";
+  const corto = url.searchParams.get("u") || "";
+  try {
+    if (!BV_RE.test(bvid) && corto) {
+      let u;
+      try {
+        u = new URL(corto);
+      } catch {
+        return reply(400, { error: "link_invalido" });
+      }
+      if (u.protocol !== "https:" && u.protocol !== "http:") {
+        return reply(400, { error: "link_invalido" });
+      }
+      if (u.hostname !== "b23.tv" && !u.hostname.endsWith(".b23.tv")) {
+        return reply(400, { error: "link_invalido" });
+      }
+      const r = await hacerFetch(`https://b23.tv${u.pathname}`, {
+        redirect: "manual",
+        headers: { "User-Agent": UA_NAVEGADOR },
+      });
+      const destino = r.headers.get("Location") || "";
+      const m = destino.match(/BV1[0-9A-Za-z]{9}/);
+      if (!m) return reply(404, { error: "no_encontrado" });
+      bvid = m[0];
+    }
+    if (!BV_RE.test(bvid)) return reply(400, { error: "pedido_invalido" });
+    const r = await hacerFetch(
+      `https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`,
+      { headers: { "User-Agent": UA_NAVEGADOR, Referer: "https://www.bilibili.com/" } },
+    );
+    const j = await r.json().catch(() => null);
+    if (!j || j.code !== 0 || !j.data) return reply(404, { error: "no_encontrado" });
+    const d = j.data;
+    return cacheable(
+      reply(200, {
+        bvid: d.bvid || bvid,
+        title: String(d.title || "").slice(0, 200),
+        pic: typeof d.pic === "string" ? d.pic : null,
+        duration: Number(d.duration) || 0,
+        pages: (Array.isArray(d.pages) ? d.pages : []).slice(0, 200).map((p) => ({
+          page: Number(p.page) || 1,
+          part: String(p.part || "").slice(0, 120),
+          duration: Number(p.duration) || 0,
+        })),
+      }),
+    );
+  } catch (e) {
+    console.error(e.message);
+    return reply(502, { error: "bilibili_no_responde" });
+  }
+}
+
+function cacheable(res) {
+  res.headers.set("Cache-Control", "public, max-age=3600");
+  return res;
+}
+
 // ---------- Utilidades ----------
 function reply(status, body) {
   return withCors(
@@ -882,7 +1250,7 @@ function reply(status, body) {
 
 function withCors(res) {
   res.headers.set("Access-Control-Allow-Origin", "*");
-  res.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   return res;
 }

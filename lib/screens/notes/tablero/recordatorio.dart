@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../../widgets/doodle.dart';
+import '../../../widgets/permisos_alarma.dart';
 import 'notas_style.dart';
 
-/// Recordatorio de una nota: a la hora elegida llega una notificación
-/// (la manda el Worker de notificaciones, ver worker/src/recordatorios.js).
+/// Recordatorio de una nota: a la hora elegida suena una alarma con
+/// maullidos. La programa cada celular (AlarmaRecordatorios) y además la
+/// manda el Worker de notificaciones (worker/src/recordatorios.js).
 
 const _dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 const _meses = [
@@ -96,7 +98,10 @@ class SeccionDeRecordatorio extends StatelessWidget {
 
   Future<void> _elegir(BuildContext context) async {
     final nuevo = await elegirRecordatorio(context, actual: cuando);
-    if (nuevo != null) onCuando(nuevo);
+    if (nuevo == null) return;
+    onCuando(nuevo);
+    // Si a Android le falta algún permiso para que suene, se pide ahora.
+    if (context.mounted) await PermisosDeAlarma.revisarSiFalta(context);
   }
 
   @override

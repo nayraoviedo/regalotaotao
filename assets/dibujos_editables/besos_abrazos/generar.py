@@ -1,4 +1,4 @@
-"""Genera los cuadros de las animaciones de besos y abrazos de los gatitos.
+"""Genera los cuadros de las animaciones de besos, abrazos y cascabel de los gatitos.
 
 Uso:  python3 generar.py            -> escribe los SVG en esta carpeta
 Luego se exportan a PNG (1350x840) en assets/animaciones/ con exportar.mjs.
@@ -166,16 +166,49 @@ def brazo(g, c, desde, hasta, curva=None):
     return s
 
 
-def gatito(g, x, y, s=0.8, rot=0, lado_cola=-1, cab=None, cab_rot=0, brazos=(), brazos_detras=()):
-    """Arma un gatito completo. Los brazos se dibujan encima del cuerpo."""
+def gatito(g, x, y, s=0.8, rot=0, lado_cola=-1, cab=None, cab_rot=0, brazos=(), brazos_detras=(),
+           collar=None):
+    """Arma un gatito completo. Los brazos se dibujan encima del cuerpo.
+    collar: ángulo del cascabel (None = sin collar)."""
     c = GATOS[g]
     cab = cab or {}
     detras = "".join(brazo(g, c, *b) for b in brazos_detras)
     adelante = "".join(brazo(g, c, *b) for b in brazos)
+    cinta = cascabel_ = ""
+    if collar is not None:
+        cinta = (f'<path d="M-66 28 Q0 56 66 28" fill="none" stroke="{CORAL}" stroke-width="14" '
+                 'stroke-linecap="round"/>')
+        cascabel_ = cascabel(0, 44, collar)
     return (f'<g transform="translate({x} {y}) scale({s}) rotate({rot})">'
-            + detras + cola(g, c, lado_cola) + cuerpo(g, c)
+            + detras + cola(g, c, lado_cola) + cuerpo(g, c) + cinta
             + f'<g transform="translate(0 -62) rotate({cab_rot})">' + cabeza(g, c, **cab) + '</g>'
-            + adelante + '</g>')
+            + cascabel_ + adelante + '</g>')
+
+
+def cascabel(x, y, rot=0, s=1.0):
+    """Cascabel dorado colgando de (x, y), meciéndose rot grados."""
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<circle cx="0" cy="4" r="7" fill="none" stroke="#C9962E" stroke-width="5"/>'
+            f'<circle cx="0" cy="34" r="26" fill="{AMARILLO}" stroke="#C9962E" stroke-width="4.5"/>'
+            '<path d="M-25 28 Q0 38 25 28" fill="none" stroke="#C9962E" stroke-width="4"/>'
+            '<path d="M-9 46 L9 46" stroke="#7A5A1E" stroke-width="6" stroke-linecap="round"/>'
+            '<circle cx="-10" cy="46" r="5" fill="#7A5A1E"/><circle cx="10" cy="46" r="5" fill="#7A5A1E"/>'
+            '<path d="M-14 20 Q-10 13 -2 12" fill="none" stroke="#fff" stroke-width="4" '
+            'stroke-linecap="round" opacity=".85"/></g>')
+
+
+def notita(x, y, s=1.0, color=AMARILLO, rot=0):
+    return (f'<g transform="translate({x} {y}) rotate({rot}) scale({s})">'
+            f'<ellipse cx="0" cy="0" rx="11" ry="8" fill="{color}" transform="rotate(-20)"/>'
+            f'<path d="M9 -2 L9 -34 Q22 -28 22 -16" fill="none" stroke="{color}" stroke-width="5" '
+            'stroke-linecap="round" stroke-linejoin="round"/></g>')
+
+
+def tilin(x, y, lado, color=AZUL):
+    """Rayitas de sonido a un lado del cascabel."""
+    return (f'<g transform="translate({x} {y}) scale({lado} 1)" stroke="{color}" stroke-width="5" '
+            'stroke-linecap="round" fill="none" opacity=".55">'
+            '<path d="M0 -14 L16 -24"/><path d="M4 0 L22 0"/><path d="M0 14 L16 24"/></g>')
 
 
 def svg(comentario, *partes):
@@ -241,6 +274,31 @@ def abrazo(manda, cuadro):
                sombra(460, 260), extras, b, patita_atras, a, patita)
 
 
+def cascabel_escena(manda, cuadro):
+    """El gatito que manda sacude su cascabel: ¡tilín, tilín! y el otro levanta
+    las orejitas."""
+    recibe = "blanco" if manda == "naranja" else "naranja"
+    if cuadro == 1:
+        a = gatito(manda, 320, 280, rot=-5, lado_cola=-1, cab_rot=-6, collar=-22,
+                   cab=dict(ojo="felices", bocam="feliz", sonrojo=1.2),
+                   brazos=[((52, 60), (40, 40), (70, 70))])
+        b = gatito(recibe, 600, 280, rot=3, lado_cola=1, cab_rot=-4,
+                   cab=dict(ojo="abiertos", mirar=-1, bocam="sonrisa"))
+        extras = (tilin(262, 338, -1) + notita(250, 210, 1.1, AMARILLO, -10)
+                  + notita(430, 170, 0.9, CORAL, 8) + chispa(150, 120, 1.3) + chispa(770, 110, 1.4))
+    else:
+        a = gatito(manda, 320, 280, rot=5, lado_cola=-1, cab_rot=8, collar=24,
+                   cab=dict(ojo="felices", bocam="feliz", sonrojo=1.3),
+                   brazos=[((52, 60), (70, 30), (90, 60))])
+        b = gatito(recibe, 600, 276, rot=-3, lado_cola=1, cab_rot=-12,
+                   cab=dict(ojo="felices", bocam="feliz", sonrojo=1.5))
+        extras = (tilin(380, 338, 1) + notita(470, 150, 1.2, AMARILLO, 12)
+                  + notita(520, 90, 0.8, "#9CC3E6", -6) + corazon(420, 110, 0.45, ROSA, -10)
+                  + chispa(150, 120, 1.3) + chispa(770, 110, 1.4) + chispa(660, 70, 0.9, "#fff"))
+    return svg(f"Cascabel: el gatito {manda} hace sonar su cascabel para el {recibe} (cuadro {cuadro})",
+               sombra(460, 300), extras, b, a)
+
+
 # ---------- Iconitos de los botones (96x96, para fondo azul marino) ----------
 
 def icono_beso():
@@ -273,4 +331,5 @@ if __name__ == "__main__":
         for n in (1, 2):
             (AQUI / f"beso_{g}_{n}.svg").write_text(beso(g, n))
             (AQUI / f"abrazo_{g}_{n}.svg").write_text(abrazo(g, n))
+            (AQUI / f"cascabel_{g}_{n}.svg").write_text(cascabel_escena(g, n))
     print("listo")

@@ -204,7 +204,7 @@ class MusicaEnVivo extends ChangeNotifier {
     }
     // La hora del servidor llega un momento después de escribir: ese
     // segundo aviso no es un cambio nuevo.
-    final firma = '${a.videoId}|${s.sonando}|${s.posicion}|${s.por}';
+    final firma = '${a.clave}|${s.sonando}|${s.posicion}|${s.por}';
     final hora = s.cambiadoEn;
     final nuevo =
         firma != _firma ||
@@ -215,10 +215,21 @@ class MusicaEnVivo extends ChangeNotifier {
 
     final pos = s.posicionEn(DateTime.now());
     _intentos = 0;
-    if (_cargado != a.videoId) {
-      _cargado = a.videoId;
+    if (_cargado != a.clave) {
+      _cargado = a.clave;
       _bloqueada = null;
-      motor.cargar(a.videoId, pos, tocar: s.sonando);
+      if (_pideToque) _pideToque = false;
+      if (a.esBilibili) {
+        motor.cargarBilibili(
+          a.videoId,
+          a.parte,
+          pos,
+          duracion: a.duracion,
+          tocar: s.sonando,
+        );
+      } else {
+        motor.cargar(a.videoId, pos, tocar: s.sonando);
+      }
       return;
     }
     if (s.sonando) {
@@ -238,7 +249,7 @@ class MusicaEnVivo extends ChangeNotifier {
     notifyListeners();
     if (++_ticks % 3 != 0) return;
     final a = _sala.actual;
-    if (a == null || _cargado != a.videoId || _bloqueada == a.videoId) return;
+    if (a == null || _cargado != a.clave || _bloqueada == a.clave) return;
     final estado = await motor.estado();
     if (estado == -2 || _motor != motor) return;
     if (_sala.sonando) {
@@ -270,8 +281,8 @@ class MusicaEnVivo extends ChangeNotifier {
     final c = _coupleId, u = _uid;
     if (c == null || u == null) return;
     if (m == 'estado:${EstadoYoutube.terminado}') {
-      if (a != null && a.videoId == _cargado) {
-        _servicio.siguiente(c, u, terminada: a.videoId).catchError((_) {});
+      if (a != null && a.clave == _cargado) {
+        _servicio.siguiente(c, u, terminada: a.clave).catchError((_) {});
       }
     } else if (m == 'estado:${EstadoYoutube.sonando}') {
       if (_pideToque) {
@@ -283,7 +294,7 @@ class MusicaEnVivo extends ChangeNotifier {
       final i = resto.indexOf('|');
       if (i <= 0) return;
       final id = resto.substring(0, i);
-      if (a != null && a.videoId == id && a.titulo.isEmpty) {
+      if (a != null && a.clave == id && a.titulo.isEmpty) {
         _servicio
             .completarTitulo(c, id, resto.substring(i + 1))
             .catchError((_) {});
@@ -291,7 +302,7 @@ class MusicaEnVivo extends ChangeNotifier {
     } else if (m.startsWith('error:')) {
       // 101 y 150: quien subió el video no deja que suene fuera de YouTube.
       if (a == null) return;
-      _bloqueada = a.videoId;
+      _bloqueada = a.clave;
       notifyListeners();
     }
   }
@@ -334,10 +345,20 @@ class MusicaEnVivo extends ChangeNotifier {
     await _servicio.siguiente(c, u);
   }
 
+  /// Ids de una lista de YouTube (para agregarla entera a la cola).
+  Future<List<String>> listaDeYoutube(String listaId) async =>
+      await _motor?.lista(listaId) ?? const [];
+
   /// Para cuando el navegador pidió un toque: se une a lo que suena.
   void unirme() {
     final motor = _motor;
     if (motor == null) return;
+    if (_sala.actual?.esBilibili ?? false) {
+      // Bilibili no avisa si suena: se vuelve a abrir en el segundo justo.
+      motor.ir(_sala.posicionEn(DateTime.now()));
+      motor.recargar();
+      return;
+    }
     motor.ir(_sala.posicionEn(DateTime.now()));
     motor.tocar();
     _pideToque = false;

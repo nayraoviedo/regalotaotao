@@ -133,7 +133,7 @@ class _ReproductorJuntosState extends State<ReproductorJuntos> {
     final ahora = DateTime.now();
     final pareja = s.escuchando(widget.partnerUid, ahora);
     final azul = AppTheme.azul;
-    final bloqueada = a != null && _vivo.bloqueada == a.videoId;
+    final bloqueada = a != null && _vivo.bloqueada == a.clave;
     _video = a != null && !bloqueada && !_vivo.pideToque;
 
     return Card(
@@ -156,7 +156,7 @@ class _ReproductorJuntosState extends State<ReproductorJuntos> {
                     // Debajo del video (que pone MusicaFlotante encima): la
                     // portada, por si el video se esconde un momento.
                     ColoredBox(color: azul),
-                    if (a != null)
+                    if (a != null && a.miniatura.isNotEmpty)
                       Image.network(
                         a.miniatura,
                         fit: BoxFit.cover,
@@ -207,6 +207,7 @@ class _ReproductorJuntosState extends State<ReproductorJuntos> {
                 '${a.por == widget.uid ? 'la pusiste tú' : 'la puso ${widget.partnerName}'}',
                 style: const TextStyle(color: AppTheme.gris, fontSize: 12.5),
               ),
+              if (a.esBilibili) _AvisoBilibili(sinFin: a.duracion == null),
             ],
             const SizedBox(height: 4),
             Row(
@@ -302,6 +303,51 @@ class _Oyentes extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Bilibili no deja manejar su reproductor desde afuera: cada play, pausa
+/// o salto lo vuelve a abrir en el segundo justo. Por si el navegador no lo
+/// dejó sonar, un botón para volver a abrirlo.
+class _AvisoBilibili extends StatelessWidget {
+  const _AvisoBilibili({required this.sinFin});
+  final bool sinFin;
+
+  @override
+  Widget build(BuildContext context) {
+    final azul = AppTheme.azul;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+        decoration: BoxDecoration(
+          color: AppTheme.amarillo.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                sinFin
+                    ? 'Suena desde Bilibili. No supe cuánto dura: cuando '
+                          'termine, toquen siguiente.'
+                    : 'Suena desde Bilibili: al pausar o adelantar se '
+                          'vuelve a cargar un segundito.',
+                style: TextStyle(color: azul, fontSize: 12, height: 1.25),
+              ),
+            ),
+            TextButton(
+              onPressed: _vivo.unirme,
+              style: TextButton.styleFrom(
+                foregroundColor: azul,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('¿No suena?'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

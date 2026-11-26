@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -9,14 +10,17 @@ import '../../services/couple_service.dart';
 import '../../services/user_service.dart';
 import '../../theme.dart';
 import '../tutorial/tutorial_screen.dart';
+import '../../widgets/foto_perfil.dart';
 import '../../widgets/user_avatar.dart';
 import '../together/elegir_gatito.dart';
 import 'datos_curiosos_screen.dart';
 import '../together/together_screen.dart';
 import '../../widgets/doodle.dart';
+import '../../widgets/permisos_alarma.dart';
 import '../../widgets/texto_doodle.dart';
 
-/// Perfil: foto (la de Google), nombre, código y fecha de aniversario.
+/// Perfil: foto (la que elijas, tu gatito o la de Google), nombre, código y
+/// fecha de aniversario.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
     super.key,
@@ -154,7 +158,40 @@ class ProfileScreen extends StatelessWidget {
               body: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 children: [
-                  Center(child: UserAvatar(user, size: 120)),
+                  Center(
+                    child: Tooltip(
+                      message: 'Cambiar tu foto',
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => FotoPerfil.cambiar(context, user),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            UserAvatar(user, size: 120),
+                            Positioned(
+                              right: -2,
+                              bottom: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.crema,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppTheme.azul,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Doodle(
+                                  Icons.photo_camera_outlined,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Center(
                     child: Row(
@@ -182,11 +219,11 @@ class ProfileScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppTheme.gris),
                     ),
-                  if (user.photoUrl == null)
+                  if (user.foto == null && user.photoUrl == null)
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        'Si entras con Google, aquí aparece tu foto.',
+                        'Toca el círculo para ponerte una foto linda.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppTheme.gris, fontSize: 13),
                       ),
@@ -266,6 +303,19 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (!kIsWeb &&
+                      defaultTargetPlatform == TargetPlatform.android)
+                    Card(
+                      child: ListTile(
+                        leading: Doodle(Icons.alarm, color: AppTheme.azul),
+                        title: const Text('Alarma de los recordatorios'),
+                        subtitle: const Text(
+                          'Permisos, sonido y una alarma de prueba',
+                        ),
+                        trailing: const Doodle(Icons.chevron_right),
+                        onTap: () => PermisosDeAlarma.abrir(context),
+                      ),
+                    ),
                   Card(
                     child: ListTile(
                       leading: Doodle(
