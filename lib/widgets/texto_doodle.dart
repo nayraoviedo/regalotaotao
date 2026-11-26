@@ -56,6 +56,17 @@ const Map<String, String> emojiDoodle = {
   '🦃': 'pavo',
   '🎄': 'arbolito',
   '💍': 'anillo',
+  // Lo básico que trae el repartidor (pixel art de la casita)
+  '🧂': 'assets/casita/ingrediente_sal.png',
+  '🥛': 'assets/casita/ingrediente_leche.png',
+  '🧀': 'assets/casita/ingrediente_queso.png',
+  '🥩': 'assets/casita/ingrediente_carne.png',
+  '🍗': 'assets/casita/ingrediente_pollo.png',
+  '🥚': 'assets/casita/ingrediente_huevo.png',
+  '🧈': 'assets/casita/ingrediente_mantequilla.png',
+  '🍬': 'assets/casita/ingrediente_azucar.png',
+  '🪵': 'assets/casita/ingrediente_canela.png',
+  '📦': 'assets/casita/repartidor.png',
 };
 
 // Selector de variación (U+FE0F) que a veces va pegado al emoji.

@@ -328,6 +328,17 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('recogen lo del huerto a la despensa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:{tomate:3},sembrado:{tomatera:1764000000000}},{merge:true}));
   await ok('cocinan con lo de la despensa', setDoc(doc(db('B'),'couples/c1/casita/estado'),{despensa:{tomate:1},cocinado:{receta:'sopaTomate',en:1764000000000}},{merge:true}));
   await no('la despensa es un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{despensa:'mucho'},{merge:true}));
+  {
+    const hay = (await getDoc(doc(db('B'),'couples/c1/casita/estado'))).data().pescaditos;
+    console.log('pescaditos antes del repartidor:', hay);
+    await no('no reciben la caja sin pagarla', setDoc(doc(db('B'),'couples/c1/casita/estado'),{despensa:{sal:4},reparto:'2026-11-23'},{merge:true}));
+    await no('la caja no sale más barata', ganar('B','reparto_2026-11-23',{tipo:'reparto',cantidad:-10,ref:'2026-11-23'},hay-10,{reparto:'2026-11-23'}));
+    await no('el pago es de la semana que reciben', ganar('B','reparto_2026-11-16',{tipo:'reparto',cantidad:-60,ref:'2026-11-16'},hay-60,{reparto:'2026-11-23'}));
+    await ok('pagan 60 y reciben la caja del repartidor', ganar('B','reparto_2026-11-23',{tipo:'reparto',cantidad:-60,ref:'2026-11-23'},hay-60,{reparto:'2026-11-23',despensa:{sal:4,leche:4,queso:5}}));
+    await no('la misma semana no se paga dos veces', ganar('A','reparto_2026-11-23',{tipo:'reparto',cantidad:-60,ref:'2026-11-23'},hay-120,{reparto:'2026-11-23'}));
+  }
+  await no('la semana del repartidor es un texto', setDoc(doc(db('A'),'couples/c1/casita/estado'),{reparto:20261123},{merge:true}));
+  await no('C no recibe la caja de otra pareja', setDoc(doc(db('C'),'couples/c1/casita/estado'),{reparto:'2026-11-23'},{merge:true}));
   await no('C no cocina en su casita', setDoc(doc(db('C'),'couples/c1/casita/estado'),{cocinado:{receta:'ensalada',en:1}},{merge:true}));
   await ok('B guarda su cumpleaños en su perfil', updateDoc(doc(db('B'),'users','B'),{cumple:'02-14'}));
   // Foto de perfil (JPG en base64, o su gatito).

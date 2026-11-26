@@ -224,11 +224,46 @@ enum Ingrediente {
   arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
   ajo('ajos', 'ajo', 'ajos', '🧄'),
   palta('paltos', 'aguacate (palta)', 'aguacates (paltas)', '🥑'),
-  berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
+  berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆'),
 
-  const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
+  // ---- Lo básico: no se siembra, lo trae el repartidor cada lunes ----
+  sal('', 'pizca de sal', 'pizcas de sal', '🧂', caja: 4),
+  leche('', 'litro de leche', 'litros de leche', '🥛', caja: 4),
+  queso('', 'trozo de queso', 'trozos de queso', '🧀', caja: 5),
+  carne('', 'trozo de carne', 'trozos de carne', '🥩', caja: 3),
+  pollo('', 'presa de pollo', 'presas de pollo', '🍗', caja: 3),
+  huevo('', 'huevo', 'huevos', '🥚', caja: 6),
+  mantequilla(
+    '',
+    'barrita de mantequilla',
+    'barritas de mantequilla',
+    '🧈',
+    caja: 3,
+  ),
+  azucar('', 'taza de azúcar', 'tazas de azúcar', '🍬', caja: 3),
+  canela('', 'rama de canela', 'ramas de canela', '🪵', caja: 3);
 
+  const Ingrediente(
+    this.semilla,
+    this.uno,
+    this.varios,
+    this.emoji, {
+    this.caja = 0,
+  });
+
+  /// Id de la [Cosa] que se siembra para tenerlo (vacío si lo trae el
+  /// repartidor).
   final String semilla;
+
+  /// Cuántos trae el repartidor en la caja de la semana (0 si se siembra).
+  final int caja;
+
+  bool get delRepartidor => caja > 0;
+
+  /// Lo que trae el repartidor cada semana.
+  static List<Ingrediente> get basicos =>
+      values.where((i) => i.delRepartidor).toList();
+
   final String uno;
   final String varios;
   final String emoji;
@@ -238,7 +273,7 @@ enum Ingrediente {
 
   static Ingrediente? deSemilla(String cosaId) {
     for (final i in values) {
-      if (i.semilla == cosaId) return i;
+      if (i.semilla.isNotEmpty && i.semilla == cosaId) return i;
     }
     return null;
   }
@@ -253,12 +288,37 @@ enum Ingrediente {
   String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
 }
 
+/// El repartidor llega cada lunes con una caja de lo básico (sal, leche,
+/// queso…) para cocinar las recetas. Se calcula en el celular: la semana
+/// se identifica por la fecha de su lunes ("2026-11-23") y se guarda en
+/// `estado.reparto` cuando la pareja recibe la caja.
+abstract final class Repartidor {
+  /// Lo que se le paga por la caja (pescaditos del monedero de los dos).
+  static const precio = 60;
+
+  /// El lunes de la semana de [hoy], como "yyyy-MM-dd".
+  static String semana(DateTime hoy) {
+    final lunes = DateTime(hoy.year, hoy.month, hoy.day - (hoy.weekday - 1));
+    String dos(int n) => n.toString().padLeft(2, '0');
+    return '${lunes.year}-${dos(lunes.month)}-${dos(lunes.day)}';
+  }
+
+  /// Lo que trae la caja: `{sal: 4, leche: 4, …}`.
+  static Map<Ingrediente, int> get caja => {
+    for (final i in Ingrediente.basicos) i: i.caja,
+  };
+
+  /// "🧂 4 · 🥛 4 · 🧀 5…"
+  static String get contenido =>
+      [for (final e in caja.entries) '${e.key.emoji} ${e.value}'].join(' · ');
+}
+
 /// Lo que cocinan con lo del huerto. El dibujo es `plato_<dibujo>.png`.
 enum Receta {
   sopaTomate(
     'sopa_tomate',
     'sopa de tomate',
-    {Ingrediente.tomate: 2},
+    {Ingrediente.tomate: 2, Ingrediente.sal: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   ensalada(
@@ -270,61 +330,61 @@ enum Receta {
   choclo(
     'choclo',
     'choclo con mantequilla',
-    {Ingrediente.choclo: 2},
+    {Ingrediente.choclo: 2, Ingrediente.mantequilla: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   cremaCalabaza(
     'sopa_calabaza',
     'crema de calabaza',
-    {Ingrediente.calabaza: 1},
+    {Ingrediente.calabaza: 1, Ingrediente.leche: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   pastelZanahoria(
     'pastel_zanahoria',
     'pastel de zanahoria',
-    {Ingrediente.zanahoria: 2},
+    {Ingrediente.zanahoria: 2, Ingrediente.huevo: 1, Ingrediente.azucar: 1},
     {Comida.desayuno},
   ),
   batidoFresa(
     'batido_fresa',
     'batido de fresa',
-    {Ingrediente.fresa: 2},
+    {Ingrediente.fresa: 2, Ingrediente.leche: 1},
     {Comida.desayuno},
   ),
   papasFritas(
     'papas_fritas',
     'papas fritas',
-    {Ingrediente.papa: 2},
+    {Ingrediente.papa: 2, Ingrediente.sal: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   sopaQuinua(
     'sopa_quinua',
     'sopa de quinua',
-    {Ingrediente.quinua: 1, Ingrediente.papa: 1},
+    {Ingrediente.quinua: 1, Ingrediente.papa: 1, Ingrediente.sal: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   guisoArvejas(
     'guiso_arvejas',
     'guiso de arvejas',
-    {Ingrediente.arveja: 2, Ingrediente.cebolla: 1},
+    {Ingrediente.arveja: 2, Ingrediente.cebolla: 1, Ingrediente.carne: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   tortillaPapa(
     'tortilla_papa',
     'tortilla de papa',
-    {Ingrediente.papa: 1, Ingrediente.cebolla: 1},
+    {Ingrediente.papa: 1, Ingrediente.cebolla: 1, Ingrediente.huevo: 2},
     {Comida.almuerzo, Comida.cena},
   ),
   pastelChoclo(
     'pastel_choclo',
     'pastel de choclo',
-    {Ingrediente.choclo: 2, Ingrediente.cebolla: 1},
+    {Ingrediente.choclo: 2, Ingrediente.cebolla: 1, Ingrediente.carne: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   pizzaTomate(
     'pizza_tomate',
     'pizza de tomate',
-    {Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {Ingrediente.tomate: 2, Ingrediente.cebolla: 1, Ingrediente.queso: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   jugoSandia(
@@ -336,7 +396,7 @@ enum Receta {
   panquequesArandanos(
     'panqueques_arandanos',
     'panqueques con arándanos',
-    {Ingrediente.arandano: 2},
+    {Ingrediente.arandano: 2, Ingrediente.huevo: 1, Ingrediente.leche: 1},
     {Comida.desayuno},
   ),
   ensaladaFrutas(
@@ -348,7 +408,12 @@ enum Receta {
   dumplings(
     'dumplings',
     'dumplings',
-    {Ingrediente.cebolla: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {
+      Ingrediente.cebolla: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.lechuga: 1,
+      Ingrediente.carne: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   cuy(
@@ -367,7 +432,7 @@ enum Receta {
   purePapas(
     'pure_papas',
     'puré de papas',
-    {Ingrediente.papa: 2},
+    {Ingrediente.papa: 2, Ingrediente.leche: 1, Ingrediente.mantequilla: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   sopaVerduras(
@@ -379,7 +444,7 @@ enum Receta {
   smoothieArandanos(
     'smoothie_arandanos',
     'smoothie de arándanos',
-    {Ingrediente.arandano: 1, Ingrediente.fresa: 1},
+    {Ingrediente.arandano: 1, Ingrediente.fresa: 1, Ingrediente.leche: 1},
     {Comida.desayuno},
   ),
   kimchi(
@@ -398,13 +463,18 @@ enum Receta {
   sopaCebolla(
     'sopa_cebolla',
     'sopa de cebolla',
-    {Ingrediente.cebolla: 2, Ingrediente.trigo: 1},
+    {Ingrediente.cebolla: 2, Ingrediente.trigo: 1, Ingrediente.queso: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   sopaPollo(
     'sopa_pollo',
     'sopa de pollo',
-    {Ingrediente.papa: 1, Ingrediente.choclo: 1, Ingrediente.zanahoria: 1},
+    {
+      Ingrediente.papa: 1,
+      Ingrediente.choclo: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.pollo: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   sopaFideo(
@@ -441,7 +511,12 @@ enum Receta {
   pizzaMargarita(
     'pizza_margarita',
     'pizza margarita',
-    {Ingrediente.trigo: 1, Ingrediente.tomate: 1, Ingrediente.albahaca: 1},
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.albahaca: 1,
+      Ingrediente.queso: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   paella(
@@ -453,19 +528,35 @@ enum Receta {
   lasana(
     'lasana',
     'lasaña',
-    {Ingrediente.trigo: 1, Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.tomate: 2,
+      Ingrediente.cebolla: 1,
+      Ingrediente.carne: 1,
+      Ingrediente.queso: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   espaguetisPesto(
     'espaguetis_pesto',
     'espaguetis al pesto',
-    {Ingrediente.trigo: 1, Ingrediente.albahaca: 2, Ingrediente.ajo: 1},
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.albahaca: 2,
+      Ingrediente.ajo: 1,
+      Ingrediente.queso: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   risotto(
     'risotto',
     'risotto',
-    {Ingrediente.arroz: 2, Ingrediente.cebolla: 1},
+    {
+      Ingrediente.arroz: 2,
+      Ingrediente.cebolla: 1,
+      Ingrediente.queso: 1,
+      Ingrediente.mantequilla: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   guacamole(
@@ -483,7 +574,12 @@ enum Receta {
   arrozFrito(
     'arroz_frito',
     'arroz frito chino',
-    {Ingrediente.arroz: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {
+      Ingrediente.arroz: 1,
+      Ingrediente.arveja: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.huevo: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   gazpacho(
@@ -495,7 +591,12 @@ enum Receta {
   bibimbap(
     'bibimbap',
     'bibimbap',
-    {Ingrediente.arroz: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {
+      Ingrediente.arroz: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.lechuga: 1,
+      Ingrediente.huevo: 1,
+    },
     {Comida.almuerzo, Comida.cena},
   ),
   curryCalabaza(
@@ -507,26 +608,161 @@ enum Receta {
   panAjo(
     'pan_ajo',
     'pan de ajo',
-    {Ingrediente.trigo: 1, Ingrediente.ajo: 1},
+    {Ingrediente.trigo: 1, Ingrediente.ajo: 1, Ingrediente.mantequilla: 1},
     {Comida.desayuno},
   ),
   crepasFresa(
     'crepas_fresa',
     'crepas con fresa',
-    {Ingrediente.trigo: 1, Ingrediente.fresa: 2},
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.fresa: 2,
+      Ingrediente.huevo: 1,
+      Ingrediente.leche: 1,
+    },
     {Comida.desayuno},
   ),
   tostadaPalta(
     'tostada_palta',
     'tostada de aguacate (palta)',
-    {Ingrediente.trigo: 1, Ingrediente.palta: 1},
+    {Ingrediente.trigo: 1, Ingrediente.palta: 1, Ingrediente.sal: 1},
     {Comida.desayuno},
+  ),
+  // ---- Con lo que trae el repartidor ----
+  rollosCanela(
+    'rollos_canela',
+    'rollos de canela',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.canela: 1,
+      Ingrediente.mantequilla: 1,
+      Ingrediente.azucar: 1,
+    },
+    {Comida.desayuno},
+  ),
+  galletas(
+    'galletas',
+    'galletitas de mantequilla',
+    {Ingrediente.trigo: 1, Ingrediente.mantequilla: 1, Ingrediente.azucar: 1},
+    {Comida.desayuno},
+  ),
+  arrozLeche(
+    'arroz_leche',
+    'arroz con leche',
+    {
+      Ingrediente.arroz: 1,
+      Ingrediente.leche: 1,
+      Ingrediente.azucar: 1,
+      Ingrediente.canela: 1,
+    },
+    {Comida.desayuno},
+  ),
+  omelette(
+    'omelette',
+    'omelette de verduras',
+    {Ingrediente.pimiento: 1, Ingrediente.cebolla: 1, Ingrediente.huevo: 2},
+    {Comida.desayuno},
+  ),
+  pizzaCuatroQuesos(
+    'pizza_cuatro_quesos',
+    'pizza cuatro quesos',
+    {Ingrediente.trigo: 1, Ingrediente.queso: 3},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaPepperoni(
+    'pizza_pepperoni',
+    'pizza de pepperoni',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.carne: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaVegetariana(
+    'pizza_vegetariana',
+    'pizza vegetariana',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.pimiento: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaPollo(
+    'pizza_pollo',
+    'pizza de pollo con choclo',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.choclo: 1,
+      Ingrediente.pollo: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaAjo(
+    'pizza_ajo',
+    'pizza blanca de ajo',
+    {Ingrediente.trigo: 1, Ingrediente.ajo: 1, Ingrediente.queso: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pizzaBerenjena(
+    'pizza_berenjena',
+    'pizza de berenjena',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.berenjena: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  hamburguesa(
+    'hamburguesa',
+    'hamburguesa casera',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.lechuga: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.carne: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  macarronesQueso(
+    'macarrones_queso',
+    'macarrones con queso',
+    {Ingrediente.trigo: 1, Ingrediente.queso: 2, Ingrediente.leche: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  tacos(
+    'tacos',
+    'tacos',
+    {
+      Ingrediente.choclo: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.carne: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  polloHorno(
+    'pollo_horno',
+    'pollo al horno con papas',
+    {Ingrediente.papa: 2, Ingrediente.ajo: 1, Ingrediente.pollo: 1},
+    {Comida.almuerzo, Comida.cena},
   ),
   // ---- Solo en su fiesta ----
   pavo(
     'pavo',
     'pavo al horno',
-    {Ingrediente.papa: 1, Ingrediente.zanahoria: 1, Ingrediente.cebolla: 1},
+    {
+      Ingrediente.papa: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.mantequilla: 1,
+    },
     {Comida.almuerzo, Comida.cena},
     fiestas: {Festividad.accionGracias, Festividad.navidad},
   ),
@@ -2013,6 +2249,7 @@ class EstadoCasita {
     this.despensa = const {},
     this.cocinado,
     this.cocinadoEn,
+    this.reparto,
   });
 
   static const vacio = EstadoCasita();
@@ -2083,6 +2320,15 @@ class EstadoCasita {
   /// Lo último que cocinaron con lo del huerto, y cuándo (milisegundos).
   final Receta? cocinado;
   final int? cocinadoEn;
+
+  /// La última semana en que recibieron la caja del repartidor (el lunes,
+  /// "yyyy-MM-dd"; ver [Repartidor.semana]).
+  final String? reparto;
+
+  /// ¿El repartidor está tocando la puerta? Llega cada lunes, y solo si ya
+  /// tienen cocina (donde se guarda lo que trae).
+  bool repartidorEsperando(DateTime ahora) =>
+      abierto(Cuarto.cocina) && reparto != Repartidor.semana(ahora);
 
   /// Cuánto hay de [i] en la despensa.
   int hay(Ingrediente i) => despensa[i.name] ?? 0;
@@ -2245,6 +2491,7 @@ class EstadoCasita {
         {'en': final num en} => en.toInt(),
         _ => null,
       },
+      reparto: d['reparto'] as String?,
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -2622,7 +2869,8 @@ class Propuesta {
 /// El id dice de dónde salió, para que nada dé pescaditos dos veces:
 /// `pregunta_{día}_{uid}`, `animo_{día}_{uid}`, `respira_{día}_{uid}`,
 /// `pomodoro_{logro}`, `juego_{día}_{uid}_{1..3}`,
-/// `racha{meta}_{inicio}`, `compra_{cosa}` y `carta_{carta}`.
+/// `racha{meta}_{inicio}`, `compra_{cosa}`, `carta_{carta}` y
+/// `reparto_{lunes}`.
 class Movimiento {
   const Movimiento({
     required this.id,
@@ -2647,6 +2895,7 @@ class Movimiento {
   static const racha = 'racha';
   static const compra = 'compra';
   static const carta = 'carta';
+  static const reparto = 'reparto';
 
   final String id;
   final String tipo;
@@ -2692,6 +2941,7 @@ class Movimiento {
       null => 'compró algo',
     },
     carta => 'mandó una carta sorpresa',
+    reparto => 'le pagó al repartidor la caja de la semana',
     _ => '',
   };
 }
