@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/dato_curioso.dart';
 import 'package:taotao/models/pregunta_propia.dart';
 import 'package:taotao/screens/together/dato_del_dia.dart';
+import 'package:taotao/widgets/hoy_builder.dart';
 
 PreguntaPropia _p(String id, String autor, int min, {String? usada}) =>
     PreguntaPropia(
@@ -84,6 +85,46 @@ void main() {
       );
       expect(find.text('Dato curioso de Tao · hoy'), findsOneWidget);
       expect(find.text('dato a'), findsOneWidget);
+    });
+
+    test('con 10 datos, 10 días seguidos muestran los 10', () {
+      final datos = [for (var i = 0; i < 10; i++) _d('d$i', i)];
+      final vistos = {
+        for (var i = 0; i < 10; i++)
+          DatoCurioso.delDia(datos, DateTime(2026, 11, 26 + i))!.id,
+      };
+      expect(vistos.length, 10);
+    });
+
+    testWidgets('si escribió uno solo, avisa que irán cambiando', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DatoDelDia(dato: _d('a', 1), nombre: 'Tao', total: 1),
+          ),
+        ),
+      );
+      expect(find.textContaining('verás uno distinto cada día'), findsOneWidget);
+    });
+
+    testWidgets('HoyBuilder entrega el día y se limpia al salir', (
+      tester,
+    ) async {
+      DateTime? visto;
+      await tester.pumpWidget(
+        HoyBuilder(
+          builder: (context, hoy) {
+            visto = hoy;
+            return const SizedBox();
+          },
+        ),
+      );
+      final ahora = DateTime.now();
+      expect(visto!.day, ahora.day);
+      // Al quitarlo no debe quedar ningún reloj pendiente.
+      await tester.pumpWidget(const SizedBox());
     });
   });
 }
