@@ -116,3 +116,15 @@ test("carta de Navidad: ese día avisa a quien la recibe, una sola vez", async (
   await revisarRecordatorios(m.deps, AHORA);
   assert.deepEqual(m.sent, []);
 });
+
+test("el recordatorio lleva la ruta de la nota y la hora (para no repetir la alarma)", async () => {
+  const m = mundo({
+    "users/ana/privateNotes/p1": { title: "Regar", recordatorioPara: "yo", avisarEn: hace(1) },
+  });
+  const msgs = [];
+  m.deps.enviar = async (uid, msg) => (msgs.push(msg), 1);
+  await revisarRecordatorios(m.deps, AHORA);
+  assert.equal(msgs.length, 1);
+  assert.equal(msgs[0].nota, "users/ana/privateNotes/p1");
+  assert.equal(msgs[0].cuando, AHORA - 60000);
+});

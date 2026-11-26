@@ -36,10 +36,6 @@ class Casita {
   /// Pomodoros por persona y por día que dan pescaditos.
   static const pomodorosPorDia = 4;
 
-  /// Desde cuánto una compra es "grande": la tiene que aprobar la pareja
-  /// antes de gastar (los regalos sorpresa no, para no arruinar la sorpresa).
-  static const compraGrande = 100;
-
   /// Marcas en [EstadoCasita.capas]: ahí van los gatitos bebés (no son un
   /// PNG del tamaño del cuarto, se mueven).
   static const bebesPaseando = '#bebes';
@@ -51,7 +47,6 @@ class Casita {
 
   /// Lo que cuesta mandar una carta sorpresa animada.
   static const precioCartaSorpresa = 30;
-  static bool necesitaAprobacion(Cosa c) => c.precio > compraGrande;
 
   /// Bonus de racha: 50 a los 7 días y 150 a los 30, 60, 90…
   static int porRacha(int meta) => meta == 7 ? 50 : 150;
@@ -1519,8 +1514,16 @@ class EstadoCasita {
   /// Alcancía: id de la [Cosa] para la que están ahorrando juntos.
   final String? meta;
 
-  /// Compra grande esperando que la pareja la apruebe.
+  /// Compra que uno quiso hacer en pareja, esperando el sí del otro.
+  /// Usa [pendiente]: esta puede quedar vieja si ya la compraron.
   final Propuesta? propuesta;
+
+  /// La propuesta que de verdad sigue esperando: si ya tienen esa cosa
+  /// (la compraron por otro lado), no hay nada que aprobar.
+  Propuesta? get pendiente => switch (propuesta) {
+    final p? when p.queCosa != null && !tiene(p.queCosa!) => p,
+    _ => null,
+  };
 
   /// Nombres de los gatitos bebés: `{calico: 'Mochi'}`.
   final Map<String, String> nombres;

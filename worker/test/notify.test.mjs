@@ -335,3 +335,33 @@ test("cron: manda los recordatorios de las notas a los dos", async () => {
   sent = [];
   assert.deepEqual(await cronRecordatorios(env, ahora), { enviados: 0, revisados: 0 });
 });
+
+test("recordatorio como alarma: solo datos en Android, aviso normal en la web", async () => {
+  const { mensajeFcm } = await import("../src/index.js");
+  const msg = {
+    title: "⏰ Recordatorio",
+    body: "Regar",
+    canal: "recordatorio",
+    nota: "users/ana/privateNotes/p1",
+    cuando: 1764014340000,
+  };
+  const alarma = mensajeFcm("tok", { ...msg, comoAlarma: true });
+  assert.equal(alarma.notification, undefined);
+  assert.equal(alarma.android.notification, undefined);
+  assert.deepEqual(alarma.data, {
+    tipo: "recordatorio",
+    title: "⏰ Recordatorio",
+    body: "Regar",
+    nota: "users/ana/privateNotes/p1",
+    cuando: "1764014340000",
+  });
+  assert.deepEqual(alarma.webpush.notification, { title: "⏰ Recordatorio", body: "Regar" });
+
+  // App vieja: sigue llegando como notificación con el canal de la alarma.
+  const vieja = mensajeFcm("tok", msg);
+  assert.equal(vieja.android.notification.channel_id, "recordatorios_alarma");
+  assert.equal(vieja.data, undefined);
+  // Los demás avisos no cambian aunque la app sea nueva.
+  const mimo = mensajeFcm("tok", { title: "Te extraño", body: "♡", comoAlarma: true });
+  assert.equal(mimo.android.notification.channel_id, "mimos_pareja");
+});

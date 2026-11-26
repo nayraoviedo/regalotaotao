@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_user.dart';
 import '../../models/couple.dart';
@@ -131,12 +132,20 @@ class _HomeBodyState extends State<_HomeBody> {
   final _premiosRevisados = <String>{};
   bool _celebrando = false;
 
+  // ---- Compra en pareja: tu pareja te pide el sí ----
+  StreamSubscription<EstadoCasita>? _casitaSub;
+  String? _casitaDe;
+
+  /// Propuestas que ya te mostramos en una ventanita (no se repiten).
+  final _propuestasVistas = <String>{};
+
   @override
   void initState() {
     super.initState();
     _contarTeExtrano();
     _ciclo = AppLifecycleListener(onResume: _contarTeExtrano);
     _escucharRacha();
+    _escucharPropuestas();
     _tutorialPrimeraVez();
   }
 
@@ -155,12 +164,14 @@ class _HomeBodyState extends State<_HomeBody> {
   void didUpdateWidget(_HomeBody old) {
     super.didUpdateWidget(old);
     _escucharRacha();
+    _escucharPropuestas();
   }
 
   @override
   void dispose() {
     _ciclo.dispose();
     _rachaSub?.cancel();
+    _casitaSub?.cancel();
     _racha.dispose();
     super.dispose();
   }
@@ -196,6 +207,88 @@ class _HomeBodyState extends State<_HomeBody> {
           _racha.value = r;
           _revisarPremio(r);
         }, onError: (_) {});
+  }
+
+  void _escucharPropuestas() {
+    final coupleId = widget.couple.id;
+    if (_casitaDe == coupleId) return;
+    _casitaDe = coupleId;
+    _casitaSub?.cancel();
+    _casitaSub = PescaditosService.instance
+        .watch(coupleId)
+        .listen(_revisarPropuesta, onError: (_) {});
+  }
+
+  /// Cuando tu pareja quiere comprar algo en pareja, te sale una
+  /// ventanita para darle el sí (una vez por propuesta, aunque cierres la
+  /// app; si dices "Después", sigue esperando en la casita).
+  Future<void> _revisarPropuesta(EstadoCasita estado) async {
+    final p = estado.pendiente;
+    final me = widget.me.uid;
+    if (p == null || p.de == me || _celebrando) return;
+    if (!_propuestasVistas.add(p.id)) return;
+    final clave = 'propuestaVista_${widget.couple.id}_$me';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(clave) == p.id) return;
+      await prefs.setString(clave, p.id);
+    } catch (_) {
+      // Sin almacenamiento: igual se muestra (una vez en esta sesión).
+    }
+    if (!mounted) return;
+    final cosa = p.queCosa!;
+    final pareja = widget.partner?.name ?? 'Tu pareja';
+    final alcanza = estado.pescaditos >= cosa.precio;
+    final respuesta = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TextoDoodle('🐟 ¿Le das el sí?'),
+        content: Text(
+          '$pareja quiere comprar ${cosa.nombre} para la casita. '
+          'Cuesta ${cosa.precio} pescaditos y tienen ${estado.pescaditos}.'
+          '${alcanza ? '' : '\n\nTodavía no les alcanza: pueden seguir '
+                    'ahorrando juntos.'}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Después'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ahora no'),
+          ),
+          if (alcanza)
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('¡Sí, comprarlo!'),
+            ),
+        ],
+      ),
+    );
+    if (respuesta == null || !mounted) return;
+    final servicio = PescaditosService.instance;
+    final coupleId = widget.couple.id;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (respuesta) {
+        await servicio.aprobar(coupleId, me, p);
+        messenger.showSnackBar(
+          SnackBar(content: Text('¡${cosa.nombre} ya está en la casita!')),
+        );
+      } else {
+        await servicio.descartarPropuesta(coupleId);
+      }
+    } on SinPescaditos catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Les faltan ${e.faltan} pescaditos')),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo, intenta otra vez')),
+      );
+    }
   }
 
   /// Al llegar a 7, 30, 60… días, cada uno recibe su premio una vez.
