@@ -28,7 +28,7 @@ from generar import (
 )
 from generar_cuartos import ROJO, ROJO_OSC
 from generar_extras import PAN, PAN_OSC, CARNE, comida
-from generar_rutina import GORRO, en_plato, en_tazon, plato as plato_rutina, COMIDAS as PLATOS
+from generar_rutina import GORRO, vaso, en_plato, en_tazon, plato as plato_rutina, COMIDAS as PLATOS
 
 CHOCO = (120, 72, 46)
 CHOCO_OSC = (84, 48, 30)
@@ -37,6 +37,7 @@ DORADITO = (206, 128, 62)
 DORADITO_CLARO = (236, 170, 96)
 PAPITA = (246, 214, 120)
 UVA = (150, 90, 160)
+AZUL_SUAVE = (150, 180, 220)
 UVA_CLARA = (186, 126, 196)
 MASA = (250, 244, 232)
 MASA_OSC = (226, 214, 196)
@@ -171,6 +172,68 @@ TIENDA = {
         "..rrrrr..",
         "....r....",
     ], {"r": ROSA_OSC, "c": CHOCO}, False),
+    # ---- Segunda tanda (26-11-2026) ----
+    # Silpancho: arroz, papa, carne apanada, huevo frito y ensaladita.
+    "silpancho": ([
+        "...........",
+        ".aaammmmyy.",
+        "aaamMmmyYy.",
+        "pppmmmmyyrl",
+    ], {"a": BLANCO, "m": CARNE, "M": (150, 84, 56), "y": BLANCO, "Y": AMARILLO,
+        "p": PAPITA, "r": ROJO, "l": VERDE_CLARO}, True),
+    "sopa_mani": ([
+        "..p.g.p.k..",
+        "wwwwwwwwwww",
+        ".RRRRRRRRR.",
+        "..RRRRRRR..",
+    ], {"p": PAPITA, "g": VERDE, "k": (200, 120, 70), "w": (238, 222, 186),
+        "R": CIELO}, True),
+    "hot_dog": ([
+        "...........",
+        ".yyyyyyyyy.",
+        "bSSSSSSSSSb",
+        ".bbbbbbbbb.",
+    ], {"y": AMARILLO, "S": (196, 92, 70), "b": PAN}, True),
+    "onigiri": ([
+        "...w.....w.",
+        "..www...www",
+        ".wwwww.wwwww",
+        ".wkkkw.wkkkw",
+    ], {"w": BLANCO, "k": (40, 60, 52)}, True),
+    "churros": ([
+        "..y..y..y..",
+        ".yY.yY.yY..",
+        ".Yy.Yy.Yy.c",
+        ".yY.yY.yYcc",
+    ], {"y": DORADITO_CLARO, "Y": DORADITO, "c": CHOCO}, True),
+    "waffles": ([
+        "....rr.....",
+        ".ywywywywy.",
+        ".wywywywyw.",
+        ".ywywywywy.",
+    ], {"y": (232, 180, 100), "w": (250, 214, 140), "r": ROJO}, True),
+    "galletas_gatito": ([
+        ".c.c..c.c..",
+        ".ccc..ccc..",
+        "ckckc.ckckc",
+        ".ccc...ccc.",
+    ], {"c": PAN, "k": CHOCO_OSC}, True),
+    "malteada_fresa": ([
+        "....k.",
+        "..wwkw",
+        ".wwwww",
+        ".pppPp",
+        ".ppppp",
+        "..ppp.",
+        "...p..",
+        "..ppp.",
+    ], {"k": ROJO, "w": BLANCO, "p": ROSA, "P": ROSA_CLARO}, False),
+    "tteokbokki": ([
+        "..wRwRw....",
+        ".RwRwRwR...",
+        "RRRRRRRRRR.",
+        ".kkkkkkkk..",
+    ], {"w": (250, 236, 220), "R": (220, 80, 60), "k": TRAZO}, True),
 }
 
 # ---------------------------------------------------------------- recetas
@@ -198,6 +261,30 @@ RECETAS = {
                        [(3, 0, AMARILLO), (5, 0, CARNE), (7, 0, PAPITA), (9, 0, VERDE)]),
     "fideos_larga_vida": en_tazon((248, 214, 110), ROJO,
                                   [(4, 0, VERDE), (6, 0, ROJO_OSC), (8, 0, VERDE)]),
+    # ---- Segunda tanda (26-11-2026) ----
+    "humintas": en_plato([
+        "............",
+        "..VVV..VVV..",
+        ".VyyyV.VyyyV",
+        ".VVVVV.VVVVV",
+    ], {"V": VERDE_CLARO, "y": AMARILLO}),
+    "ensalada_quinua": en_tazon((240, 226, 190), VERDE,
+                                [(3, 0, ROJO), (5, 0, VERDE_CLARO), (7, 0, ROJO), (9, 0, (240, 230, 200))]),
+    "pure_papas": en_plato([
+        "............",
+        "....yy......",
+        "..wwwwww....",
+        ".wwwwwwwww..",
+    ], {"w": (252, 236, 190), "y": AMARILLO}),
+    "sopa_verduras": en_tazon((236, 190, 120), AZUL_SUAVE,
+                              [(3, 0, (240, 150, 60)), (5, 0, VERDE), (7, 0, PAPITA), (9, 0, VERDE)]),
+    "smoothie_arandanos": vaso((120, 110, 200), (90, 80, 170), ROSA),
+    "kimchi": en_plato([
+        "............",
+        "..rRrRr.....",
+        ".RrRrRrRr...",
+        ".rRrRrRrRr..",
+    ], {"r": (230, 100, 70), "R": (246, 200, 170)}),
 }
 
 

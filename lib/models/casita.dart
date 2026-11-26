@@ -341,6 +341,37 @@ enum Receta {
     {Ingrediente.papa: 2, Ingrediente.choclo: 1},
     {Comida.almuerzo, Comida.cena},
   ),
+  humintas('humintas', 'humintas', {Ingrediente.choclo: 2}, {Comida.desayuno}),
+  ensaladaQuinua(
+    'ensalada_quinua',
+    'ensalada de quinua',
+    {Ingrediente.quinua: 1, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  purePapas(
+    'pure_papas',
+    'puré de papas',
+    {Ingrediente.papa: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaVerduras(
+    'sopa_verduras',
+    'sopa de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.papa: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  smoothieArandanos(
+    'smoothie_arandanos',
+    'smoothie de arándanos',
+    {Ingrediente.arandano: 1, Ingrediente.fresa: 1},
+    {Comida.desayuno},
+  ),
+  kimchi(
+    'kimchi',
+    'kimchi',
+    {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
   // ---- Solo en su fiesta ----
   pavo(
     'pavo',
@@ -1096,6 +1127,20 @@ class Catalogo {
     Cosa('comida_donas', 'Donas', 20, lugar: Lugar.comida),
     Cosa('comida_te_burbujas', 'Té de burbujas', 20, lugar: Lugar.comida),
     Cosa('comida_bao', 'Bao al vapor', 20, lugar: Lugar.comida),
+    Cosa('comida_silpancho', 'Silpancho', 30, lugar: Lugar.comida),
+    Cosa('comida_sopa_mani', 'Sopa de maní', 25, lugar: Lugar.comida),
+    Cosa('comida_hot_dog', 'Hot dog', 20, lugar: Lugar.comida),
+    Cosa('comida_onigiri', 'Onigiri', 20, lugar: Lugar.comida),
+    Cosa('comida_churros', 'Churros con chocolate', 20, lugar: Lugar.comida),
+    Cosa('comida_waffles', 'Waffles con fresa', 20, lugar: Lugar.comida),
+    Cosa(
+      'comida_galletas_gatito',
+      'Galletas de gatito',
+      15,
+      lugar: Lugar.comida,
+    ),
+    Cosa('comida_malteada_fresa', 'Malteada de fresa', 20, lugar: Lugar.comida),
+    Cosa('comida_tteokbokki', 'Tteokbokki', 25, lugar: Lugar.comida),
 
     // ---- Más para el dormitorio ----
     Cosa('pared_dorm_celeste', 'Pared celeste', 0, lugar: Lugar.paredDorm),
