@@ -18,6 +18,7 @@ enum Festividad {
   medioOtono('Festival del Medio Otoño', '🥮'),
   halloween('Halloween', '🎃'),
   todosSantos('Todos Santos', '🕯️'),
+  accionGracias('Acción de Gracias', '🦃'),
   navidad('Navidad', '🎄'),
   aniversario('Su aniversario', '💍');
 
@@ -51,6 +52,7 @@ enum Festividad {
       medioOtono => chinas == null ? null : alrededor(chinas.$4, 7, 2),
       halloween => (d(10, 15), d(10, 31)),
       todosSantos => (d(10, 28), d(11, 3)),
+      accionGracias => alrededor(accionDeGraciasDe(anio), 2, 1),
       navidad => (d(12, 1), d(12, 26)),
       aniversario =>
         inicioPareja == null
@@ -75,6 +77,7 @@ enum Festividad {
       medioOtono => chinas?.$4,
       halloween => DateTime(anio, 10, 31),
       todosSantos => DateTime(anio, 11, 1),
+      accionGracias => accionDeGraciasDe(anio),
       navidad => DateTime(anio, 12, 25),
       aniversario =>
         inicioPareja == null ? null : _mismoDia(anio, inicioPareja),
@@ -124,6 +127,13 @@ enum Festividad {
       f.month == 2 && f.day == 29 && DateTime(anio, 2, 29).month != 2
       ? DateTime(anio, 2, 28)
       : DateTime(anio, f.month, f.day);
+
+  /// Acción de Gracias: el cuarto jueves de noviembre.
+  static DateTime accionDeGraciasDe(int anio) {
+    final primero = DateTime(anio, 11, 1);
+    final primerJueves = 1 + (DateTime.thursday - primero.weekday + 7) % 7;
+    return DateTime(anio, 11, primerJueves + 21);
+  }
 
   /// Domingo de Pascua (algoritmo gregoriano anónimo).
   static DateTime pascuaDe(int anio) {

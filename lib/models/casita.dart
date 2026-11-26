@@ -211,7 +211,14 @@ enum Ingrediente {
   cebolla('cebollas', 'cebolla', 'cebollas', '🧅'),
   sandia('sandias', 'sandía', 'sandías', '🍉'),
   quinua('quinua', 'puñado de quinua', 'puñados de quinua', '🌾'),
-  arandano('arandanos', 'arándano', 'arándanos', '🫐');
+  arandano('arandanos', 'arándano', 'arándanos', '🫐'),
+  trigo('trigo', 'puñado de trigo', 'puñados de trigo', '🍞'),
+  albahaca('albahaca', 'ramita de albahaca', 'ramitas de albahaca', '🌿'),
+  pimiento('pimientos', 'pimiento', 'pimientos', '🫑'),
+  arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
+  ajo('ajos', 'ajo', 'ajos', '🧄'),
+  palta('paltos', 'aguacate (palta)', 'aguacates (paltas)', '🥑'),
+  berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
 
@@ -231,7 +238,10 @@ enum Ingrediente {
   }
 
   /// Para el botón: "Recoger tomates", "Recoger quinua".
-  String get alRecoger => this == quinua ? 'quinua' : varios;
+  String get alRecoger => switch (this) {
+    quinua || trigo || arroz || albahaca => name,
+    _ => varios,
+  };
 
   /// "1 tomate", "3 tomates".
   String cuantos(int n) => '$n ${n == 1 ? uno : varios}';
@@ -328,9 +338,221 @@ enum Receta {
     'ensalada de frutas',
     {Ingrediente.fresa: 1, Ingrediente.sandia: 1, Ingrediente.arandano: 1},
     {Comida.desayuno},
+  ),
+  dumplings(
+    'dumplings',
+    'dumplings',
+    {Ingrediente.cebolla: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cuy(
+    'cuy',
+    'cuy con papas',
+    {Ingrediente.papa: 2, Ingrediente.choclo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  humintas('humintas', 'humintas', {Ingrediente.choclo: 2}, {Comida.desayuno}),
+  ensaladaQuinua(
+    'ensalada_quinua',
+    'ensalada de quinua',
+    {Ingrediente.quinua: 1, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  purePapas(
+    'pure_papas',
+    'puré de papas',
+    {Ingrediente.papa: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaVerduras(
+    'sopa_verduras',
+    'sopa de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.papa: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  smoothieArandanos(
+    'smoothie_arandanos',
+    'smoothie de arándanos',
+    {Ingrediente.arandano: 1, Ingrediente.fresa: 1},
+    {Comida.desayuno},
+  ),
+  kimchi(
+    'kimchi',
+    'kimchi',
+    {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  // ---- Sopas ----
+  minestrone(
+    'minestrone',
+    'minestrone',
+    {Ingrediente.tomate: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaCebolla(
+    'sopa_cebolla',
+    'sopa de cebolla',
+    {Ingrediente.cebolla: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaPollo(
+    'sopa_pollo',
+    'sopa de pollo',
+    {Ingrediente.papa: 1, Ingrediente.choclo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaFideo(
+    'sopa_fideo',
+    'sopa de fideo',
+    {Ingrediente.trigo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaVerduras(
+    'crema_verduras',
+    'crema de verduras',
+    {Ingrediente.zanahoria: 1, Ingrediente.arveja: 1, Ingrediente.papa: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaMiso(
+    'sopa_miso',
+    'sopa miso',
+    {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaZanahoria(
+    'crema_zanahoria',
+    'crema de zanahoria',
+    {Ingrediente.zanahoria: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaAjo(
+    'sopa_ajo',
+    'sopa de ajo',
+    {Ingrediente.ajo: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  // ---- Famosas del mundo ----
+  pizzaMargarita(
+    'pizza_margarita',
+    'pizza margarita',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 1, Ingrediente.albahaca: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  paella(
+    'paella',
+    'paella',
+    {Ingrediente.arroz: 2, Ingrediente.pimiento: 1, Ingrediente.arveja: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  lasana(
+    'lasana',
+    'lasaña',
+    {Ingrediente.trigo: 1, Ingrediente.tomate: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  espaguetisPesto(
+    'espaguetis_pesto',
+    'espaguetis al pesto',
+    {Ingrediente.trigo: 1, Ingrediente.albahaca: 2, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  risotto(
+    'risotto',
+    'risotto',
+    {Ingrediente.arroz: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  guacamole(
+    'guacamole',
+    'guacamole con totopos',
+    {Ingrediente.palta: 2, Ingrediente.tomate: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ratatouille(
+    'ratatouille',
+    'ratatouille',
+    {Ingrediente.berenjena: 1, Ingrediente.pimiento: 1, Ingrediente.tomate: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  arrozFrito(
+    'arroz_frito',
+    'arroz frito chino',
+    {Ingrediente.arroz: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  gazpacho(
+    'gazpacho',
+    'gazpacho',
+    {Ingrediente.tomate: 2, Ingrediente.pimiento: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  bibimbap(
+    'bibimbap',
+    'bibimbap',
+    {Ingrediente.arroz: 1, Ingrediente.zanahoria: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  curryCalabaza(
+    'curry_calabaza',
+    'curry de calabaza',
+    {Ingrediente.calabaza: 1, Ingrediente.arroz: 1, Ingrediente.ajo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  panAjo(
+    'pan_ajo',
+    'pan de ajo',
+    {Ingrediente.trigo: 1, Ingrediente.ajo: 1},
+    {Comida.desayuno},
+  ),
+  crepasFresa(
+    'crepas_fresa',
+    'crepas con fresa',
+    {Ingrediente.trigo: 1, Ingrediente.fresa: 2},
+    {Comida.desayuno},
+  ),
+  tostadaPalta(
+    'tostada_palta',
+    'tostada de aguacate (palta)',
+    {Ingrediente.trigo: 1, Ingrediente.palta: 1},
+    {Comida.desayuno},
+  ),
+  // ---- Solo en su fiesta ----
+  pavo(
+    'pavo',
+    'pavo al horno',
+    {Ingrediente.papa: 1, Ingrediente.zanahoria: 1, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.accionGracias, Festividad.navidad},
+  ),
+  picana(
+    'picana',
+    'picana navideña',
+    {Ingrediente.choclo: 1, Ingrediente.papa: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.navidad},
+  ),
+  fideosLargaVida(
+    'fideos_larga_vida',
+    'fideos de larga vida',
+    {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.anioNuevoChino},
   );
 
-  const Receta(this.dibujo, this.nombre, this.ingredientes, this.comidas);
+  const Receta(
+    this.dibujo,
+    this.nombre,
+    this.ingredientes,
+    this.comidas, {
+    this.fiestas = const {},
+  });
+
+  /// Si es comida de fiesta: solo se cocina mientras dura alguna de estas.
+  final Set<Festividad> fiestas;
+
+  /// ¿Se puede cocinar [hoy]? (lo de fiesta, solo en su fecha).
+  bool deTemporada(DateTime hoy) =>
+      fiestas.isEmpty || fiestas.any((f) => f.activaEn(hoy) != null);
 
   final String dibujo;
   final String nombre;
@@ -583,6 +805,7 @@ class Cosa {
     this.zonaPropia,
     this.cuarto,
     this.fiesta,
+    this.otraFiesta,
     this.deEpoca = false,
     this.especial,
     this.semilla = false,
@@ -611,6 +834,14 @@ class Cosa {
   /// Si es de temporada: solo se compra mientras dura esta festividad.
   final Festividad? fiesta;
 
+  /// Otra festividad en la que también se vende (el pavo: Acción de
+  /// Gracias y Navidad).
+  final Festividad? otraFiesta;
+
+  /// "Navidad" o "Navidad y Acción de Gracias".
+  String get fiestasTexto =>
+      [fiesta?.nombre, otraFiesta?.nombre].nonNulls.join(' y ');
+
   /// Ropa de época o de otras culturas (va en su propia vitrina).
   final bool deEpoca;
 
@@ -621,7 +852,8 @@ class Cosa {
   /// ¿Se puede comprar [hoy]? (lo de temporada, solo en su fecha).
   bool aLaVenta(DateTime hoy, {DateTime? inicioPareja}) =>
       fiesta == null ||
-      fiesta!.activaEn(hoy, inicioPareja: inicioPareja) != null;
+      fiesta!.activaEn(hoy, inicioPareja: inicioPareja) != null ||
+      otraFiesta?.activaEn(hoy, inicioPareja: inicioPareja) != null;
 
   /// Dónde queda en el dibujo, si no es la zona de siempre de su lugar.
   final ZonaCasita? zonaPropia;
@@ -737,6 +969,11 @@ class Catalogo {
     Cosa('gorro_pescador', 'Gorro de pescador', 45, parte: Parte.cabeza),
     Cosa('sombrero_paja', 'Sombrero de paja', 50, parte: Parte.cabeza),
     Cosa('gorro_marinero', 'Gorro de marinero', 45, parte: Parte.cabeza),
+    Cosa('gorro_chef', 'Gorro de chef', 50, parte: Parte.cabeza),
+    Cosa('sombrero_vaquero', 'Sombrero vaquero', 60, parte: Parte.cabeza),
+    Cosa('gorro_rana', 'Gorro de ranita', 50, parte: Parte.cabeza),
+    Cosa('gorro_pompon', 'Gorrito con pompón', 45, parte: Parte.cabeza),
+    Cosa('baberito', 'Baberito para comer', 30, parte: Parte.cuello),
 
     // Cuartos nuevos
     Cosa('cuarto_cocina', 'Cocina', 200, cuarto: Cuarto.cocina),
@@ -970,6 +1207,43 @@ class Catalogo {
       lugar: Lugar.fondoHuerto,
       semilla: true,
     ),
+    Cosa('trigo', 'Semillas de trigo', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'albahaca',
+      'Semillas de albahaca',
+      20,
+      lugar: Lugar.bancal,
+      semilla: true,
+    ),
+    Cosa(
+      'pimientos',
+      'Semillas de pimiento',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
+    Cosa('arroz', 'Semillas de arroz', 25, lugar: Lugar.surco, semilla: true),
+    Cosa(
+      'ajos',
+      'Dientes de ajo para sembrar',
+      20,
+      lugar: Lugar.surco,
+      semilla: true,
+    ),
+    Cosa(
+      'paltos',
+      'Semilla de aguacate (palta)',
+      40,
+      lugar: Lugar.fondoHuerto,
+      semilla: true,
+    ),
+    Cosa(
+      'berenjenas',
+      'Semillas de berenjena',
+      25,
+      lugar: Lugar.tomatera,
+      semilla: true,
+    ),
 
     // ---- Más para la sala ----
     Cosa('pared_lavanda', 'Pared lavanda', 60, lugar: Lugar.pared),
@@ -1022,6 +1296,31 @@ class Catalogo {
     Cosa('comida_papas_fritas', 'Papas fritas', 20, lugar: Lugar.comida),
     Cosa('comida_pastel', 'Pastel de fresa', 25, lugar: Lugar.comida),
     Cosa('comida_helado', 'Copa de helado', 20, lugar: Lugar.comida),
+    Cosa(
+      'comida_pastel_chocolate',
+      'Pastel de chocolate',
+      25,
+      lugar: Lugar.comida,
+    ),
+    Cosa('comida_gaseosa_cola', 'Gaseosa de cola', 15, lugar: Lugar.comida),
+    Cosa('comida_dumplings', 'Dumplings', 25, lugar: Lugar.comida),
+    Cosa('comida_anticuchos', 'Anticuchos', 25, lugar: Lugar.comida),
+    Cosa('comida_donas', 'Donas', 20, lugar: Lugar.comida),
+    Cosa('comida_te_burbujas', 'Té de burbujas', 20, lugar: Lugar.comida),
+    Cosa('comida_bao', 'Bao al vapor', 20, lugar: Lugar.comida),
+    Cosa('comida_sopa_mani', 'Sopa de maní', 25, lugar: Lugar.comida),
+    Cosa('comida_hot_dog', 'Hot dog', 20, lugar: Lugar.comida),
+    Cosa('comida_onigiri', 'Onigiri', 20, lugar: Lugar.comida),
+    Cosa('comida_churros', 'Churros con chocolate', 20, lugar: Lugar.comida),
+    Cosa('comida_waffles', 'Waffles con fresa', 20, lugar: Lugar.comida),
+    Cosa(
+      'comida_galletas_gatito',
+      'Galletas de gatito',
+      15,
+      lugar: Lugar.comida,
+    ),
+    Cosa('comida_malteada_fresa', 'Malteada de fresa', 20, lugar: Lugar.comida),
+    Cosa('comida_tteokbokki', 'Tteokbokki', 25, lugar: Lugar.comida),
 
     // ---- Más para el dormitorio ----
     Cosa('pared_dorm_celeste', 'Pared celeste', 0, lugar: Lugar.paredDorm),
@@ -1145,6 +1444,71 @@ class Catalogo {
     Cosa('laurel', 'Corona de laurel', 60, parte: Parte.cabeza, deEpoca: true),
 
     // ---- De temporada (solo se compran en su festividad) ----
+    // Comida de las fiestas (va en la mesa de la cocina).
+    Cosa(
+      'comida_uvas',
+      'Las doce uvas',
+      15,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevo,
+    ),
+    Cosa(
+      'comida_pescado_vapor',
+      'Pescado al vapor',
+      30,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'comida_nian_gao',
+      'Nian gao',
+      20,
+      lugar: Lugar.comida,
+      fiesta: Festividad.anioNuevoChino,
+    ),
+    Cosa(
+      'comida_bombones',
+      'Bombones de corazón',
+      20,
+      lugar: Lugar.comida,
+      fiesta: Festividad.sanValentin,
+    ),
+    Cosa(
+      'comida_zongzi',
+      'Zongzi',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.barcoDragon,
+    ),
+    Cosa(
+      'comida_pavo',
+      'Pavo al horno',
+      35,
+      lugar: Lugar.comida,
+      fiesta: Festividad.accionGracias,
+      otraFiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'comida_pie_calabaza',
+      'Pie de calabaza',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.accionGracias,
+    ),
+    Cosa(
+      'comida_picana',
+      'Picana navideña',
+      30,
+      lugar: Lugar.comida,
+      fiesta: Festividad.navidad,
+    ),
+    Cosa(
+      'comida_paneton',
+      'Panetón con chocolate',
+      25,
+      lugar: Lugar.comida,
+      fiesta: Festividad.navidad,
+    ),
     Cosa(
       'adorno_anio_nuevo',
       'Banderín de estrellas',

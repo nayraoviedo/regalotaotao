@@ -169,6 +169,9 @@ D['cascabel'] = (ambos(CIRC(48, 56, 25), AM)
                  + punto(48, 29, 4.6, TO)
                  + linea('M12 46 L4 42 M12 58 L4 60 M84 46 L92 42 M84 58 L92 60', 3.6, CE))
 
+# Acción de Gracias (casita): pavito con su cola de plumas en abanico
+D['pavo'] = ''.join(ambos(f'M48 56 L{48+36*c:.1f} {56-36*s:.1f} L{48+30*c2:.1f} {56-30*s2:.1f} Z', col, 4) for (c, s, c2, s2), col in [((-0.97, 0.26, -0.71, 0.71), TO), ((-0.71, 0.71, -0.26, 0.97), AM), ((-0.26, 0.97, 0.26, 0.97), TO), ((0.26, 0.97, 0.71, 0.71), AM), ((0.71, 0.71, 0.97, 0.26), TO)]) + ambos('M30 66 C30 50 38 42 48 42 C58 42 66 50 66 66 C66 80 58 86 48 86 C38 86 30 80 30 66 Z', '#C98A55') + ambos(CIRC(48, 42, 11), '#C98A55', 4.4) + punto(44, 40, 2.6) + punto(52, 40, 2.6) + ambos('M45 46 L51 46 L48 51 Z', AM, 3) + linea('M51 49 Q54 54 51 57', 3.4, TO)
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')

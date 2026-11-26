@@ -468,7 +468,7 @@ class _CasitaViewState extends State<CasitaView> {
     }
     if (!_estado.tiene(cosa) &&
         !cosa.aLaVenta(_hoy, inicioPareja: widget.inicioPareja)) {
-      _aviso('${cosa.nombre} solo se vende en ${cosa.fiesta!.nombre}');
+      _aviso('${cosa.nombre} solo se vende en ${cosa.fiestasTexto}');
       return;
     }
     if (!_estado.tiene(cosa)) return _comprar(cosa);
@@ -2157,6 +2157,7 @@ class _Despensa extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final recetas = Receta.values.where((r) => r.deTemporada(ahora));
     final hay = [
       for (final i in Ingrediente.values)
         if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
@@ -2197,9 +2198,10 @@ class _Despensa extends StatelessWidget {
               runSpacing: 8,
               children: [
                 // Primero lo que alcanza para cocinar.
+                // Lo de fiesta solo aparece en su fecha.
                 for (final r in [
-                  ...Receta.values.where(estado.puedeCocinar),
-                  ...Receta.values.where((r) => !estado.puedeCocinar(r)),
+                  ...recetas.where(estado.puedeCocinar),
+                  ...recetas.where((r) => !estado.puedeCocinar(r)),
                 ])
                   ActionChip(
                     label: TextoDoodle(

@@ -51,6 +51,7 @@ const Map<String, String> emojiDoodle = {
   '🥮': 'pastel_luna',
   '🎃': 'calabaza',
   '🕯': 'vela',
+  '🦃': 'pavo',
   '🎄': 'arbolito',
   '💍': 'anillo',
 };
