@@ -2241,6 +2241,8 @@ class EstadoCasita {
     this.foto,
     this.regalos = const {},
     this.meta,
+    this.ahorrado = 0,
+    this.aportes = const {},
     this.propuesta,
     this.nombres = const {},
     this.sembrado = const {},
@@ -2274,6 +2276,26 @@ class EstadoCasita {
 
   /// Alcancía: id de la [Cosa] para la que están ahorrando juntos.
   final String? meta;
+
+  /// Pescaditos que ya guardaron en la alcancía. Siguen en el monedero,
+  /// pero apartados: "Yo lo compro" no los puede gastar en otra cosa.
+  final int ahorrado;
+
+  /// Cuánto puso cada uno en la alcancía: `{uid: pescaditos}`.
+  final Map<String, int> aportes;
+
+  /// Los pescaditos que se pueden gastar (los que no están en la alcancía).
+  int get libres => (pescaditos - ahorrado).clamp(0, pescaditos);
+
+  /// ¿La alcancía ya tiene todo lo que cuesta la meta? Entonces se le pide
+  /// el sí a la pareja para comprarla.
+  bool get alcanciaLlena => switch (metaCosa) {
+    final m? => ahorrado >= m.precio,
+    _ => false,
+  };
+
+  /// Lo que se puede gastar en [c]: si es la meta, también lo ahorrado.
+  int paraGastarEn(Cosa c) => c.id == meta ? pescaditos : libres;
 
   /// Compra que uno quiso hacer en pareja, esperando el sí del otro.
   /// Usa [pendiente]: esta puede quedar vieja si ya la compraron.
@@ -2445,6 +2467,12 @@ class EstadoCasita {
             ),
       },
       meta: d['meta'] as String?,
+      ahorrado: (d['ahorrado'] as num?)?.toInt() ?? 0,
+      aportes: {
+        for (final e in ((d['aportes'] as Map?) ?? const {}).entries)
+          if (e.value is num && (e.value as num) > 0)
+            e.key as String: (e.value as num).toInt(),
+      },
       nombres: strings(d['bebes']),
       sembrado: {
         for (final e in ((d['sembrado'] as Map?) ?? const {}).entries)

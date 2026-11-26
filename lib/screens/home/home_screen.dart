@@ -240,14 +240,14 @@ class _HomeBodyState extends State<_HomeBody> {
     if (!mounted) return;
     final cosa = p.queCosa!;
     final pareja = widget.partner?.name ?? 'Tu pareja';
-    final alcanza = estado.pescaditos >= cosa.precio;
+    final alcanza = estado.paraGastarEn(cosa) >= cosa.precio;
     final respuesta = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const TextoDoodle('🐟 ¿Le das el sí?'),
         content: Text(
           '$pareja quiere comprar ${cosa.nombre} para la casita. '
-          'Cuesta ${cosa.precio} pescaditos y tienen ${estado.pescaditos}.'
+          'Cuesta ${cosa.precio} pescaditos y tienen ${estado.paraGastarEn(cosa)}.'
           '${alcanza ? '' : '\n\nTodavía no les alcanza: pueden seguir '
                     'ahorrando juntos.'}',
         ),

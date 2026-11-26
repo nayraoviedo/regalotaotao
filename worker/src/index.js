@@ -6,7 +6,7 @@
 //
 //   POST /notify
 //   Authorization: Bearer <ID token de Firebase>
-//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "memorama" | "rompecabezas" | "telefono" | "notaLeida" | …,
+//   { "kind": "missYou" | "pomodoroInvite" | "reward" | "letter" | "hug" | "juego" | "dibujo" | "memorama" | "rompecabezas" | "sudoku" | "telefono" | "notaLeida" | …,
 //     "coupleId": "...", "docId": "..." }
 //
 // Para que nadie pueda mandar avisos a cualquiera, el Worker:
@@ -652,6 +652,16 @@ const KINDS = {
     message: (name) => ({
       title: "🧩 Armemos un rompecabezas",
       body: `${name} empezó un rompecabezas para los dos. Entra a poner tus piezas`,
+    }),
+  },
+  // Sudoku en pareja: un tablero para llenar entre los dos.
+  sudoku: {
+    collection: "sudokus",
+    check: (d, uid) => d.por === uid && d.estado === "jugando",
+    dedupeKey: () => "empezo",
+    message: (name) => ({
+      title: "🔢 Un sudoku para los dos",
+      body: `${name} empezó un sudoku en pareja. Entra a poner tus números`,
     }),
   },
   // Teléfono descompuesto: avisa al empezar, cuando a la pareja le toca

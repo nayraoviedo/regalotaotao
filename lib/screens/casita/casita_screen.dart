@@ -69,6 +69,7 @@ class CasitaScreen extends StatelessWidget {
           onAbrirRegalo: (cosa, regalo) =>
               servicio.abrirRegalo(coupleId, cosa, regalo),
           onMeta: (cosa) => servicio.ponerMeta(coupleId, cosa),
+          onAportar: (n) => servicio.aportar(coupleId, me.uid, n),
           onProponer: (cosa, gatito) =>
               servicio.proponer(coupleId, me.uid, cosa, gatito: gatito),
           onAprobar: (p) => servicio.aprobar(coupleId, me.uid, p),
@@ -111,6 +112,7 @@ class CasitaView extends StatefulWidget {
     this.onRegalar,
     this.onAbrirRegalo,
     this.onMeta,
+    this.onAportar,
     this.onProponer,
     this.onAprobar,
     this.onDescartar,
@@ -143,6 +145,9 @@ class CasitaView extends StatefulWidget {
 
   /// Elige (o quita) la meta de la alcancía.
   final Future<void> Function(Cosa? cosa)? onMeta;
+
+  /// Pone pescaditos en la alcancía; devuelve cuántos entraron.
+  final Future<int> Function(int cantidad)? onAportar;
 
   /// Compras grandes: una persona propone, la otra aprueba o no.
   final Future<void> Function(Cosa cosa, String? gatito)? onProponer;
@@ -560,6 +565,10 @@ class _CasitaViewState extends State<CasitaView> {
       _aviso('${cosa.nombre} solo se vende en ${cosa.fiestasTexto}');
       return;
     }
+    // La meta de la alcancía se compra juntos, cuando está llena.
+    if (!_estado.tiene(cosa) && _estado.metaCosa?.id == cosa.id) {
+      return _comprarMeta(cosa);
+    }
     if (!_estado.tiene(cosa)) return _comprar(cosa);
     if (_estado.envuelto(cosa)) {
       final r = _estado.regalos[cosa.id]!;
@@ -589,7 +598,8 @@ class _CasitaViewState extends State<CasitaView> {
   }
 
   Future<void> _comprar(Cosa cosa) async {
-    final hay = _estado.pescaditos;
+    // Lo que está en la alcancía no se gasta en otra cosa.
+    final hay = _estado.libres;
     if (hay < cosa.precio) return _faltan(cosa);
     final (mio, suyo) = Gatito.dePareja(widget.me, widget.partner);
     final pareja = widget.partner?.name;
@@ -598,6 +608,14 @@ class _CasitaViewState extends State<CasitaView> {
     // Comprar en pareja (pedirle el sí) es opcional: por defecto cada uno
     // compra lo que quiere.
     final sePuedeJuntos = widget.onProponer != null && pareja != null;
+    // Elegirlo para ahorrar juntos: cada uno pone pescaditos en la
+    // alcancía y, cuando está llena, se pide el sí.
+    final sePuedeAhorrar = widget.onMeta != null && pareja != null;
+    final reemplaza = switch (_estado.metaCosa) {
+      final m? when m.id != cosa.id =>
+        ' Reemplaza a ${m.nombre}; lo ahorrado se queda.',
+      _ => '',
+    };
     String? gatito = cosa.esRopa ? mio.id : null;
     var modo = _ModoCompra.yo;
     var texto = '';
@@ -628,10 +646,13 @@ class _CasitaViewState extends State<CasitaView> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Cuesta ${cosa.precio} pescaditos de los dos. '
-                  'Les quedarían ${hay - cosa.precio}.',
+                  modo == _ModoCompra.ahorrar
+                      ? 'Cuesta ${cosa.precio} pescaditos de los dos.'
+                      : 'Cuesta ${cosa.precio} pescaditos de los dos. '
+                            'Les quedarían ${hay - cosa.precio}'
+                            '${_estado.ahorrado > 0 ? ' (sin tocar la alcancía)' : ''}.',
                 ),
-                if (sePuedeJuntos || sePuedeRegalar) ...[
+                if (sePuedeJuntos || sePuedeRegalar || sePuedeAhorrar) ...[
                   const SizedBox(height: 12),
                   // Por defecto lo compras tú, de una vez. Pedirle el sí a
                   // tu pareja o regalarlo es solo si tú quieres.
@@ -643,6 +664,8 @@ class _CasitaViewState extends State<CasitaView> {
                       for (final (m, label) in [
                         (_ModoCompra.yo, '🛒 Yo lo compro'),
                         if (sePuedeJuntos) (_ModoCompra.juntos, '🤝 En pareja'),
+                        if (sePuedeAhorrar)
+                          (_ModoCompra.ahorrar, '🐷 Ahorrar juntos'),
                         if (sePuedeRegalar) (_ModoCompra.regalo, '🎁 Regalar'),
                       ])
                         ChoiceChip(
@@ -666,6 +689,10 @@ class _CasitaViewState extends State<CasitaView> {
                       _ModoCompra.juntos =>
                         'Le preguntamos a $pareja y se compra cuando te '
                             'dé el sí.',
+                      _ModoCompra.ahorrar =>
+                        'Va a la alcancía: cada uno pone pescaditos y, '
+                            'cuando esté llena, le pides el sí a $pareja.'
+                            '$reemplaza',
                       _ModoCompra.regalo =>
                         'Le llega envuelto a $pareja en la casita '
                             'y lo abre cuando quiera.',
@@ -713,6 +740,7 @@ class _CasitaViewState extends State<CasitaView> {
               child: Text(switch (modo) {
                 _ModoCompra.regalo => 'Regalar',
                 _ModoCompra.juntos => 'Pedirle el sí',
+                _ModoCompra.ahorrar => 'Ahorrar juntos',
                 _ when cosa.esBebe => 'Adoptar',
                 _ => 'Comprar',
               }),
@@ -723,6 +751,11 @@ class _CasitaViewState extends State<CasitaView> {
     );
     if (ok != true) return;
     try {
+      if (modo == _ModoCompra.ahorrar) {
+        await widget.onMeta!(cosa);
+        _aviso('🐷 ¡A ahorrar juntos para ${cosa.nombre}!');
+        return;
+      }
       if (modo == _ModoCompra.juntos) {
         await widget.onProponer!(cosa, gatito);
         _aviso('Le avisamos a $pareja para que te dé el sí 🐟');
@@ -839,9 +872,175 @@ class _CasitaViewState extends State<CasitaView> {
     }
   }
 
+  /// La meta de la alcancía: si ya está llena, se le pide el sí a la
+  /// pareja; si no, se cuenta cuánto falta.
+  Future<void> _comprarMeta(Cosa cosa) async {
+    final pareja = widget.partner?.name;
+    final falta = cosa.precio - _estado.ahorrado;
+    if (falta > 0) {
+      _aviso(
+        '🐷 Están ahorrando para ${cosa.nombre}: les faltan $falta '
+        'en la alcancía',
+      );
+      return;
+    }
+    if (pareja == null || widget.onProponer == null) {
+      // Sin pareja vinculada no hay a quién pedirle el sí.
+      try {
+        await widget.onComprar(cosa, null);
+      } catch (_) {
+        _aviso('No se pudo comprar, intenta otra vez');
+      }
+      return;
+    }
+    if (_estado.pendiente case final p? when p.queCosa?.id == cosa.id) {
+      if (p.de == widget.me.uid) {
+        _aviso('Ya le pediste el sí a $pareja 🐟');
+      } else {
+        await _aprobar(p);
+      }
+      return;
+    }
+    final (mio, _) = Gatito.dePareja(widget.me, widget.partner);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const TextoDoodle('🐷 ¡La alcancía está llena!'),
+        content: Text(
+          'Ya juntaron los ${cosa.precio} pescaditos para ${cosa.nombre}. '
+          '¿Le pides el sí a $pareja para comprarlo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Todavía no'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pedirle el sí'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await widget.onProponer!(cosa, cosa.esRopa ? mio.id : null);
+      _aviso('Le avisamos a $pareja para que te dé el sí 🐟');
+    } catch (_) {
+      _aviso('No se pudo avisar, intenta otra vez');
+    }
+  }
+
+  /// Dejar de ahorrar para [meta]: lo ahorrado vuelve a quedar libre.
+  Future<void> _quitarMeta(Cosa meta) async {
+    if (_estado.ahorrado > 0) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('¿Dejar de ahorrar para ${meta.nombre}?'),
+          content: Text(
+            'Los ${_estado.ahorrado} pescaditos de la alcancía vuelven al '
+            'monedero de los dos.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Seguir ahorrando'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sí, vaciarla'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    try {
+      await widget.onMeta!(null);
+    } catch (_) {
+      _aviso('No se pudo cambiar, intenta otra vez');
+    }
+  }
+
+  /// Poner pescaditos en la alcancía (elige cuántos).
+  Future<void> _aportar() async {
+    final meta = _estado.metaCosa;
+    if (meta == null || widget.onAportar == null) return;
+    final falta = meta.precio - _estado.ahorrado;
+    final libres = _estado.libres;
+    final tope = falta < libres ? falta : libres;
+    if (tope <= 0) {
+      _aviso(
+        'No hay pescaditos libres ahora. '
+        '¡Ganen más y vuelvan a la alcancía!',
+      );
+      return;
+    }
+    final opciones = {
+      for (final n in [5, 10, 25, 50])
+        if (n < tope) n,
+      tope,
+    }.toList();
+    final n = await showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const TextoDoodle(
+                '🐷 ¿Cuántos pescaditos pones?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Para ${meta.nombre} faltan $falta. '
+                'Hay $libres libres en el monedero.',
+                style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final o in opciones)
+                    ActionChip(
+                      label: Text(
+                        o == tope && o == falta
+                            ? '$o (¡la llena!)'
+                            : o == tope
+                            ? '$o (todos)'
+                            : '$o',
+                      ),
+                      onPressed: () => Navigator.pop(context, o),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (n == null) return;
+    try {
+      final puso = await widget.onAportar!(n);
+      if (puso <= 0) return;
+      _aviso(
+        _estado.ahorrado + puso >= meta.precio
+            ? '🐷 ¡Llenaron la alcancía! Ya pueden pedir el sí'
+            : '🐷 Pusiste $puso pescaditos en la alcancía',
+      );
+    } catch (_) {
+      _aviso('No se pudo guardar, intenta otra vez');
+    }
+  }
+
   /// No alcanza: ofrece ahorrar juntos para eso en la alcancía.
   Future<void> _faltan(Cosa cosa) async {
-    final faltan = cosa.precio - _estado.pescaditos;
+    final faltan = cosa.precio - _estado.libres;
     if (widget.onMeta == null || _estado.meta == cosa.id) {
       _aviso(
         'Les faltan $faltan pescaditos para ${cosa.nombre}. '
@@ -854,8 +1053,9 @@ class _CasitaViewState extends State<CasitaView> {
       builder: (context) => AlertDialog(
         title: Text('Les faltan $faltan pescaditos'),
         content: Text(
-          '¿Quieren ahorrar juntos para ${cosa.nombre}? '
-          'La alcancía les muestra cuánto les falta.',
+          '¿Quieren ahorrar juntos para ${cosa.nombre}? Cada uno pone '
+          'pescaditos en la alcancía y, cuando esté llena, le piden el sí '
+          'al otro para comprarlo.',
         ),
         actions: [
           TextButton(
@@ -1018,7 +1218,7 @@ class _CasitaViewState extends State<CasitaView> {
               _estado.repartidorEsperando(_hoy))
             AvisoRepartidor(
               ocupado: _ocupado,
-              pescaditos: _estado.pescaditos,
+              pescaditos: _estado.libres,
               onRecibir: _recibirReparto,
             ),
           if (_estado.pendiente case final p? when widget.onAprobar != null)
@@ -1026,7 +1226,7 @@ class _CasitaViewState extends State<CasitaView> {
               propuesta: p,
               mia: p.de == widget.me.uid,
               pareja: widget.partner?.name ?? 'Tu pareja',
-              alcanza: _estado.pescaditos >= p.queCosa!.precio,
+              alcanza: _estado.paraGastarEn(p.queCosa!) >= p.queCosa!.precio,
               onAprobar: () => _aprobar(p),
               onDescartar: () => widget.onDescartar?.call(),
             ),
@@ -1135,9 +1335,21 @@ class _CasitaViewState extends State<CasitaView> {
             const SizedBox(height: 16),
             Alcancia(
               meta: meta,
-              pescaditos: _estado.pescaditos,
-              onComprar: () => _tocar(meta),
-              onQuitar: () => widget.onMeta!(null),
+              ahorrado: _estado.ahorrado,
+              aportes: [
+                for (final e in _estado.aportes.entries)
+                  (_nombreDe(e.key), e.value),
+              ],
+              esperando: switch (_estado.pendiente) {
+                final p? when p.queCosa?.id == meta.id =>
+                  p.de == widget.me.uid
+                      ? 'Esperando el sí de ${widget.partner?.name ?? 'tu pareja'}'
+                      : '${_nombreDe(p.de)} te pide el sí',
+                _ => null,
+              },
+              onPoner: widget.onAportar == null ? null : _aportar,
+              onComprar: () => _comprarMeta(meta),
+              onQuitar: () => _quitarMeta(meta),
             ),
           ],
           const SizedBox(height: 20),
@@ -1509,7 +1721,7 @@ class _Vitrina extends StatelessWidget {
                             AppTheme.tema.value.clave == cosa.claveTema
                       : estado.enUso(cosa),
                   envuelto: estado.envuelto(cosa),
-                  alcanza: estado.pescaditos >= cosa.precio,
+                  alcanza: estado.paraGastarEn(cosa) >= cosa.precio,
                   capas: capasDe(cosa),
                   zona: zonaDe(cosa),
                   onTap: () => onTocar(cosa),
@@ -1809,7 +2021,7 @@ class AvisoRepartidor extends StatelessWidget {
 
   final bool ocupado;
 
-  /// Los que tienen en el monedero (para saber si alcanza).
+  /// Los que tienen para gastar (sin lo apartado en la alcancía).
   final int pescaditos;
   final VoidCallback onRecibir;
 
@@ -1898,20 +2110,34 @@ class Alcancia extends StatelessWidget {
   const Alcancia({
     super.key,
     required this.meta,
-    required this.pescaditos,
+    required this.ahorrado,
+    this.aportes = const [],
+    this.esperando,
+    this.onPoner,
     this.onComprar,
     this.onQuitar,
   });
 
   final Cosa meta;
-  final int pescaditos;
+
+  /// Lo que ya pusieron en la alcancía.
+  final int ahorrado;
+
+  /// Cuánto puso cada uno: `(nombre, pescaditos)`.
+  final List<(String, int)> aportes;
+
+  /// Si ya se pidió el sí para la meta, qué decir (y no se vuelve a pedir).
+  final String? esperando;
+  final VoidCallback? onPoner;
   final VoidCallback? onComprar;
   final VoidCallback? onQuitar;
 
   @override
   Widget build(BuildContext context) {
-    final listo = pescaditos >= meta.precio;
-    final avance = (pescaditos / meta.precio).clamp(0.0, 1.0);
+    final listo = ahorrado >= meta.precio;
+    final avance = (ahorrado / meta.precio).clamp(0.0, 1.0);
+    final detalle = [for (final (nombre, n) in aportes) '$nombre $n']
+        .join(' · ');
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
       decoration: BoxDecoration(
@@ -1919,52 +2145,88 @@ class Alcancia extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.azul.withValues(alpha: 0.12)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const EmojiDoodle('🐷', size: 26),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  listo
-                      ? '¡Ya les alcanza para ${meta.nombre}!'
-                      : 'Ahorrando juntos para ${meta.nombre}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.azul,
-                  ),
+          Row(
+            children: [
+              const EmojiDoodle('🐷', size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      listo
+                          ? '¡La alcancía está llena para ${meta.nombre}!'
+                          : 'Ahorrando juntos para ${meta.nombre}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.azul,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: avance,
+                        minHeight: 10,
+                        color: AppTheme.amarillo,
+                        backgroundColor: AppTheme.azul.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      listo
+                          ? 'Juntaron ${meta.precio} de ${meta.precio} pescaditos'
+                          : 'Llevan ${ahorrado.clamp(0, meta.precio)} de '
+                                '${meta.precio}: faltan ${meta.precio - ahorrado}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.gris,
+                      ),
+                    ),
+                    if (detalle.isNotEmpty)
+                      Text(
+                        'Pusieron: $detalle',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.gris,
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: avance,
-                    minHeight: 10,
-                    color: AppTheme.amarillo,
-                    backgroundColor: AppTheme.azul.withValues(alpha: 0.08),
-                  ),
+              ),
+              if (onQuitar != null)
+                IconButton(
+                  tooltip: 'Dejar de ahorrar para esto',
+                  onPressed: onQuitar,
+                  icon: const Icon(Icons.close, size: 18, color: AppTheme.gris),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  listo
-                      ? 'Tienen $pescaditos de ${meta.precio} pescaditos'
-                      : 'Les faltan ${meta.precio - pescaditos} '
-                            '(${pescaditos.clamp(0, meta.precio)} de ${meta.precio})',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.gris),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: switch ((listo, esperando)) {
+                (true, final e?) => TextButton(
+                  onPressed: onComprar,
+                  child: Text(e),
                 ),
-              ],
+                (true, null) when onComprar != null => FilledButton(
+                  onPressed: onComprar,
+                  child: const Text('Pedirle el sí'),
+                ),
+                (false, _) when onPoner != null => FilledButton.tonal(
+                  onPressed: onPoner,
+                  child: const TextoDoodle('🐟 Poner pescaditos'),
+                ),
+                _ => const SizedBox.shrink(),
+              },
             ),
           ),
-          if (listo && onComprar != null)
-            TextButton(onPressed: onComprar, child: const Text('Comprar'))
-          else if (onQuitar != null)
-            IconButton(
-              tooltip: 'Quitar la meta',
-              onPressed: onQuitar,
-              icon: const Icon(Icons.close, size: 18, color: AppTheme.gris),
-            ),
         ],
       ),
     );
@@ -2098,6 +2360,9 @@ class _AbrirRegaloState extends State<_AbrirRegalo>
 
 /// Cómo se compra algo de la tienda.
 enum _ModoCompra {
+  /// Lo eligen para ahorrar juntos en la alcancía.
+  ahorrar,
+
   /// Lo compras tú, de una vez (lo normal).
   yo,
 

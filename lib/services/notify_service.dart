@@ -22,6 +22,7 @@ enum NotifyKind {
   dibujo,
   memorama,
   rompecabezas,
+  sudoku,
   telefono,
   notaLeida,
   capsula,

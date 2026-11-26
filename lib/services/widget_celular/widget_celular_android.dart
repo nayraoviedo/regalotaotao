@@ -72,6 +72,7 @@ class WidgetCelular {
     required int pescaditos,
     String? metaNombre,
     int? metaPrecio,
+    int metaAhorrado = 0,
   }) async {
     if (!disponible) return;
     try {
@@ -81,6 +82,10 @@ class WidgetCelular {
       await HomeWidget.saveWidgetData<int>('casita_pescaditos', pescaditos);
       await HomeWidget.saveWidgetData<String>('casita_meta_nombre', metaNombre);
       await HomeWidget.saveWidgetData<int>('casita_meta_precio', metaPrecio);
+      await HomeWidget.saveWidgetData<int>(
+        'casita_meta_ahorrado',
+        metaAhorrado,
+      );
       await HomeWidget.updateWidget(androidName: 'CasitaWidget');
     } catch (e) {
       debugPrint('Widget: no se pudo guardar la casita ($e)');

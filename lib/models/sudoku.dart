@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Niveles del sudoku: cuántos números vienen puestos y cuántos pescaditos
 /// da completarlo.
 enum NivelSudoku {
@@ -279,6 +281,191 @@ class Sudoku {
         sugerencias: m['sugerencias'] as int? ?? maxSugerencias,
         segundos: m['segundos'] as int? ?? 0,
         cobrado: m['cobrado'] == true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Un sudoku en pareja: un solo tablero que llenan los dos a la vez.
+/// Los errores (3) y las sugerencias (3) son de los dos.
+///
+/// `couples/{id}/sudokus/{id}`
+class SudokuPareja {
+  const SudokuPareja({
+    required this.id,
+    required this.por,
+    required this.nivel,
+    required this.inicial,
+    required this.solucion,
+    required this.valores,
+    this.de = const {},
+    this.errores = 0,
+    this.sugerencias = Sudoku.maxSugerencias,
+    this.estado = 'jugando',
+    this.cobros = const {},
+    this.creadaEn,
+    this.terminadaEn,
+  });
+
+  final String id;
+  final String por;
+  final NivelSudoku nivel;
+  final List<int> inicial;
+  final List<int> solucion;
+  final List<int> valores;
+
+  /// Quién puso cada número bien puesto: celda → uid.
+  final Map<int, String> de;
+  final int errores;
+  final int sugerencias;
+
+  /// 'jugando', 'terminada' o 'perdida'.
+  final String estado;
+  final Map<String, String> cobros;
+  final DateTime? creadaEn;
+  final DateTime? terminadaEn;
+
+  bool get jugando => estado == 'jugando';
+  bool get terminada => estado == 'terminada';
+  bool get perdida => estado == 'perdida';
+  bool puedeCobrar(String uid) => terminada && !cobros.containsKey(uid);
+
+  /// Segundos desde que empezó (hasta que terminó).
+  int segundos([DateTime? ahora]) {
+    final ini = creadaEn;
+    if (ini == null) return 0;
+    final fin = terminadaEn ?? (jugando ? (ahora ?? DateTime.now()) : ini);
+    return math.max(0, fin.difference(ini).inSeconds);
+  }
+
+  /// Cuántos números bien puestos puso cada uno.
+  int puestosPor(String uid) => de.values.where((u) => u == uid).length;
+
+  /// Celdas que llenó la pareja de [uid] (para pintarlas de otro color).
+  Set<int> dePareja(String uid) => {
+    for (final e in de.entries)
+      if (e.value != uid) e.key,
+  };
+
+  /// Como [Sudoku], para reusar el tablero (con las notas de quien juega).
+  Sudoku comoSudoku(List<Set<int>> notas) => Sudoku(
+    nivel: nivel,
+    inicial: inicial,
+    solucion: solucion,
+    valores: [...valores],
+    notas: notas,
+    errores: errores,
+    sugerencias: sugerencias,
+    segundos: segundos(),
+    cobrado: true,
+  );
+
+  /// Lo que cambia al poner [n] en [i] (null si no cambia nada).
+  Map<String, Object>? poner(String uid, int i, int n) {
+    if (!jugando || inicial[i] != 0 || valores[i] == solucion[i]) return null;
+    final v = [...valores]..[i] = n;
+    final bien = n == solucion[i];
+    final e = bien ? errores : errores + 1;
+    return {
+      'valores': v,
+      if (bien) 'de.$i': uid,
+      if (!bien) 'errores': e,
+      ..._fin(v, e),
+    };
+  }
+
+  Map<String, Object>? borrar(int i) {
+    if (!jugando || inicial[i] != 0 || valores[i] == 0) return null;
+    if (valores[i] == solucion[i]) return null;
+    return {
+      'valores': [...valores]..[i] = 0,
+    };
+  }
+
+  /// Pone el número correcto en [i] (o en una celda al azar).
+  (int, Map<String, Object>)? sugerir(String uid, int? i, [math.Random? r]) {
+    if (!jugando || sugerencias <= 0) return null;
+    var celda = i;
+    if (celda == null || valores[celda] == solucion[celda]) {
+      final vacias = [
+        for (var k = 0; k < 81; k++)
+          if (valores[k] != solucion[k]) k,
+      ];
+      if (vacias.isEmpty) return null;
+      celda = vacias[(r ?? math.Random()).nextInt(vacias.length)];
+    }
+    final v = [...valores]..[celda] = solucion[celda];
+    return (
+      celda,
+      {
+        'valores': v,
+        'de.$celda': uid,
+        'sugerencias': sugerencias - 1,
+        ..._fin(v, errores),
+      },
+    );
+  }
+
+  Map<String, Object> _fin(List<int> v, int e) {
+    var completo = true;
+    for (var k = 0; k < 81; k++) {
+      if (v[k] != solucion[k]) {
+        completo = false;
+        break;
+      }
+    }
+    if (completo) {
+      return {
+        'estado': 'terminada',
+        'terminadaEn': FieldValue.serverTimestamp(),
+      };
+    }
+    if (e >= Sudoku.maxErrores) {
+      return {'estado': 'perdida', 'terminadaEn': FieldValue.serverTimestamp()};
+    }
+    return const {};
+  }
+
+  static SudokuPareja? fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    if (m == null) return null;
+    try {
+      List<int> ints(Object? l) => [
+        for (final x in l as List) (x as num).toInt(),
+      ];
+      final inicial = ints(m['inicial']);
+      final solucion = ints(m['solucion']);
+      final valores = ints(m['valores']);
+      if (inicial.length != 81 ||
+          solucion.length != 81 ||
+          valores.length != 81) {
+        return null;
+      }
+      final de = <int, String>{};
+      for (final e in ((m['de'] as Map?) ?? const {}).entries) {
+        final i = int.tryParse('${e.key}');
+        if (i != null && e.value is String) de[i] = e.value as String;
+      }
+      return SudokuPareja(
+        id: d.id,
+        por: m['por'] as String? ?? '',
+        nivel: NivelSudoku.deNombre(m['nivel'] as String?),
+        inicial: inicial,
+        solucion: solucion,
+        valores: valores,
+        de: de,
+        errores: (m['errores'] as num?)?.toInt() ?? 0,
+        sugerencias:
+            (m['sugerencias'] as num?)?.toInt() ?? Sudoku.maxSugerencias,
+        estado: m['estado'] as String? ?? 'jugando',
+        cobros: {
+          for (final e in ((m['cobros'] as Map?) ?? const {}).entries)
+            if (e.value is String) '${e.key}': e.value as String,
+        },
+        creadaEn: (m['creadaEn'] as Timestamp?)?.toDate(),
+        terminadaEn: (m['terminadaEn'] as Timestamp?)?.toDate(),
       );
     } catch (_) {
       return null;

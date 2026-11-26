@@ -78,6 +78,7 @@ beforeEach(() => {
     "couples/c1/dibujos/d2": { dibuja: "ana", palabra: "luna", clave: "luna", estado: "adivinada", mensajes: [] },
     "couples/c1/memoramas/m1": { por: "ana", estado: "jugando", cartas: [] },
     "couples/c1/rompecabezas/r1": { por: "ana", estado: "terminada", orden: [] },
+    "couples/c1/sudokus/s1": { por: "ana", estado: "jugando", nivel: "medio" },
     "couples/c1/telefonos/t0": { por: "ana", estado: "jugando", progreso: {} },
     "couples/c1/telefonos/t1": { por: "ana", estado: "jugando", progreso: { ana: 2, beto: 1 } },
     "couples/c1/telefonos/t2": { por: "ana", estado: "jugando", progreso: { ana: 1, beto: 2 } },
@@ -252,6 +253,13 @@ test("memorama y rompecabezas: avisa al empezar", async () => {
   assert.equal((await call({ kind: "memorama", coupleId: "c1", docId: "m1" }, await idToken("beto"))).status, 403);
   // Uno ya terminado no avisa.
   assert.equal((await call({ kind: "rompecabezas", coupleId: "c1", docId: "r1" }, ana)).status, 403);
+});
+
+test("sudoku en pareja: avisa al empezar", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "sudoku", coupleId: "c1", docId: "s1" }, ana)).status, 200);
+  assert.match(sent[0].notification.body, /^Ana empezó un sudoku en pareja/);
+  assert.equal((await call({ kind: "sudoku", coupleId: "c1", docId: "s1" }, await idToken("beto"))).status, 403);
 });
 
 test("teléfono descompuesto: avisa al empezar, cuando te toca y al final", async () => {
