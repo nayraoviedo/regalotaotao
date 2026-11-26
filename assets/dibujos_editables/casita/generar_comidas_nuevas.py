@@ -173,14 +173,6 @@ TIENDA = {
         "....r....",
     ], {"r": ROSA_OSC, "c": CHOCO}, False),
     # ---- Segunda tanda (26-11-2026) ----
-    # Silpancho: arroz, papa, carne apanada, huevo frito y ensaladita.
-    "silpancho": ([
-        "...........",
-        ".aaammmmyy.",
-        "aaamMmmyYy.",
-        "pppmmmmyyrl",
-    ], {"a": BLANCO, "m": CARNE, "M": (150, 84, 56), "y": BLANCO, "Y": AMARILLO,
-        "p": PAPITA, "r": ROJO, "l": VERDE_CLARO}, True),
     "sopa_mani": ([
         "..p.g.p.k..",
         "wwwwwwwwwww",

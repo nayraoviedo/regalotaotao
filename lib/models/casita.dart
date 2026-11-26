@@ -217,7 +217,7 @@ enum Ingrediente {
   pimiento('pimientos', 'pimiento', 'pimientos', '🫑'),
   arroz('arroz', 'puñado de arroz', 'puñados de arroz', '🍚'),
   ajo('ajos', 'ajo', 'ajos', '🧄'),
-  palta('paltos', 'palta', 'paltas', '🥑'),
+  palta('paltos', 'palta (aguacate)', 'paltas (aguacates)', '🥑'),
   berenjena('berenjenas', 'berenjena', 'berenjenas', '🍆');
 
   const Ingrediente(this.semilla, this.uno, this.varios, this.emoji);
@@ -382,6 +382,55 @@ enum Receta {
     {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
     {Comida.almuerzo, Comida.cena},
   ),
+  // ---- Sopas ----
+  minestrone(
+    'minestrone',
+    'minestrone',
+    {Ingrediente.tomate: 1, Ingrediente.arveja: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaCebolla(
+    'sopa_cebolla',
+    'sopa de cebolla',
+    {Ingrediente.cebolla: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  chairo(
+    'chairo',
+    'chairo',
+    {Ingrediente.papa: 1, Ingrediente.choclo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaFideo(
+    'sopa_fideo',
+    'sopa de fideo',
+    {Ingrediente.trigo: 1, Ingrediente.zanahoria: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaChoclo(
+    'crema_choclo',
+    'crema de choclo',
+    {Ingrediente.choclo: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaMiso(
+    'sopa_miso',
+    'sopa miso',
+    {Ingrediente.cebolla: 1, Ingrediente.lechuga: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cremaZanahoria(
+    'crema_zanahoria',
+    'crema de zanahoria',
+    {Ingrediente.zanahoria: 2},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  sopaAjo(
+    'sopa_ajo',
+    'sopa de ajo',
+    {Ingrediente.ajo: 2, Ingrediente.trigo: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
   // ---- Famosas del mundo ----
   pizzaMargarita(
     'pizza_margarita',
@@ -463,7 +512,7 @@ enum Receta {
   ),
   tostadaPalta(
     'tostada_palta',
-    'tostada de palta',
+    'tostada de palta (aguacate)',
     {Ingrediente.trigo: 1, Ingrediente.palta: 1},
     {Comida.desayuno},
   ),
@@ -1183,7 +1232,7 @@ class Catalogo {
     ),
     Cosa(
       'paltos',
-      'Semilla de palta',
+      'Semilla de palta (aguacate)',
       40,
       lugar: Lugar.fondoHuerto,
       semilla: true,
@@ -1259,7 +1308,6 @@ class Catalogo {
     Cosa('comida_donas', 'Donas', 20, lugar: Lugar.comida),
     Cosa('comida_te_burbujas', 'Té de burbujas', 20, lugar: Lugar.comida),
     Cosa('comida_bao', 'Bao al vapor', 20, lugar: Lugar.comida),
-    Cosa('comida_silpancho', 'Silpancho', 30, lugar: Lugar.comida),
     Cosa('comida_sopa_mani', 'Sopa de maní', 25, lugar: Lugar.comida),
     Cosa('comida_hot_dog', 'Hot dog', 20, lugar: Lugar.comida),
     Cosa('comida_onigiri', 'Onigiri', 20, lugar: Lugar.comida),

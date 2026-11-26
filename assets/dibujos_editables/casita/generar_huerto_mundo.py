@@ -41,6 +41,7 @@ CAROZO = (150, 100, 60)
 AJO = (246, 240, 228)
 AJO_OSC = (214, 204, 190)
 QUESO = (250, 220, 120)
+AZUL_SUAVE = (150, 180, 220)
 MASA = (232, 180, 110)
 
 
@@ -206,6 +207,15 @@ RECETAS = {
         "..mmmmmmm...",
         "..MMMMMMM...",
     ], {"p": PALTA, "P": PALTA_CLARA, "m": MASA, "M": (196, 140, 80)}),
+    # ---- Sopas ----
+    "minestrone": en_tazon((214, 110, 70), CIELO_CLARO, [(3, 0, VERDE), (5, 0, NARANJA), (7, 0, (240, 220, 160)), (9, 0, VERDE)]),
+    "sopa_cebolla": en_tazon((190, 130, 70), BLANCO, [(4, 0, QUESO), (5, 0, QUESO), (6, 0, QUESO), (7, 0, QUESO)]),
+    "chairo": en_tazon((200, 150, 100), (150, 110, 70), [(3, 0, AMARILLO), (5, 0, (240, 220, 160)), (7, 0, NARANJA), (9, 0, VERDE)]),
+    "sopa_fideo": en_tazon((246, 216, 140), AZUL_SUAVE, [(3, 0, (250, 236, 180)), (5, 0, NARANJA), (7, 0, (250, 236, 180)), (9, 0, VERDE)]),
+    "crema_choclo": en_tazon((248, 220, 110), VERDE, [(5, 0, VERDE_CLARO)]),
+    "sopa_miso": en_tazon((214, 170, 110), (60, 60, 70), [(3, 0, BLANCO), (5, 0, VERDE), (7, 0, BLANCO), (8, 0, (40, 70, 50))]),
+    "crema_zanahoria": en_tazon((240, 140, 60), BLANCO, [(6, 0, VERDE)]),
+    "sopa_ajo": en_tazon((226, 170, 90), (190, 110, 70), [(4, 0, AJO), (6, 0, MASA), (8, 0, VERDE)]),
 }
 
 
