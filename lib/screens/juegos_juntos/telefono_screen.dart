@@ -706,7 +706,7 @@ class DibujoLocalState extends State<DibujoLocal> {
   final _trazos = <int, Trazo>{};
   int _borradoHasta = 0;
   int _color = 0;
-  int _grosor = Dibujos.grosores[1];
+  int _grosor = Dibujos.grosorPorDefecto;
 
   /// Los trazos que se ven, renumerados desde 0.
   List<Trazo> get trazos {

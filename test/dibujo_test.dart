@@ -120,7 +120,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(Herramientas), findsOneWidget);
-      expect(find.textContaining('Borrar todo'), findsOneWidget);
+      expect(find.byTooltip('Borrar todo'), findsOneWidget);
     });
 
     testWidgets('quien adivina ve la pista pero no la palabra', (t) async {

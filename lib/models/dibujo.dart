@@ -79,6 +79,8 @@ class Dibujos {
   /// Colores de los lápices: el último es la goma (pinta del color del
   /// papel).
   static const colores = <Color>[
+    // Los primeros 10 no cambian de lugar: los dibujos guardados usan el
+    // número de cada color (el 9 es la goma).
     Color(0xFF1F2A44), // azul marino
     Color(0xFFF08A4B), // naranja
     Color(0xFFF2A7B8), // rosa
@@ -89,12 +91,37 @@ class Dibujos {
     Color(0xFF8A6A55), // café
     Color(0xFFB7B9C4), // gris
     papel,
+    // Colores nuevos.
+    Color(0xFF2B2B2B), // negro
+    Color(0xFFE0483E), // rojo
+    Color(0xFFE8737E), // coral
+    Color(0xFFEC5A9A), // fucsia
+    Color(0xFFF7C6A3), // durazno
+    Color(0xFFFFE27A), // amarillo pollito
+    Color(0xFFC9A227), // mostaza
+    Color(0xFFB8E07A), // verde limón
+    Color(0xFF3E8E5E), // verde bosque
+    Color(0xFF9FDCC9), // menta
+    Color(0xFF2BA3A6), // turquesa
+    Color(0xFF3D6FD6), // azul
+    Color(0xFFC9B6EC), // lavanda
+    Color(0xFF6C3F9E), // morado
+    Color(0xFFD9B99B), // beige
+    Color(0xFF5A3B2A), // chocolate
+    Color(0xFF6B6F7E), // gris oscuro
   ];
   static const papel = Color(0xFFFFFCF5);
-  static int get goma => colores.length - 1;
+  static const goma = 9;
 
-  /// Grosores (en unidades del lienzo de 1000).
-  static const grosores = <int>[6, 14, 28];
+  /// El orden en que se muestran los lápices (la goma al final).
+  static const ordenColores = <int>[
+    10, 0, 21, 5, 22, 20, 19, 4, 17, 18, 15, 3, 16, //
+    14, 1, 12, 11, 13, 2, 23, 6, 24, 25, 7, 8, 26, goma,
+  ];
+
+  /// Grosores (en unidades del lienzo de 1000): de lápiz finito a brocha.
+  static const grosores = <int>[3, 7, 14, 24, 40];
+  static const grosorPorDefecto = 14;
 
   /// Palabras para dibujar: cositas fáciles y tiernas.
   static const palabras = <String>[
@@ -634,7 +661,7 @@ class Trazo {
       n: (m['n'] as num?)?.toInt() ?? int.tryParse(d.id) ?? 0,
       puntos: [for (final x in p) (x as num).toInt()],
       color: (m['c'] as num?)?.toInt() ?? 0,
-      grosor: (m['g'] as num?)?.toInt() ?? Dibujos.grosores[1],
+      grosor: (m['g'] as num?)?.toInt() ?? Dibujos.grosorPorDefecto,
       listo: m['listo'] != false,
     );
   }
