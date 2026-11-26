@@ -908,7 +908,7 @@ void main() {
       expect(metas.last, isNull);
     });
 
-    testWidgets('al comprar se elige: para los dos o regalar', (t) async {
+    testWidgets('al comprar se elige: yo, en pareja o regalar', (t) async {
       final compras = <(Cosa, String?)>[];
       final regalos = <(Cosa, String?, String)>[];
       await t.pumpWidget(
@@ -920,8 +920,8 @@ void main() {
       );
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
-      // Las dos opciones, y por defecto es para los dos (no se impone regalar).
-      expect(textoDoodle('🏠 Para los dos'), findsOneWidget);
+      // Por defecto lo compras tú; en pareja o regalar es si quieres.
+      expect(textoDoodle('🛒 Yo lo compro'), findsOneWidget);
       expect(textoDoodle('🎁 Regalar'), findsOneWidget);
       expect(
         find.text('Va directo a la casita, para los dos.'),
@@ -992,7 +992,7 @@ void main() {
       expect(abiertos.single.id, 'sofa_rosa');
     });
 
-    testWidgets('una compra grande la aprueba la pareja', (t) async {
+    testWidgets('cada uno compra solo; en pareja es opcional', (t) async {
       final propuestas = <Cosa>[];
       final compras = <(Cosa, String?)>[];
       await t.pumpWidget(
@@ -1003,27 +1003,40 @@ void main() {
           aprobadas: [],
         ),
       );
-      // Lo chiquito se compra directo.
-      await t.ensureVisible(find.text('Planta'));
-      await t.tap(find.text('Planta'));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Cactus'));
-      await t.pumpAndSettle();
-      expect(find.text('Comprar'), findsOneWidget);
-      await t.tap(find.text('Todavía no'));
-      await t.pumpAndSettle();
-
-      // Lo grande (más de 100) se le pide a la pareja.
+      // Aunque sea grande, por defecto lo compras tú de una vez.
       await t.ensureVisible(find.text('Sofá'));
       await t.tap(find.text('Sofá'));
       await t.pumpAndSettle();
       await t.tap(find.text('Sofá azul'));
       await t.pumpAndSettle();
-      expect(find.textContaining('Xixi tiene que aprobarla'), findsOneWidget);
+      expect(find.text('Comprar'), findsOneWidget);
+      await t.tap(find.text('Comprar'));
+      await t.pumpAndSettle();
+      expect(compras.single.$1.id, 'sofa_azul');
+      expect(propuestas, isEmpty);
+
+      // Si quieres, le pides el sí a tu pareja.
+      await t.ensureVisible(find.text('Planta'));
+      await t.tap(find.text('Planta'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Cactus'));
+      await t.pumpAndSettle();
+      await t.tap(textoDoodle('🤝 En pareja'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('cuando te dé el sí'), findsOneWidget);
       await t.tap(find.text('Pedirle el sí'));
       await t.pumpAndSettle();
-      expect(propuestas.single.id, 'sofa_azul');
-      expect(compras, isEmpty);
+      expect(propuestas.single.id, 'planta_cactus');
+      expect(compras, hasLength(1));
+    });
+
+    test('una propuesta ya comprada no sigue pidiendo el sí', () {
+      const p = Propuesta(id: 'p1', cosa: 'cuarto_cocina', de: 'a');
+      expect(const EstadoCasita(propuesta: p).pendiente, isNotNull);
+      expect(
+        const EstadoCasita(propuesta: p, tenemos: {'cuarto_cocina'}).pendiente,
+        isNull,
+      );
     });
 
     testWidgets('la pareja ve la propuesta y la aprueba', (t) async {

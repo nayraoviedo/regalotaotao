@@ -10,9 +10,7 @@ import 'services/tema_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp(
-      options: _opcionesFirebase(),
-    );
+    await Firebase.initializeApp(options: _opcionesFirebase());
     PushService.registerBackgroundHandler();
   } catch (e) {
     runApp(FirebaseMissingApp(error: e.toString()));

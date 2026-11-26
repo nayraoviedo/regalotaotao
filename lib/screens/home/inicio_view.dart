@@ -88,6 +88,7 @@ class InicioView extends StatelessWidget {
 
   /// Tarjeta de los juegos de pareja (avisa si te toca jugar).
   final Widget? juegos;
+
   /// Tarjeta de "Música juntos", debajo de los accesos.
   final Widget? musica;
 

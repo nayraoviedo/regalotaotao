@@ -785,19 +785,13 @@ service cloud.firestore {
             && d.cantidad == 4 + 2 * (igual(a, b, 0) + igual(a, b, 1) + igual(a, b, 2)
                                       + igual(a, b, 3) + igual(a, b, 4));
         }
-        // Una compra de más de 100 pescaditos la aprueba la pareja: tiene
-        // que haber una propuesta de esa cosa hecha por el otro. Los
-        // regalos sorpresa no la necesitan.
-        function aprobada(d) {
-          let p = get(estadoPath()).data.get('propuesta', {});
-          return p.get('cosa', '') == d.ref && p.get('de', me()) != me();
-        }
         function compra(d) {
           return d.tipo == 'compra'
             && d.ref is string
             && movId == 'compra_' + d.ref
             && d.cantidad is int && d.cantidad < 0
-            && (d.cantidad >= -100 || d.get('regalo', false) == true || aprobada(d))
+            // Cada uno compra lo que quiere; pedirle el sí a la pareja es
+            // opcional (lo decide quien compra en la app).
             && d.ref in getAfter(estadoPath()).data.get('tenemos', []);
         }
         // Una carta sorpresa animada: 30 pescaditos por carta, y la carta

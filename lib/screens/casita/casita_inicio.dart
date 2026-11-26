@@ -52,8 +52,7 @@ class TarjetaCasita extends StatelessWidget {
     if (uid != null && estado.regalosPara(uid!).isNotEmpty) {
       return '🎁 Te dejaron un regalo sorpresa. ¡Ábrelo!';
     }
-    if (estado.propuesta case final p?
-        when uid != null && p.de != uid && p.queCosa != null) {
+    if (estado.pendiente case final p? when uid != null && p.de != uid) {
       return '🐟 Tu pareja quiere comprar ${p.queCosa!.nombre}. ¿Le das el sí?';
     }
     if (estado.metaCosa case final m?) {
