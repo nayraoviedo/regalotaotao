@@ -53,6 +53,12 @@ beforeEach(() => {
     "couples/c1/achievements/a1": { uid: "ana", kind: "tarea", rewardId: "r1", rewardTitle: "Un helado" },
     "couples/c1/besos/b1": { from: "ana", to: "beto" },
     "couples/c1/cascabeles/k1": { from: "ana", to: "beto" },
+    "couples/c1/saludos/s1": { from: "ana", to: "beto", tipo: "dias" },
+    "couples/c1/saludos/s2": { from: "ana", to: "beto", tipo: "noches", texto: "sueña conmigo" },
+    "couples/c1/capsulas/cap1": {
+      titulo: "Para dentro de un año", creadaPor: "ana", ultimo: "ana", aportes: {},
+      abrirEl: new Date("2027-11-26T12:00:00Z"),
+    },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -175,6 +181,27 @@ test("besos, abrazos y cascabel llegan con su texto", async () => {
   ]);
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
   assert.equal((await call({ kind: "bell", coupleId: "c1", docId: "k1" }, await idToken("beto"))).status, 403);
+});
+
+test("buenos días y buenas noches", async () => {
+  const t = await idToken("ana");
+  for (const docId of ["s1", "s2"]) {
+    assert.equal((await call({ kind: "saludo", coupleId: "c1", docId }, t)).status, 200);
+  }
+  assert.deepEqual(sent.map((m) => [m.notification.title, m.notification.body]), [
+    ["☀️ ¡Buenos días!", "Ana te da los buenos días 🐾"],
+    ["🌙 Buenas noches", "Ana te desea dulces sueños: «sueña conmigo»"],
+  ]);
+  assert.equal((await call({ kind: "saludo", coupleId: "c1", docId: "s1" }, await idToken("beto"))).status, 403);
+});
+
+test("cápsula del tiempo: al enterrarla y al guardar algo", async () => {
+  const ana = await idToken("ana");
+  assert.equal((await call({ kind: "capsula", coupleId: "c1", docId: "cap1" }, ana)).status, 200);
+  assert.equal(sent[0].notification.body,
+    "Ana enterró la cápsula «Para dentro de un año». Guarda algo tú también: se abre el 26 de noviembre de 2027");
+  // Beto no fue el último en guardar algo: no puede avisar.
+  assert.equal((await call({ kind: "capsula", coupleId: "c1", docId: "cap1" }, await idToken("beto"))).status, 403);
 });
 
 test("compras de la casita avisan a la pareja", async () => {

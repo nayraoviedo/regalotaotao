@@ -447,6 +447,39 @@ const KINDS = {
     dedupeKey: () => "enviado",
     message: (name) => ({ title: "🔔 ¡Tilín, tilín!", body: `${name} hizo sonar su cascabel para ti` }),
   },
+  // Cápsula del tiempo: al enterrarla y cada vez que alguien guarda algo.
+  capsula: {
+    collection: "capsulas",
+    check: (d, uid) => d.ultimo === uid && (d.creadaPor === uid || (d.aportes?.[uid] || 0) > 0),
+    dedupeKey: (d) =>
+      String(Object.values(d.aportes || {}).reduce((a, b) => a + (Number(b) || 0), 0)),
+    message: (name, d) => {
+      const titulo = String(d.titulo || "su cápsula").slice(0, 60);
+      const nada = Object.keys(d.aportes || {}).length === 0;
+      return nada
+        ? {
+            title: "⏳ Una cápsula del tiempo",
+            body: `${name} enterró la cápsula «${titulo}». Guarda algo tú también: se abre ${cuandoSeAbre(d.abrirEl)}`,
+          }
+        : {
+            title: "⏳ Algo nuevo en la cápsula",
+            body: `${name} guardó un secreto en «${titulo}». Lo verán juntos ${cuandoSeAbre(d.abrirEl)}`,
+          };
+    },
+  },
+  // Buenos días y buenas noches.
+  saludo: {
+    collection: "saludos",
+    check: (d, uid, partner) =>
+      d.from === uid && d.to === partner && (d.tipo === "dias" || d.tipo === "noches"),
+    dedupeKey: () => "enviado",
+    message: (name, d) => {
+      const texto = typeof d.texto === "string" && d.texto.trim() ? `: «${d.texto.trim().slice(0, 140)}»` : "";
+      return d.tipo === "dias"
+        ? { title: "☀️ ¡Buenos días!", body: `${name} te da los buenos días${texto || " 🐾"}` }
+        : { title: "🌙 Buenas noches", body: `${name} te desea dulces sueños${texto || " 💤"}` };
+    },
+  },
   compra: {
     collection: "casitaMovs",
     check: (d, uid) => d.uid === uid && d.tipo === "compra",
@@ -625,6 +658,17 @@ export function mensajeDeFiesta(name, d) {
         title: `${emoji} ¡Feliz ${que}!`,
         body: `${name} te mandó una carta de ${que} 💌`,
       };
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+  "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// "el 26 de noviembre de 2027" (la fecha de la cápsula, en UTC).
+export function cuandoSeAbre(iso) {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "el día que eligieron";
+  const d = new Date(t);
+  return `el ${d.getUTCDate()} de ${MESES[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
 }
 
 // "un pastel, un ramo de flores y una carta", para el aviso.

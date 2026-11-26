@@ -222,6 +222,74 @@ service cloud.firestore {
         allow delete: if isMember(coupleId) && me() == resource.data.from;
       }
 
+      // Cápsula del tiempo: un frasco de los dos. Mientras está cerrada,
+      // cada uno guarda cosas (y suma 1 a su contador en `aportes`), pero
+      // nadie puede leerlas, ni las suyas, hasta `abrirEl`. Quien la creó
+      // la puede borrar solo mientras sigue vacía.
+      match /capsulas/{capsulaId} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys().hasOnly(
+               ['titulo', 'creadaPor', 'abrirEl', 'avisarEn', 'aportes', 'ultimo', 'createdAt'])
+          && request.resource.data.creadaPor == me()
+          && request.resource.data.ultimo == me()
+          && request.resource.data.titulo is string
+          && request.resource.data.titulo.size() > 0
+          && request.resource.data.titulo.size() <= 60
+          && request.resource.data.abrirEl is timestamp
+          && request.resource.data.abrirEl > request.time + duration.value(1, 'h')
+          && request.resource.data.abrirEl < request.time + duration.value(7400, 'd')
+          && request.resource.data.avisarEn == request.resource.data.abrirEl
+          && request.resource.data.aportes == {}
+          && request.resource.data.createdAt == request.time;
+        allow update: if isMember(coupleId)
+          && request.time < resource.data.abrirEl
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['aportes', 'ultimo'])
+          && request.resource.data.ultimo == me()
+          && request.resource.data.aportes.diff(resource.data.aportes)
+               .affectedKeys().hasOnly([me()])
+          && request.resource.data.aportes[me()]
+               == resource.data.aportes.get(me(), 0) + 1;
+        allow delete: if isMember(coupleId)
+          && me() == resource.data.creadaPor
+          && resource.data.aportes.size() == 0;
+
+        match /cosas/{cosaId} {
+          function capsula() {
+            return get(/databases/$(database)/documents/couples/$(coupleId)/capsulas/$(capsulaId));
+          }
+          allow read: if isMember(coupleId)
+            && request.time >= capsula().data.abrirEl;
+          allow create: if isMember(coupleId)
+            && request.time < capsula().data.abrirEl
+            && request.resource.data.keys().hasOnly(['from', 'texto', 'foto', 'createdAt'])
+            && request.resource.data.from == me()
+            && request.resource.data.texto is string
+            && request.resource.data.texto.size() > 0
+            && request.resource.data.texto.size() <= 3000
+            && (request.resource.data.get('foto', null) == null
+                || (request.resource.data.foto is string
+                    && request.resource.data.foto.size() <= 750000))
+            && request.resource.data.createdAt == request.time;
+        }
+      }
+
+      // Buenos días y buenas noches: un saludito para la pareja.
+      match /saludos/{id} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.keys().hasOnly(['from', 'to', 'tipo', 'texto', 'createdAt'])
+          && request.resource.data.from == me()
+          && request.resource.data.to != me()
+          && request.resource.data.to in coupleDoc(coupleId).data.members
+          && request.resource.data.tipo in ['dias', 'noches']
+          && (request.resource.data.get('texto', null) == null
+              || (request.resource.data.texto is string
+                  && request.resource.data.texto.size() <= 140))
+          && request.resource.data.createdAt == request.time;
+      }
+
       // Pomodoro en pareja: uno invita, solo la otra persona puede aceptar.
       match /pomodoros/{sessionId} {
         allow read: if isMember(coupleId);

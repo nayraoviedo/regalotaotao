@@ -24,6 +24,8 @@ enum NotifyKind {
   rompecabezas,
   telefono,
   notaLeida,
+  capsula,
+  saludo,
 }
 
 /// Le pide al Worker de Cloudflare que avise a la pareja.

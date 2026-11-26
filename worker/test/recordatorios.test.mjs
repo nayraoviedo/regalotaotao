@@ -128,3 +128,16 @@ test("el recordatorio lleva la ruta de la nota y la hora (para no repetir la ala
   assert.equal(msgs[0].nota, "users/ana/privateNotes/p1");
   assert.equal(msgs[0].cuando, AHORA - 60000);
 });
+
+test("cápsula del tiempo: el día que se abre avisa a los dos", async () => {
+  const m = mundo({
+    "couples/c1/capsulas/x": { creadaPor: "ana", titulo: "Nuestro primer año", avisarEn: hace(0) },
+    "couples/c1/capsulas/y": { creadaPor: "ana", titulo: "Todavía no", avisarEn: hace(-60) },
+  });
+  await revisarRecordatorios(m.deps, AHORA);
+  assert.deepEqual(m.sent, [
+    ["ana", "⏳ ¡Se abrió su cápsula del tiempo!", "«Nuestro primer año» ya se puede abrir. Ábranla juntos 💌"],
+    ["beto", "⏳ ¡Se abrió su cápsula del tiempo!", "«Nuestro primer año» ya se puede abrir. Ábranla juntos 💌"],
+  ]);
+  assert.equal(m.docs["couples/c1/capsulas/x"].avisarEn, null);
+});

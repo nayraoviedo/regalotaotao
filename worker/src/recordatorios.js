@@ -13,6 +13,9 @@
 // También avisa las cartas guardadas para una fiesta (couples/{c}/letters,
 // con `fiesta` y `avisarEn`): ese día, a quien la recibe, que ya la puede
 // abrir. Si ya la abrió, no se avisa.
+//
+// Y las cápsulas del tiempo (couples/{c}/capsulas, `avisarEn` = el día que
+// se abren): a los dos, que ya pueden abrirla juntos.
 
 // Si el Worker estuvo apagado, un recordatorio de hace más de un día ya no
 // se manda (solo se limpia).
@@ -34,21 +37,25 @@ const POR_VUELTA = 40;
  */
 export async function revisarRecordatorios(deps, ahora = Date.now()) {
   const hasta = new Date(ahora).toISOString();
-  const [compartidas, privadas, cartas] = await Promise.all([
+  const [compartidas, privadas, cartas, capsulas] = await Promise.all([
     deps.buscar("notes", hasta, POR_VUELTA),
     deps.buscar("privateNotes", hasta, POR_VUELTA),
     deps.buscar("letters", hasta, POR_VUELTA),
+    deps.buscar("capsulas", hasta, POR_VUELTA),
   ]);
   const resumen = { enviados: 0, revisados: 0 };
   const todas = [
     ...compartidas.map((n) => ({ ...n, privada: false })),
     ...privadas.map((n) => ({ ...n, privada: true })),
     ...cartas.map((n) => ({ ...n, carta: true })),
+    ...capsulas.map((n) => ({ ...n, capsula: true })),
   ];
   await Promise.all(
     todas.map(async (nota) => {
       try {
-        resumen.enviados += await (nota.carta
+        resumen.enviados += await (nota.capsula
+          ? avisarCapsula(deps, nota, ahora)
+          : nota.carta
           ? avisarCarta(deps, nota, ahora)
           : avisar(deps, nota, ahora));
         resumen.revisados++;
@@ -166,4 +173,26 @@ async function avisarCarta(deps, carta, ahora) {
     body: `Ya puedes abrir la carta que te guardó ${nombre} 💌`,
     canal: "notas",
   });
+}
+
+// El día que se abre una cápsula del tiempo: a los dos.
+async function avisarCapsula(deps, capsula, ahora) {
+  const partes = capsula.path.split("/");
+  if (partes.length !== 4 || partes[0] !== "couples" || partes[2] !== "capsulas") return 0;
+  const d = capsula.data;
+  const cuando = Date.parse(d.avisarEn);
+  if (!(await deps.limpiar(capsula.path, capsula.updateTime))) return 0;
+  if (!(ahora - cuando <= MUY_VIEJO_MS)) return 0;
+  const members = (await deps.leer(`couples/${partes[1]}`))?.data.members || [];
+  if (!members.includes(d.creadaPor)) return 0;
+  const titulo = String(d.titulo || "su cápsula").slice(0, 60);
+  let enviados = 0;
+  for (const uid of members) {
+    enviados += await deps.enviar(uid, {
+      title: "⏳ ¡Se abrió su cápsula del tiempo!",
+      body: `«${titulo}» ya se puede abrir. Ábranla juntos 💌`,
+      canal: "notas",
+    });
+  }
+  return enviados;
 }

@@ -38,6 +38,8 @@ import 'inicio_view.dart';
 import 'invitacion_pomodoro.dart';
 import '../../widgets/doodle.dart';
 import 'mimos.dart';
+import 'saludos.dart';
+import '../capsula/capsula_inicio.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
@@ -534,6 +536,21 @@ class _HomeBodyState extends State<_HomeBody> {
             celebracion: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Buenos días / buenas noches con el gatito.
+                SaludoInicio(
+                  coupleId: couple.id,
+                  uid: me.uid,
+                  partnerUid: partnerUid,
+                  partnerName: partnerName,
+                  miGatito: miGatito,
+                  suGatito: suGatito,
+                ),
+                // Una cápsula del tiempo que ya se puede abrir.
+                CapsulaListaInicio(
+                  coupleId: couple.id,
+                  uid: me.uid,
+                  partnerName: partnerName,
+                ),
                 CelebracionesHoy(
                   uid: me.uid,
                   partnerName: partnerName,
@@ -617,18 +634,26 @@ class _HomeBodyState extends State<_HomeBody> {
       partnerName: partnerName,
       suGatito: suGatito,
       onDevolver: _mandarMimo,
-      child: AvisoPescaditos(
-        child: HomeTabs(
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-          inicio: inicio,
-          nosotros: TogetherScreen(couple: couple),
-          notas: NotesScreen(
-            me: me,
-            coupleId: couple.id,
-            partnerUid: partnerUid,
+      child: LlegadaDeSaludos(
+        uid: me.uid,
+        coupleId: couple.id,
+        partnerUid: partnerUid,
+        partnerName: partnerName,
+        miGatito: miGatito,
+        suGatito: suGatito,
+        child: AvisoPescaditos(
+          child: HomeTabs(
+            index: _tab,
+            onChanged: (i) => setState(() => _tab = i),
+            inicio: inicio,
+            nosotros: TogetherScreen(couple: couple),
+            notas: NotesScreen(
+              me: me,
+              coupleId: couple.id,
+              partnerUid: partnerUid,
+            ),
+            perfil: ProfileScreen(me: me, partner: partner, couple: couple),
           ),
-          perfil: ProfileScreen(me: me, partner: partner, couple: couple),
         ),
       ),
     );
