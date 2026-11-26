@@ -475,7 +475,11 @@ class PescaditosService {
         return;
       }
       final hay = (d['pescaditos'] as num?)?.toInt() ?? 0;
-      if (hay < cosa.precio) throw SinPescaditos(cosa.precio - hay);
+      // Lo de la alcancía está apartado: solo se gasta en la meta.
+      final esMeta = d['meta'] == cosa.id;
+      final ahorrado = esMeta ? 0 : (d['ahorrado'] as num?)?.toInt() ?? 0;
+      final libres = hay - ahorrado;
+      if (libres < cosa.precio) throw SinPescaditos(cosa.precio - libres);
       tx.set(movRef, {
         'tipo': Movimiento.compra,
         'uid': uid,
@@ -490,8 +494,12 @@ class PescaditosService {
         'tenemos': FieldValue.arrayUnion([cosa.id]),
         // Al comprar lo que se había propuesto, la propuesta se cierra.
         if (cierraPropuesta) 'propuesta': FieldValue.delete(),
-        // Con esto se llenó la alcancía.
-        if (d['meta'] == cosa.id) 'meta': FieldValue.delete(),
+        // Compraron la meta: la alcancía se vacía.
+        if (esMeta) ...{
+          'meta': FieldValue.delete(),
+          'ahorrado': FieldValue.delete(),
+          'aportes': FieldValue.delete(),
+        },
         // Las semillas empiezan a crecer al comprarlas.
         if (cosa.semilla)
           'sembrado.${cosa.id}': DateTime.now().millisecondsSinceEpoch,
@@ -531,9 +539,11 @@ class PescaditosService {
     final estadoRef = _estado(coupleId);
     await Db.instance.runTransaction((tx) async {
       final estado = await tx.get(estadoRef);
-      final hay =
-          ((estado.data() ?? const {})['pescaditos'] as num?)?.toInt() ?? 0;
-      if (hay < precio) throw SinPescaditos(precio - hay);
+      final d = estado.data() ?? const <String, dynamic>{};
+      final hay = (d['pescaditos'] as num?)?.toInt() ?? 0;
+      // Lo de la alcancía no se toca.
+      final libres = hay - ((d['ahorrado'] as num?)?.toInt() ?? 0);
+      if (libres < precio) throw SinPescaditos(precio - libres);
       tx.set(cartaRef, {
         'from': from,
         'to': to,
@@ -670,8 +680,71 @@ class PescaditosService {
       });
 
   /// Alcancía: elige para qué ahorran juntos (o nada, con `null`).
-  Future<void> ponerMeta(String coupleId, Cosa? cosa) => _estado(coupleId)
-      .set({'meta': cosa?.id ?? FieldValue.delete()}, SetOptions(merge: true));
+  ///
+  /// Sin meta, lo ahorrado vuelve a quedar libre. Si cambian de meta, lo
+  /// ahorrado se queda en la alcancía (hasta lo que cuesta la nueva).
+  Future<void> ponerMeta(String coupleId, Cosa? cosa) async {
+    final ref = _estado(coupleId);
+    await Db.instance.runTransaction((tx) async {
+      final doc = await tx.get(ref);
+      final estado = EstadoCasita.fromMap(doc.data());
+      if (cosa == null) {
+        tx.set(ref, {
+          'meta': FieldValue.delete(),
+          'ahorrado': FieldValue.delete(),
+          'aportes': FieldValue.delete(),
+        }, SetOptions(merge: true));
+        return;
+      }
+      final aportes = recortarAportes(estado.aportes, cosa.precio);
+      final cambios = {
+        'meta': cosa.id,
+        'ahorrado': aportes.values.fold(0, (a, b) => a + b),
+        'aportes': aportes, // reemplaza el mapa entero
+      };
+      if (doc.exists) {
+        tx.update(ref, cambios);
+      } else {
+        tx.set(ref, cambios);
+      }
+    });
+  }
+
+  /// Deja los [aportes] en [tope] como mucho, quitando primero de quien
+  /// puso más (para que nadie se quede en negativo).
+  static Map<String, int> recortarAportes(Map<String, int> aportes, int tope) {
+    final r = Map<String, int>.of(aportes);
+    var sobra = r.values.fold(0, (a, b) => a + b) - tope;
+    while (sobra > 0 && r.isNotEmpty) {
+      final mayor = r.entries.reduce((a, b) => a.value >= b.value ? a : b);
+      final quita = sobra < mayor.value ? sobra : mayor.value;
+      r[mayor.key] = mayor.value - quita;
+      if (r[mayor.key] == 0) r.remove(mayor.key);
+      sobra -= quita;
+    }
+    return r;
+  }
+
+  /// [uid] pone [cantidad] pescaditos en la alcancía (de los libres, y sin
+  /// pasarse de lo que cuesta la meta). Devuelve cuántos puso de verdad.
+  Future<int> aportar(String coupleId, String uid, int cantidad) async {
+    final ref = _estado(coupleId);
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      final meta = estado.metaCosa;
+      if (meta == null) return 0;
+      final falta = meta.precio - estado.ahorrado;
+      var n = cantidad;
+      if (n > estado.libres) n = estado.libres;
+      if (n > falta) n = falta;
+      if (n <= 0) return 0;
+      tx.update(ref, {
+        'ahorrado': estado.ahorrado + n,
+        'aportes.$uid': (estado.aportes[uid] ?? 0) + n,
+      });
+      return n;
+    });
+  }
 
   /// Pone su foto pixelada en el cuadro (o la quita, con `null`).
   Future<void> ponerFoto(String coupleId, List<int>? foto) =>

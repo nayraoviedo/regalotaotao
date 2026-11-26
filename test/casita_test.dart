@@ -9,6 +9,7 @@ import 'package:taotao/screens/casita/casita_screen.dart';
 import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
+import 'package:taotao/services/pescaditos_service.dart';
 import 'package:taotao/theme.dart';
 import 'package:taotao/widgets/texto_doodle.dart';
 
@@ -172,6 +173,31 @@ void main() {
             !vistas.first.contains(Casita.asset('parpadeo_naranja')),
         isTrue,
       );
+    });
+
+    test('alcancía: lo ahorrado queda apartado y se recorta al cambiar', () {
+      final e = EstadoCasita.fromMap({
+        'pescaditos': 150,
+        'meta': 'sofa_rosa',
+        'ahorrado': 100,
+        'aportes': {'a': 70, 'b': 30},
+      });
+      expect(e.aportes, {'a': 70, 'b': 30});
+      expect(e.libres, 50);
+      expect(e.alcanciaLlena, isFalse);
+      expect(e.paraGastarEn(Catalogo.porId('sofa_rosa')!), 150);
+      expect(e.paraGastarEn(Catalogo.porId('sofa_azul')!), 50);
+      // Sin la meta, nada apartado.
+      expect(const EstadoCasita(pescaditos: 40).libres, 40);
+      // Al cambiar a una meta más barata, se quita primero de quien puso más.
+      expect(PescaditosService.recortarAportes({'a': 70, 'b': 30}, 60), {
+        'a': 30,
+        'b': 30,
+      });
+      expect(PescaditosService.recortarAportes({'a': 70, 'b': 30}, 200), {
+        'a': 70,
+        'b': 30,
+      });
     });
 
     test('regalos sorpresa y alcancía desde Firestore', () {
@@ -902,6 +928,7 @@ void main() {
       List<Cosa>? abiertos,
       List<Cosa>? propuestas,
       List<Propuesta>? aprobadas,
+      List<int>? aportes,
       AppUser? yo,
     }) => MaterialApp(
       home: CasitaView(
@@ -918,6 +945,12 @@ void main() {
         partner: yo == null ? partner : me,
         onComprar: (c, g) async => compras?.add((c, g)),
         onMeta: metas == null ? null : (c) async => metas.add(c),
+        onAportar: aportes == null
+            ? null
+            : (n) async {
+                aportes.add(n);
+                return n;
+              },
         onRegalar: regalos == null
             ? null
             : (c, g, m) async => regalos.add((c, g, m)),
@@ -985,9 +1018,113 @@ void main() {
       );
       await t.pumpAndSettle();
       expect(find.text('Ahorrando juntos para Sofá rosa'), findsOneWidget);
-      expect(find.textContaining('Les faltan 100'), findsOneWidget);
-      await t.tap(find.byTooltip('Quitar la meta'));
+      expect(
+        find.textContaining('Llevan 0 de 120: faltan 120'),
+        findsOneWidget,
+      );
+      await t.tap(find.byTooltip('Dejar de ahorrar para esto'));
+      await t.pumpAndSettle();
       expect(metas.last, isNull);
+    });
+
+    testWidgets('elegir algo para ahorrar juntos desde la tienda', (t) async {
+      final metas = <Cosa?>[];
+      final compras = <(Cosa, String?)>[];
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(pescaditos: 130),
+          metas: metas,
+          compras: compras,
+          propuestas: [],
+        ),
+      );
+      await t.tap(find.text('Sofá azul'));
+      await t.pumpAndSettle();
+      // "Yo lo compro" sigue siendo lo de siempre; ahorrar es opcional.
+      expect(textoDoodle('🛒 Yo lo compro'), findsOneWidget);
+      expect(textoDoodle('🤝 En pareja'), findsOneWidget);
+      await t.tap(textoDoodle('🐷 Ahorrar juntos'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('cuando esté llena'), findsOneWidget);
+      await t.tap(find.text('Ahorrar juntos'));
+      await t.pumpAndSettle();
+      expect(metas.single?.id, 'sofa_azul');
+      expect(compras, isEmpty);
+    });
+
+    testWidgets(
+      'cada uno pone pescaditos y lo ahorrado no se gasta en otra cosa',
+      (t) async {
+        final aportes = <int>[];
+        final compras = <(Cosa, String?)>[];
+        await t.pumpWidget(
+          pantalla(
+            const EstadoCasita(
+              pescaditos: 140,
+              meta: 'sofa_rosa',
+              ahorrado: 100,
+              aportes: {'a': 60, 'b': 40},
+            ),
+            metas: [],
+            aportes: aportes,
+            compras: compras,
+          ),
+        );
+        await t.pumpAndSettle();
+        expect(
+          find.textContaining('Llevan 100 de 120: faltan 20'),
+          findsOneWidget,
+        );
+        expect(find.text('Pusieron: nayra 60 · Xixi 40'), findsOneWidget);
+        // Solo hay 40 libres: el sofá azul (120) no alcanza aunque haya 140.
+        await t.tap(find.text('Sofá azul'));
+        await t.pumpAndSettle();
+        expect(find.text('Les faltan 80 pescaditos'), findsOneWidget);
+        await t.tap(find.text('Ahora no'));
+        await t.pumpAndSettle();
+        expect(compras, isEmpty);
+        // Pone lo que falta.
+        await t.ensureVisible(textoDoodle('🐟 Poner pescaditos'));
+        await t.tap(textoDoodle('🐟 Poner pescaditos'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('20 (¡la llena!)'));
+        await t.pumpAndSettle();
+        expect(aportes.single, 20);
+      },
+    );
+
+    testWidgets('con la alcancía llena se le pide el sí a la pareja', (
+      t,
+    ) async {
+      final propuestas = <Cosa>[];
+      final compras = <(Cosa, String?)>[];
+      await t.pumpWidget(
+        pantalla(
+          const EstadoCasita(
+            pescaditos: 130,
+            meta: 'sofa_rosa',
+            ahorrado: 120,
+            aportes: {'a': 70, 'b': 50},
+          ),
+          metas: [],
+          propuestas: propuestas,
+          compras: compras,
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(
+        find.text('¡La alcancía está llena para Sofá rosa!'),
+        findsOneWidget,
+      );
+      await t.ensureVisible(find.text('Pedirle el sí'));
+      await t.tap(find.text('Pedirle el sí'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('Ya juntaron los 120'), findsOneWidget);
+      await t.tap(find.text('Pedirle el sí').last);
+      await t.pumpAndSettle();
+      // No se compra de una: espera el sí de Xixi.
+      expect(propuestas.single.id, 'sofa_rosa');
+      expect(compras, isEmpty);
     });
 
     testWidgets('al comprar se elige: yo, en pareja o regalar', (t) async {

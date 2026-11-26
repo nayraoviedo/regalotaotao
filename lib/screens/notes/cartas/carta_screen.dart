@@ -459,7 +459,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
   void initState() {
     super.initState();
     _pescaditos = widget.casita == null
-        ? PescaditosService.instance.ultimoEstado.value.pescaditos
+        ? PescaditosService.instance.ultimoEstado.value.libres
         : null;
     try {
       final estado =
@@ -468,7 +468,7 @@ class _EscribirCartaScreenState extends State<EscribirCartaScreen> {
               ? null
               : PescaditosService.instance.watch(widget.coupleId));
       _casita = estado?.listen(
-        (e) => mounted ? setState(() => _pescaditos = e.pescaditos) : null,
+        (e) => mounted ? setState(() => _pescaditos = e.libres) : null,
         onError: (_) {},
       );
     } catch (_) {
