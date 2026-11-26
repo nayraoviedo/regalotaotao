@@ -61,6 +61,11 @@ class _PeliFormState extends State<PeliForm> {
   late final _capitulos = TextEditingController(
     text: widget.actual?.capitulos?.toString() ?? '',
   );
+  late final _capitulo = TextEditingController(
+    text: (widget.actual?.capitulo ?? 0) > 0
+        ? widget.actual!.capitulo.toString()
+        : '',
+  );
   late final _donde = TextEditingController(text: widget.actual?.donde);
 
   @override
@@ -73,6 +78,7 @@ class _PeliFormState extends State<PeliForm> {
   void dispose() {
     _titulo.dispose();
     _capitulos.dispose();
+    _capitulo.dispose();
     _donde.dispose();
     super.dispose();
   }
@@ -89,7 +95,10 @@ class _PeliFormState extends State<PeliForm> {
           estado: _estado,
           addedBy: widget.uid,
         );
-    var cap = base.capitulo;
+    var cap = (int.tryParse(_capitulo.text.trim()) ?? 0).clamp(
+      0,
+      Peli.maxCapitulos,
+    );
     if (total != null && total > 0 && cap > total) cap = total;
     Navigator.of(context).pop(
       base.copyWith(
@@ -173,12 +182,32 @@ class _PeliFormState extends State<PeliForm> {
             onSelectionChanged: (s) => setState(() => _estado = s.first),
           ),
           if (_tipo.tieneCapitulos) ...[
-            _etiqueta('¿Cuántos capítulos tiene? (si sabes)'),
-            TextField(
-              controller: _capitulos,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: _deco('16'),
+            _etiqueta('¿En qué capítulo van?'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('capitulo'),
+                    controller: _capitulo,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    decoration: _deco('0 si no empiezan'),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('de', style: TextStyle(color: AppTheme.azul)),
+                ),
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('capitulos'),
+                    controller: _capitulos,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    decoration: _deco('Total (si sabes)'),
+                  ),
+                ),
+              ],
             ),
           ],
           _etiqueta('¿Dónde lo ven? (opcional)'),

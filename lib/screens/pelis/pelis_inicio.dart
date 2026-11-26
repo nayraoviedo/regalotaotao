@@ -7,7 +7,7 @@ import '../../widgets/doodle.dart';
 import 'dibujo_peli.dart';
 import 'pelis_screen.dart';
 
-/// Tarjeta "Dramas y pelis" del inicio.
+/// Tarjeta "Nuestra cartelera" (dramas y pelis) del inicio.
 class PelisInicio extends StatelessWidget {
   const PelisInicio({
     super.key,
@@ -103,7 +103,7 @@ class PelisInicioCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dramas y pelis',
+                      'Nuestra cartelera',
                       style: TextStyle(
                         color: azul,
                         fontWeight: FontWeight.w800,

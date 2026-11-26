@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseException;
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/peli.dart';
@@ -9,7 +10,7 @@ import '../recomendacion/resenas.dart';
 import 'dibujo_peli.dart';
 import 'peli_form.dart';
 
-/// "Dramas y pelis": lo que ven juntos, en qué capítulo van y la reseña de
+/// "Nuestra cartelera": dramas y pelis que ven juntos, en qué capítulo van y la reseña de
 /// cada uno.
 class PelisScreen extends StatefulWidget {
   const PelisScreen({
@@ -42,8 +43,8 @@ class _PelisScreenState extends State<PelisScreen> {
     try {
       await _svc.agregar(widget.coupleId, widget.uid, p);
       _aviso('Agregamos "${p.titulo}" a su lista');
-    } catch (_) {
-      _aviso('No se pudo agregar, intenta otra vez');
+    } catch (e) {
+      _aviso(porQueNoSeGuardo(e, 'No se pudo agregar, intenta otra vez'));
     }
   }
 
@@ -54,8 +55,8 @@ class _PelisScreenState extends State<PelisScreen> {
       if (n.estado == EstadoPeli.vista && p.estado != EstadoPeli.vista) {
         _aviso('¡Lo terminaron! Ahora déjale tu reseña');
       }
-    } catch (_) {
-      _aviso('No se pudo guardar, intenta otra vez');
+    } catch (e) {
+      _aviso(porQueNoSeGuardo(e, 'No se pudo guardar, intenta otra vez'));
     }
   }
 
@@ -81,6 +82,14 @@ class _PelisScreenState extends State<PelisScreen> {
     );
   }
 }
+
+/// Qué decir si algo no se pudo guardar. Si Firebase lo rechaza por
+/// permisos, casi siempre es que faltan desplegar las reglas nuevas.
+String porQueNoSeGuardo(Object e, String siNo) =>
+    e is FirebaseException && e.code == 'permission-denied'
+    ? 'No se pudo guardar: falta actualizar las reglas de Firebase '
+          '(firebase deploy --only firestore)'
+    : siNo;
 
 /// La pantalla sin Firebase (para pruebas y capturas).
 class ListaPelis extends StatefulWidget {
@@ -138,7 +147,7 @@ class _ListaPelisState extends State<ListaPelis>
     int cuantas(EstadoPeli e) => todas.where((p) => p.estado == e).length;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dramas y pelis'),
+        title: const Text('Nuestra cartelera'),
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppTheme.azul,
@@ -504,8 +513,8 @@ Future<void> showDetallePeli(
         Future<void> cambiar(Peli n) async {
           try {
             await svc.editar(coupleId, p, n);
-          } catch (_) {
-            aviso('No se pudo guardar, intenta otra vez');
+          } catch (e) {
+            aviso(porQueNoSeGuardo(e, 'No se pudo guardar, intenta otra vez'));
           }
         }
 
@@ -550,8 +559,8 @@ Future<void> showDetallePeli(
             try {
               await svc.resenar(coupleId, p.id, uid, r);
               aviso(r == null ? 'Quitamos tu reseña' : 'Reseña guardada');
-            } catch (_) {
-              aviso('No se pudo guardar la reseña');
+            } catch (e) {
+              aviso(porQueNoSeGuardo(e, 'No se pudo guardar la reseña'));
             }
           },
         );
