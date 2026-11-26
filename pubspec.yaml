@@ -105,6 +105,9 @@ flutter:
     - family: Manuscrita
       fonts:
         - asset: assets/fonts/DancingScript-Bold.ttf
+    - family: LetraNota
+      fonts:
+        - asset: assets/fonts/PatrickHand-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
