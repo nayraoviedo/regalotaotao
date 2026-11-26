@@ -409,7 +409,7 @@ class _HomeBodyState extends State<_HomeBody> {
 
   bool _mandandoMimo = false;
 
-  /// Manda un beso o un abrazo y muestra a los gatitos haciéndolo.
+  /// Manda un beso, un abrazo o el cascabel y muestra a los gatitos haciéndolo.
   Future<void> _mandarMimo(Mimo mimo) async {
     if (_mandandoMimo) return;
     _mandandoMimo = true;
@@ -419,6 +419,12 @@ class _HomeBodyState extends State<_HomeBody> {
     try {
       if (mimo == Mimo.beso) {
         await TogetherService.instance.sendKiss(
+          widget.couple.id,
+          from: me.uid,
+          to: _partnerUid,
+        );
+      } else if (mimo == Mimo.cascabel) {
+        await TogetherService.instance.sendBell(
           widget.couple.id,
           from: me.uid,
           to: _partnerUid,

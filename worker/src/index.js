@@ -405,6 +405,12 @@ const KINDS = {
     dedupeKey: () => "enviado",
     message: (name) => ({ title: "😘 Un beso para ti", body: `${name} te mandó un beso` }),
   },
+  bell: {
+    collection: "cascabeles",
+    check: (d, uid, partner) => d.from === uid && d.to === partner,
+    dedupeKey: () => "enviado",
+    message: (name) => ({ title: "🔔 ¡Tilín, tilín!", body: `${name} hizo sonar su cascabel para ti` }),
+  },
   compra: {
     collection: "casitaMovs",
     check: (d, uid) => d.uid === uid && d.tipo === "compra",

@@ -583,6 +583,14 @@ service cloud.firestore {
           && request.resource.data.from == me();
       }
 
+      // Cascabel: un tilín para llamar la atención de la pareja (botón del
+      // inicio).
+      match /cascabeles/{id} {
+        allow read: if isMember(coupleId);
+        allow create: if isMember(coupleId)
+          && request.resource.data.from == me();
+      }
+
       // ---------- Juegos de pareja ----------
       // juegos/{id}: una partida de "¿Quién es más probable?" o "Adivina mis
       // respuestas". Quien empieza la crea con sus 5 respuestas; la pareja

@@ -159,6 +159,16 @@ D['camara'] = ambos('M12 32 L32 32 L38 22 L58 22 L64 32 L84 32 L84 78 L12 78 Z',
 # buscar la foto en los archivos del celular: carpetita abierta con una foto
 D['carpeta'] = ambos('M10 30 L10 80 L84 80 L84 36 L46 36 L40 26 L16 26 Z', AM) + ambos('M30 20 L66 20 L66 50 L30 50 Z', CE, 4) + relleno('M33 47 L44 34 L52 42 L56 38 L63 47 Z', VE, 0, 0) + ambos('M8 46 L88 46 L82 82 L12 82 Z', AM)
 
+# cascabel de los gatitos (botón del inicio): bolita dorada con su moñito,
+# la ranura de abajo y rayitas de tilín a los lados
+D['cascabel'] = (ambos(CIRC(48, 56, 25), AM)
+                 + linea('M24 50 Q48 58 72 50', 4)
+                 + linea('M40 66 L56 66', 5) + punto(38, 66, 4.2) + punto(58, 66, 4.2)
+                 + linea('M34 42 Q38 36 44 35', 3.4, CR)
+                 + ambos('M48 30 L32 20 L32 36 Z', TO, 4.2) + ambos('M48 30 L64 20 L64 36 Z', TO, 4.2)
+                 + punto(48, 29, 4.6, TO)
+                 + linea('M12 46 L4 42 M12 58 L4 60 M84 46 L92 42 M84 58 L92 60', 3.6, CE))
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')
