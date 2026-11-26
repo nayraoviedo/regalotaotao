@@ -420,7 +420,8 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('B no cobra antes de adivinar', cobrar('B',1,6,hay+6));
   await ok('B adivina', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','pingüinos',{a:true})),estado:'adivinada',acierto:'pinguino',adivinadaPor:'B',terminadaEn:serverTimestamp()}));
   await no('A ya no dibuja en la ronda terminada', trazo('A',2));
-  await no('B no escribe en la ronda terminada', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','otra'))}));
+  await ok('B sigue conversando en la ronda terminada', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','¡otra!'))}));
+  await no('B no marca otro acierto en la ronda terminada', updateDoc(doc(db('B'),R),{mensajes:arrayUnion(msj('B','pinguino',{a:true}))}));
   await no('B no cobra 20', cobrar('B',1,20,hay+20));
   await no('B no cobra en un lugar 4', cobrar('B',4,6,hay+6));
   await ok('B gana 6', cobrar('B',1,6,hay+6));
@@ -432,6 +433,12 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await ok('A empieza otra', ronda('A','r3'));
   await no('A no la marca como rendida', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'rendida',terminadaEn:serverTimestamp()}));
   await ok('A la termina', updateDoc(doc(db('A'),'couples/c1/dibujos/r3'),{estado:'cancelada',terminadaEn:serverTimestamp()}));
+  // Partidas de varios dibujos.
+  await ok('A empieza una partida de 6 dibujos', ronda('A','r4',{partida:'p1',numero:1,total:6}));
+  await no('A no empieza el dibujo 7 de 6', ronda('A','r5',{partida:'p1',numero:7,total:6}));
+  await no('A no hace una partida de 1 dibujo', ronda('A','r5',{partida:'p1',numero:1,total:1}));
+  await no('A no hace una partida de 50 dibujos', ronda('A','r5',{partida:'p1',numero:1,total:50}));
+  await no('A no pone el número como texto', ronda('A','r5',{partida:'p1',numero:'2',total:6}));
 }
 // Juegos juntos: fotos, memorama, rompecabezas y sudoku.
 {
@@ -519,6 +526,17 @@ await no('A no termina la pareja a nombre de B', updateDoc(doc(db('A'),'couples'
   await no('A no cobra el teléfono dos veces', cobrar('A','telefono',2,8,hay+44,'t1',{},'telefonos'));
   await ok('B guarda el teléfono en favoritas', updateDoc(doc(db('B'),T),{favorita:true}));
   await no('B no cambia otra cosa al guardar', updateDoc(doc(db('B'),T),{favorita:false,por:'B'}));
+  // Chat del teléfono.
+  const { arrayUnion } = await import('firebase/firestore');
+  const tmsj = (u, t, extra={}) => ({u, t, en: Date.now(), ...extra});
+  await ok('A escribe en el chat del teléfono', updateDoc(doc(db('A'),T),{mensajes:arrayUnion(tmsj('A','¡Ya te toca!'))}));
+  await ok('B le contesta', updateDoc(doc(db('B'),T),{mensajes:arrayUnion(tmsj('B','Ya voy'))}));
+  await no('B no escribe a nombre de A', updateDoc(doc(db('B'),T),{mensajes:arrayUnion(tmsj('A','x'))}));
+  await no('B no escribe un mensaje larguísimo', updateDoc(doc(db('B'),T),{mensajes:arrayUnion(tmsj('B','x'.repeat(121)))}));
+  await no('B no mete otros datos al mensaje', updateDoc(doc(db('B'),T),{mensajes:arrayUnion(tmsj('B','hola',{a:true}))}));
+  await no('B no borra el chat', updateDoc(doc(db('B'),T),{mensajes:[]}));
+  await no('B no escribe y cambia el progreso a la vez', updateDoc(doc(db('B'),T),{mensajes:arrayUnion(tmsj('B','hey')),'progreso.B':5}));
+  await no('C no escribe en el chat', updateDoc(doc(db('C'),T),{mensajes:arrayUnion(tmsj('C','hola'))}));
 
   // Racha de días jugando juntos.
   const f = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;

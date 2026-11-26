@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
@@ -11,6 +12,7 @@ import '../../theme.dart';
 import '../../widgets/doodle.dart';
 import '../casita/cuarto.dart' show Pescaditos;
 import 'album_telefono_screen.dart';
+import 'chat_juego.dart';
 import 'dibujo_screen.dart' show Herramientas;
 import 'lienzo.dart';
 import 'festejo.dart';
@@ -39,12 +41,98 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
   final _ganado = <String, int>{};
   bool _ocupado = false;
 
+  /// Hasta qué mensaje leíste el chat de cada partida.
+  final _visto = <String, int>{};
+  final _avisado = <String, int>{};
+  bool _chatAbierto = false;
+  bool _chatALaVista = false;
+
   String get _c => widget.couple.id;
   String get _uid => widget.me.uid;
   String get _otro => widget.couple.partnerOf(_uid);
   String get _partnerName => widget.partner?.name ?? 'Tu pareja';
 
+  List<Mensaje> _nuevos(Telefono t) {
+    final visto = _visto[t.id];
+    if (visto == null) return const [];
+    return [
+      for (final m in t.mensajes)
+        if (m.uid != _uid && m.en > visto) m,
+    ];
+  }
+
+  int _ultimo(Telefono t) => t.mensajes.isEmpty ? 0 : t.mensajes.last.en;
+
+  void _marcarLeido(Telefono t) {
+    final u = _ultimo(t);
+    if ((_visto[t.id] ?? 0) >= u) return;
+    if (mounted) setState(() => _visto[t.id] = u);
+    unawaited(ChatVisto.guardar(t.id, u));
+  }
+
+  /// Lleva la cuenta de lo leído y avisa cuando tu pareja escribe.
+  void _revisarChat(Telefono t) {
+    if (!_visto.containsKey(t.id)) {
+      _visto[t.id] = 0;
+      ChatVisto.leer(t.id).then((v) {
+        if (!mounted) return;
+        setState(() => _visto[t.id] = v);
+      });
+      return;
+    }
+    if (_chatAbierto || _chatALaVista) {
+      _marcarLeido(t);
+      return;
+    }
+    final nuevos = _nuevos(t);
+    if (nuevos.isEmpty) return;
+    final ultimo = nuevos.last;
+    if (ultimo.en > (_avisado[t.id] ?? 0)) {
+      _avisado[t.id] = ultimo.en;
+      avisarMensaje(
+        context,
+        partnerName: _partnerName,
+        texto: ultimo.texto,
+        onResponder: () => _abrirChat(t),
+      );
+    }
+  }
+
+  Future<void> _mandar(String telefonoId, String texto) async {
+    try {
+      await _svc.mandarTelefono(_c, telefonoId, _uid, texto);
+    } catch (_) {
+      _aviso('No se pudo mandar, intenta otra vez');
+    }
+  }
+
+  Future<void> _abrirChat(Telefono t) async {
+    setState(() => _chatAbierto = true);
+    _marcarLeido(t);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final id = t.id;
+    await abrirChat(
+      context,
+      lineas: _svc
+          .watchTelefono(_c)
+          .where((x) => x != null && x.id == id)
+          .map((x) => lineasTelefono(x!, _uid, _partnerName)),
+      iniciales: lineasTelefono(t, _uid, _partnerName),
+      uid: _uid,
+      partnerName: _partnerName,
+      titulo: 'Chat del teléfono',
+      hint: 'Escríbele a $_partnerName…',
+      vacio: 'Hablen aquí mientras juegan. ¡Sin decir la frase secreta! 🤫',
+      rapidas: Telefono.rapidas,
+      maxLength: Telefono.maxMensaje,
+      onMandar: (x) => _mandar(id, x),
+    );
+    if (!mounted) return;
+    setState(() => _chatAbierto = false);
+  }
+
   void _alVer(Telefono t) {
+    _revisarChat(t);
     if (t.puedeCobrar(_uid) && _cobradas.add(t.id)) {
       _svc
           .cobrarTelefono(_c, _uid, t.id)
@@ -106,67 +194,102 @@ class _TelefonoScreenState extends State<TelefonoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Teléfono descompuesto')),
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<Telefono?>(
-          stream: _partidas,
-          builder: (context, s) {
-            if (s.hasError) {
-              return const Center(child: Text('No se pudo cargar el juego'));
-            }
-            if (!s.hasData && s.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final t = s.data;
-            if (t != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) => _alVer(t));
-            }
-            if (t == null) {
-              return _Inicio(
-                partnerName: _partnerName,
-                ocupado: _ocupado,
-                onEmpezar: _empezar,
-                onAlbum: _album,
-              );
-            }
-            if (t.listos(_uid, _otro)) {
-              return RevelacionPartida(
-                key: ValueKey(t.id),
-                coupleId: _c,
-                telefono: t,
-                uid: _uid,
-                partnerName: _partnerName,
-                ganado: _ganado[t.id],
-                ocupado: _ocupado,
-                onOtra: _empezar,
-                onAlbum: _album,
-              );
-            }
-            final turno = t.hechos(_uid);
-            if (!t.puedeJugar(_uid, _otro)) {
-              return _Esperando(
-                partnerName: _partnerName,
-                terminaste: turno >= Telefono.turnos,
-              );
-            }
-            return _Turno(
-              key: ValueKey('${t.id}:$turno'),
-              coupleId: _c,
-              telefono: t,
-              uid: _uid,
-              otro: _otro,
-              partnerName: _partnerName,
-              ocupado: _ocupado,
-              onListo: (p) => _jugar(t, p),
-            );
-          },
+    return StreamBuilder<Telefono?>(
+      stream: _partidas,
+      builder: (context, s) {
+        final t = s.data;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Teléfono descompuesto'),
+            actions: [
+              if (t != null)
+                BotonChat(
+                  nuevos: _nuevos(t).length,
+                  onPressed: () => _abrirChat(t),
+                ),
+            ],
+          ),
+          body: SafeArea(top: false, child: _cuerpo(s)),
+        );
+      },
+    );
+  }
+
+  Widget _cuerpo(AsyncSnapshot<Telefono?> s) {
+    _chatALaVista = false;
+    if (s.hasError) {
+      return const Center(child: Text('No se pudo cargar el juego'));
+    }
+    if (!s.hasData && s.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final t = s.data;
+    if (t != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _alVer(t));
+    }
+    if (t == null) {
+      return _Inicio(
+        partnerName: _partnerName,
+        ocupado: _ocupado,
+        onEmpezar: _empezar,
+        onAlbum: _album,
+      );
+    }
+    if (t.listos(_uid, _otro)) {
+      return RevelacionPartida(
+        key: ValueKey(t.id),
+        coupleId: _c,
+        telefono: t,
+        uid: _uid,
+        partnerName: _partnerName,
+        ganado: _ganado[t.id],
+        ocupado: _ocupado,
+        onOtra: _empezar,
+        onAlbum: _album,
+      );
+    }
+    final turno = t.hechos(_uid);
+    if (!t.puedeJugar(_uid, _otro)) {
+      _chatALaVista = true;
+      return _Esperando(
+        partnerName: _partnerName,
+        terminaste: turno >= Telefono.turnos,
+        chat: PanelChat(
+          lineas: lineasTelefono(t, _uid, _partnerName),
+          uid: _uid,
+          partnerName: _partnerName,
+          onMandar: (x) => _mandar(t.id, x),
+          hint: 'Escríbele a $_partnerName…',
+          vacio:
+              'Mientras esperas, escríbele a $_partnerName. '
+              '¡Sin decir tu frase! 🤫',
+          rapidas: Telefono.rapidas,
+          maxLength: Telefono.maxMensaje,
         ),
-      ),
+      );
+    }
+    return _Turno(
+      key: ValueKey('${t.id}:$turno'),
+      coupleId: _c,
+      telefono: t,
+      uid: _uid,
+      otro: _otro,
+      partnerName: _partnerName,
+      ocupado: _ocupado,
+      onListo: (p) => _jugar(t, p),
     );
   }
 }
+
+/// Los renglones del chat de una partida del teléfono.
+List<LineaChat> lineasTelefono(Telefono t, String uid, String partnerName) => [
+  for (final m in t.mensajes) LineaChat.de(m),
+  if (t.terminada)
+    const LineaChat(
+      tipo: TipoLinea.exito,
+      texto: '¡Terminaron! Miren cómo cambiaron las frases 🎉',
+    ),
+];
 
 class _Inicio extends StatelessWidget {
   const _Inicio({
@@ -277,43 +400,68 @@ class _PremioInfo extends StatelessWidget {
 }
 
 class _Esperando extends StatelessWidget {
-  const _Esperando({required this.partnerName, required this.terminaste});
+  const _Esperando({
+    required this.partnerName,
+    required this.terminaste,
+    this.chat,
+  });
   final String partnerName;
   final bool terminaste;
 
+  /// El chat, para hablar mientras esperan.
+  final Widget? chat;
+
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) {
+    final aviso = _aviso(context);
+    if (chat == null) return Center(child: aviso);
+    return LayoutBuilder(
+      builder: (context, c) => Column(
         children: [
-          Image.asset(
-            'assets/images/juego_esperando.png',
-            height: 170,
-            errorBuilder: (_, _, _) => const SizedBox(),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            terminaste ? '¡Ya hiciste toda tu parte!' : '¡Listo!',
-            style: TextStyle(
-              color: AppTheme.azul,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
+          // Si hay poco espacio (el teclado abierto), el dibujito se achica.
+          Flexible(child: SingleChildScrollView(child: aviso)),
+          SizedBox(
+            height: (c.maxHeight * 0.48).clamp(200.0, 360.0),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: chat,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            terminaste
-                ? 'Cuando $partnerName termine, aquí verán cómo cambiaron '
-                      'sus frases.'
-                : 'Ahora le toca a $partnerName. Te avisamos cuando sea tu '
-                      'turno.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.gris, fontSize: 14.5),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _aviso(BuildContext context) => Padding(
+    padding: EdgeInsets.all(chat == null ? 28 : 18),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          'assets/images/juego_esperando.png',
+          height: chat == null ? 170 : 120,
+          errorBuilder: (_, _, _) => const SizedBox(),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          terminaste ? '¡Ya hiciste toda tu parte!' : '¡Listo!',
+          style: TextStyle(
+            color: AppTheme.azul,
+            fontSize: 21,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          terminaste
+              ? 'Cuando $partnerName termine, aquí verán cómo cambiaron '
+                    'sus frases.'
+              : 'Ahora le toca a $partnerName. Te avisamos cuando sea tu '
+                    'turno.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppTheme.gris, fontSize: 14.5),
+        ),
+      ],
     ),
   );
 }

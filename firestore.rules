@@ -735,6 +735,13 @@ service cloud.firestore {
         function cambia() {
           return request.resource.data.diff(resource.data).affectedKeys();
         }
+        // Partida de varios dibujos: el dibujo numero de total (2 a 20).
+        function partidaValida(d) {
+          return !('partida' in d)
+            || (d.partida is string && d.partida.size() > 0 && d.partida.size() <= 40
+              && d.total is int && d.total >= 2 && d.total <= 20
+              && d.numero is int && d.numero >= 1 && d.numero <= d.total);
+        }
         function enJuego() {
           return resource.data.estado == 'dibujando';
         }
@@ -748,10 +755,10 @@ service cloud.firestore {
             && m.u == me()
             && m.t is string && m.t.size() > 0 && m.t.size() <= 60;
         }
-        // Un mensaje del chat (de cualquiera de los dos).
+        // Un mensaje del chat (de cualquiera de los dos). También se puede
+        // seguir conversando cuando la ronda ya terminó.
         function chatea() {
-          return enJuego()
-            && cambia().hasOnly(['mensajes'])
+          return cambia().hasOnly(['mensajes'])
             && nuevoMensaje()
             && request.resource.data.mensajes[request.resource.data.mensajes.size() - 1]
                  .get('a', false) == false;
@@ -798,7 +805,9 @@ service cloud.firestore {
         allow read: if isMember(coupleId);
         allow create: if isMember(coupleId)
           && request.resource.data.keys()
-               .hasOnly(['dibuja', 'palabra', 'clave', 'estado', 'mensajes', 'borradoHasta', 'creadaEn'])
+               .hasOnly(['dibuja', 'palabra', 'clave', 'estado', 'mensajes', 'borradoHasta', 'creadaEn',
+                         'partida', 'numero', 'total'])
+          && partidaValida(request.resource.data)
           && request.resource.data.dibuja == me()
           && request.resource.data.palabra is string
           && request.resource.data.palabra.size() > 0
@@ -995,7 +1004,21 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favorita'])
             && request.resource.data.favorita is bool;
         }
-        allow update: if isMember(coupleId) && (juega() || cobraPartida() || favorita());
+        // Un mensaje del chat de la partida (en cualquier momento).
+        function chatea() {
+          let antes = resource.data.get('mensajes', []);
+          let ahora = request.resource.data.mensajes;
+          let m = ahora[ahora.size() - 1];
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mensajes'])
+            && ahora is list
+            && ahora.size() == antes.size() + 1
+            && ahora.size() <= 150
+            && m.keys().hasOnly(['u', 't', 'en'])
+            && m.u == me()
+            && m.t is string && m.t.size() > 0 && m.t.size() <= 120
+            && m.en is int;
+        }
+        allow update: if isMember(coupleId) && (juega() || cobraPartida() || favorita() || chatea());
         allow delete: if false;
 
         // Una frase (pasos 0, 2 y 4) o un dibujo (pasos 1 y 3). Los pasos

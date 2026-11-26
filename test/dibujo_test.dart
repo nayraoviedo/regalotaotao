@@ -3,9 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/dibujo.dart';
+import 'package:taotao/screens/juegos_juntos/chat_juego.dart';
 import 'package:taotao/screens/juegos_juntos/dibujo_screen.dart';
 import 'package:taotao/screens/juegos_juntos/juegos_juntos_screen.dart';
+import 'package:taotao/models/telefono.dart';
 import 'package:taotao/screens/juegos_juntos/lienzo.dart';
+import 'package:taotao/screens/juegos_juntos/telefono_screen.dart';
 
 Ronda ronda({
   String dibuja = 'a',
@@ -13,8 +16,19 @@ Ronda ronda({
   List<Mensaje> mensajes = const [],
   String? adivinadaPor,
   Map<String, String> cobros = const {},
+  String id = 'r1',
+  String? partida,
+  int numero = 1,
+  int total = 0,
+  DateTime? creadaEn,
+  DateTime? terminadaEn,
 }) => Ronda(
-  id: 'r1',
+  id: id,
+  partida: partida,
+  numero: numero,
+  total: total,
+  creadaEn: creadaEn,
+  terminadaEn: terminadaEn,
   dibuja: dibuja,
   palabra: 'Pingüino',
   clave: Dibujos.clave('Pingüino'),
@@ -131,10 +145,73 @@ void main() {
       expect(find.text('¿Qué está dibujando Ana?'), findsOneWidget);
       expect(find.textContaining('_ _ _ _ _ _ _ _'), findsOneWidget);
       expect(find.byType(Herramientas), findsNothing);
-      expect(find.text('pato'), findsOneWidget);
+      // El chat, como en los juegos de dibujar en línea: "Tú: pato".
+      expect(find.byType(PanelChat), findsOneWidget);
+      expect(find.text('Tú: pato', findRichText: true), findsOneWidget);
+      expect(
+        find.textContaining('Ana está dibujando', findRichText: true),
+        findsOneWidget,
+      );
       await t.enterText(find.byType(TextField), 'pingüino');
       await t.testTextInput.receiveAction(TextInputAction.send);
-      expect(mandados, ['pingüino']);
+      await t.tap(find.text('¿Una pista?'));
+      expect(mandados, ['pingüino', '¿Una pista?']);
+    });
+
+    testWidgets('el chat resalta el acierto y cuenta los puntos', (t) async {
+      await t.binding.setSurfaceSize(const Size(400, 820));
+      final inicio = DateTime(2026, 11, 26, 10);
+      final r = ronda(
+        estado: EstadoRonda.adivinada,
+        adivinadaPor: 'b',
+        partida: 'p',
+        numero: 2,
+        total: 6,
+        creadaEn: inicio,
+        terminadaEn: inicio.add(const Duration(seconds: 30)),
+        mensajes: const [
+          Mensaje(uid: 'b', texto: 'pato', en: 1),
+          Mensaje(uid: 'a', texto: '¡Caliente!', en: 2),
+          Mensaje(uid: 'b', texto: 'pingüino', en: 3, acierto: true),
+        ],
+      );
+      final lineas = lineasRonda(r, 'a', 'Beto');
+      expect(lineas.first.texto, 'Dibujo 2 de 6: tú dibujas ✍');
+      expect(lineas.where((l) => l.tipo == TipoLinea.acierto), hasLength(1));
+      expect(lineas.last.texto, '+90 puntos para Beto y +45 para ti');
+      // Si siguen conversando, los puntos quedan justo después del acierto.
+      final despues = lineasRonda(
+        ronda(
+          estado: EstadoRonda.adivinada,
+          adivinadaPor: 'b',
+          partida: 'p',
+          numero: 2,
+          total: 6,
+          mensajes: const [
+            Mensaje(uid: 'b', texto: 'pingüino', en: 3, acierto: true),
+            Mensaje(uid: 'a', texto: '¡Bien!', en: 4),
+          ],
+        ),
+        'a',
+        'Beto',
+      );
+      expect(despues.map((l) => l.tipo), [
+        TipoLinea.aviso,
+        TipoLinea.acierto,
+        TipoLinea.exito,
+        TipoLinea.mensaje,
+      ]);
+      await t.pumpWidget(
+        app(PanelChat(lineas: lineas, uid: 'a', partnerName: 'Beto')),
+      );
+      expect(
+        find.text('¡Beto adivinó! pingüino', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('Beto: pato', findRichText: true), findsOneWidget);
+      expect(find.text('Tú: ¡Caliente!', findRichText: true), findsOneWidget);
+      // Sin onMandar solo se lee.
+      expect(find.byType(TextField), findsNothing);
     });
 
     testWidgets('dibujar con el dedo arma un trazo', (t) async {
@@ -172,16 +249,84 @@ void main() {
             uid: 'b',
             partnerName: 'Ana',
             meToca: true,
-            onEmpezar: (p) => elegida = p,
+            onEmpezar: (p, total) => elegida = '$p/$total',
             onQuieroDibujar: () {},
           ),
         ),
       );
       expect(find.text('¡Adivinaste!'), findsOneWidget);
-      expect(find.text('¡Ahora dibujas tú!'), findsOneWidget);
+      // Una ronda suelta (de antes): la siguiente empieza una partida.
+      expect(find.text('Nueva partida'), findsOneWidget);
       expect(find.textContaining('Ganaron 6 pescaditos'), findsOneWidget);
+      await t.tap(find.text('8 dibujos'));
+      await t.pump();
       await t.tap(find.byType(OutlinedButton).first);
-      expect(Dibujos.palabras, contains(elegida));
+      expect(elegida, endsWith('/8'));
+      expect(Dibujos.palabras, contains(elegida!.split('/').first));
+    });
+
+    testWidgets('a media partida sigue el siguiente dibujo', (t) async {
+      await t.binding.setSurfaceSize(const Size(400, 900));
+      await t.pumpWidget(
+        app(
+          EntreRondas(
+            ronda: ronda(
+              estado: EstadoRonda.adivinada,
+              adivinadaPor: 'b',
+              partida: 'p',
+              numero: 2,
+              total: 4,
+            ),
+            uid: 'b',
+            partnerName: 'Ana',
+            meToca: true,
+            onEmpezar: (_, _) {},
+            onQuieroDibujar: () {},
+          ),
+        ),
+      );
+      expect(find.text('Dibujo 3 de 4: ¡dibujas tú!'), findsOneWidget);
+      expect(find.text('Nueva partida'), findsNothing);
+      expect(find.text('Dibujo 2 de 4'), findsOneWidget);
+    });
+
+    testWidgets('al final de la partida se ve quién ganó', (t) async {
+      await t.binding.setSurfaceSize(const Size(400, 900));
+      final inicio = DateTime(2026, 11, 26, 10);
+      Ronda r(int n, String dibuja, String adivina, int segundos) => ronda(
+        id: 'r$n',
+        dibuja: dibuja,
+        estado: EstadoRonda.adivinada,
+        adivinadaPor: adivina,
+        partida: 'p',
+        numero: n,
+        total: 2,
+        creadaEn: inicio,
+        terminadaEn: inicio.add(Duration(seconds: segundos)),
+      );
+      // b adivina en 60 s (80, y 40 para a) y a en 3 s (99, y 50 para b).
+      final m = Marcador([r(1, 'a', 'b', 60), r(2, 'b', 'a', 3)], ['a', 'b']);
+      expect(m.terminada, isTrue);
+      expect(m.puntos('a'), 99 + 40);
+      expect(m.puntos('b'), 80 + 50);
+      expect(m.ganador, 'a');
+      await t.pumpWidget(
+        app(
+          EntreRondas(
+            ronda: m.rondas.last,
+            marcador: m,
+            uid: 'b',
+            partnerName: 'Ana',
+            meToca: true,
+            onEmpezar: (_, _) {},
+            onQuieroDibujar: () {},
+          ),
+        ),
+      );
+      expect(find.text('¡Ganó Ana!'), findsOneWidget);
+      expect(find.text('139'), findsOneWidget);
+      expect(find.text('130'), findsOneWidget);
+      expect(find.text('¿Otra partida?'), findsOneWidget);
     });
 
     testWidgets('entre rondas: le toca a la pareja', (t) async {
@@ -193,7 +338,7 @@ void main() {
             uid: 'a',
             partnerName: 'Beto',
             meToca: false,
-            onEmpezar: (_) {},
+            onEmpezar: (_, _) {},
             onQuieroDibujar: () {},
           ),
         ),
@@ -232,6 +377,19 @@ void main() {
         find.textContaining('teléfono descompuesto, memorama'),
         findsOneWidget,
       );
+    });
+
+    test('el teléfono descompuesto también tiene chat', () {
+      const t = Telefono(
+        id: 't',
+        por: 'a',
+        terminada: true,
+        mensajes: [Mensaje(uid: 'b', texto: '¡Ya te toca!', en: 1)],
+      );
+      final l = lineasTelefono(t, 'a', 'Beto');
+      expect(l.first.texto, '¡Ya te toca!');
+      expect(l.first.uid, 'b');
+      expect(l.last.tipo, TipoLinea.exito);
     });
 
     testWidgets('la sección muestra el juego de dibujar', (t) async {

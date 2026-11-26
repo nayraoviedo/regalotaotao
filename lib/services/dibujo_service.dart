@@ -45,8 +45,26 @@ class DibujoService {
               ..sort((a, b) => a.n.compareTo(b.n)),
       );
 
-  /// Empieza una ronda: [uid] dibuja [palabra]. Le avisa a la pareja.
-  Future<String> empezar(String coupleId, String uid, String palabra) async {
+  /// Todas las rondas de una partida (para el marcador).
+  Stream<List<Ronda>> watchPartida(String coupleId, String partida) =>
+      _col(coupleId)
+          .where('partida', isEqualTo: partida)
+          .snapshots()
+          .map((q) => [for (final d in q.docs) ?Ronda.fromDoc(d)]);
+
+  /// Id para una partida nueva.
+  String nuevaPartida(String coupleId) => _col(coupleId).doc().id;
+
+  /// Empieza una ronda: [uid] dibuja [palabra]. Es el dibujo [numero] de
+  /// [total] de la [partida]. Le avisa a la pareja.
+  Future<String> empezar(
+    String coupleId,
+    String uid,
+    String palabra, {
+    required String partida,
+    required int numero,
+    required int total,
+  }) async {
     final ref = _col(coupleId).doc();
     final p = palabra.trim();
     await ref.set({
@@ -56,6 +74,9 @@ class DibujoService {
       'estado': EstadoRonda.dibujando.id,
       'mensajes': <Object>[],
       'borradoHasta': 0,
+      'partida': partida,
+      'numero': numero,
+      'total': total,
       'creadaEn': FieldValue.serverTimestamp(),
     });
     NotifyService.instance.send(NotifyKind.dibujo, coupleId, ref.id);
