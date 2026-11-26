@@ -52,6 +52,7 @@ beforeEach(() => {
     "couples/c1/pomodoros/p1": { invitedBy: "ana", invitee: "beto", minutes: 50, status: "pending" },
     "couples/c1/achievements/a1": { uid: "ana", kind: "tarea", rewardId: "r1", rewardTitle: "Un helado" },
     "couples/c1/besos/b1": { from: "ana", to: "beto" },
+    "couples/c1/cascabeles/k1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -153,17 +154,19 @@ test("te extraño llega a la pareja y borra el token viejo", async () => {
   assert.deepEqual(docs["users/beto"].data.fcmTokens, ["tok-bueno"]);
 });
 
-test("besos y abrazos llegan con su texto", async () => {
+test("besos, abrazos y cascabel llegan con su texto", async () => {
   const t = await idToken("ana");
-  for (const [kind, docId] of [["kiss", "b1"], ["hug", "h1"], ["hug", "h2"]]) {
+  for (const [kind, docId] of [["kiss", "b1"], ["hug", "h1"], ["hug", "h2"], ["bell", "k1"]]) {
     assert.equal((await call({ kind, coupleId: "c1", docId }, t)).status, 200);
   }
   assert.deepEqual(sent.map((m) => m.notification.body), [
     "Ana te mandó un beso",
     "Ana te manda un abrazo apretado",
     "Ana vio cómo te sientes y te manda un abrazo apretado",
+    "Ana hizo sonar su cascabel para ti",
   ]);
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
+  assert.equal((await call({ kind: "bell", coupleId: "c1", docId: "k1" }, await idToken("beto"))).status, 403);
 });
 
 test("compras de la casita avisan a la pareja", async () => {

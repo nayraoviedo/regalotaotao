@@ -58,6 +58,8 @@ await no('A no se hace pasar por B', addDoc(collection(db('A'),'couples/c1/missY
 await ok('A abraza a B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'A',to:'B',mood:'triste'}));
 await ok('A manda un beso a B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'A',to:'B'}));
 await no('A no manda besos en nombre de B', addDoc(collection(db('A'),'couples/c1/besos'),{from:'B',to:'A'}));
+await ok('A hace sonar el cascabel para B', addDoc(collection(db('A'),'couples/c1/cascabeles'),{from:'A',to:'B'}));
+await no('A no hace sonar el cascabel en nombre de B', addDoc(collection(db('A'),'couples/c1/cascabeles'),{from:'B',to:'A'}));
 await no('A no abraza en nombre de B', addDoc(collection(db('A'),'couples/c1/abrazos'),{from:'B',to:'A',mood:'triste'}));
 // Música juntos.
 const sala = (u) => doc(db(u),'couples/c1/musica/sala');

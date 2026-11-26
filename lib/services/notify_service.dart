@@ -15,6 +15,7 @@ enum NotifyKind {
   letter,
   hug,
   kiss,
+  bell,
   compra,
   propuesta,
   juego,
