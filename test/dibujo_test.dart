@@ -83,6 +83,16 @@ void main() {
       expect(Dibujos.palabras.toSet().length, Dibujos.palabras.length);
     });
 
+    test('las palabras salen del tema elegido y no se repiten', () {
+      final claves = [for (final p in Dibujos.palabras) Dibujos.clave(p)];
+      expect(claves.toSet().length, claves.length);
+      for (final t in Dibujos.temas.keys) {
+        final r = Dibujos.elegir({}, math.Random(1), t);
+        expect(r, hasLength(3));
+        expect(Dibujos.temas[t], containsAll(r));
+      }
+    });
+
     test('a quién le toca y quién cobra', () {
       final r = ronda(estado: EstadoRonda.adivinada, adivinadaPor: 'b');
       expect(r.siguiente(['a', 'b']), 'b');
@@ -258,7 +268,7 @@ void main() {
       // Una ronda suelta (de antes): la siguiente empieza una partida.
       expect(find.text('Nueva partida'), findsOneWidget);
       expect(find.textContaining('Ganaron 6 pescaditos'), findsOneWidget);
-      await t.tap(find.text('8 dibujos'));
+      await t.tap(find.text('4 cada uno'));
       await t.pump();
       await t.tap(find.byType(OutlinedButton).first);
       expect(elegida, endsWith('/8'));
@@ -287,7 +297,7 @@ void main() {
       );
       expect(find.text('Dibujo 3 de 4: ¡dibujas tú!'), findsOneWidget);
       expect(find.text('Nueva partida'), findsNothing);
-      expect(find.text('Dibujo 2 de 4'), findsOneWidget);
+      expect(find.text('Dibujo 3 de 4'), findsOneWidget);
     });
 
     testWidgets('al final de la partida se ve quién ganó', (t) async {

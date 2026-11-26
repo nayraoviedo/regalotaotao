@@ -496,7 +496,7 @@ class _EnVivoState extends State<_EnVivo> {
     final antes = _intentoAgotar;
     if (antes != null && ahora.difference(antes).inSeconds < 4) return;
     _intentoAgotar = ahora;
-    unawaited(_svc.agotar(widget.coupleId, r).catchError((_) {}));
+    unawaited(_svc.agotar(widget.coupleId, r, widget.uid).catchError((_) {}));
   }
 
   Future<void> _mandar(String texto) async {
@@ -744,7 +744,9 @@ class BarraPartida extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            'Dibujo ${ronda.numero} de ${ronda.total}',
+            // Entre ronda y ronda ya se muestra el dibujo que sigue.
+            'Dibujo ${ronda.enJuego || ronda.ultima ? ronda.numero : ronda.numero + 1} '
+            'de ${ronda.total}',
             style: TextStyle(
               color: AppTheme.crema,
               fontSize: 12.5,
@@ -1217,7 +1219,21 @@ class EntreRondas extends StatefulWidget {
 }
 
 class _EntreRondasState extends State<EntreRondas> {
+  /// Tema de las palabras (null: de todo un poco).
+  String? _tema;
   late List<String> _opciones = Dibujos.elegir(widget.recientes);
+
+  void _otras({bool cambiarTodas = true}) => setState(
+    () => _opciones = Dibujos.elegir(
+      {
+        ...widget.recientes,
+        if (cambiarTodas)
+          for (final o in _opciones) Dibujos.clave(o),
+      },
+      null,
+      _tema,
+    ),
+  );
   final _propia = TextEditingController();
   int _total = Dibujos.partidaPorDefecto;
 
@@ -1255,6 +1271,14 @@ class _EntreRondasState extends State<EntreRondas> {
             uid: widget.uid,
             partnerName: widget.partnerName,
           ),
+          if (m != null && m.porCadaUno > 0) ...[
+            const SizedBox(height: 6),
+            _Turnos(
+              marcador: m,
+              uid: widget.uid,
+              partnerName: widget.partnerName,
+            ),
+          ],
           const SizedBox(height: 10),
         ],
         if (r == null)
@@ -1280,9 +1304,9 @@ class _EntreRondasState extends State<EntreRondas> {
             ),
             const SizedBox(height: 4),
             const Text(
-              '¿Cuántos dibujos? Se turnan para dibujar, cada dibujo tiene '
-              '1 minuto y al final gana quien junte más puntos (adivinar '
-              'rápido da más).',
+              '¿Cuántos dibujos hace cada uno? Se turnan para dibujar, cada '
+              'dibujo tiene 1 minuto y al final gana quien junte más puntos '
+              '(adivinar rápido da más).',
               style: TextStyle(color: AppTheme.gris, fontSize: 14),
             ),
             const SizedBox(height: 8),
@@ -1291,7 +1315,7 @@ class _EntreRondasState extends State<EntreRondas> {
               children: [
                 for (final n in Dibujos.opcionesPartida)
                   ChoiceChip(
-                    label: Text('$n dibujos'),
+                    label: Text('${n ~/ 2} cada uno'),
                     selected: _total == n,
                     onSelected: (_) => setState(() => _total = n),
                     selectedColor: AppTheme.amarillo.withValues(alpha: 0.55),
@@ -1322,7 +1346,35 @@ class _EntreRondasState extends State<EntreRondas> {
             'solo ve tu dibujo.',
             style: const TextStyle(color: AppTheme.gris, fontSize: 14),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final t in [null, ...Dibujos.temas.keys])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(t ?? 'De todo'),
+                      selected: _tema == t,
+                      onSelected: (_) {
+                        _tema = t;
+                        _otras(cambiarTodas: false);
+                      },
+                      showCheckmark: false,
+                      selectedColor: AppTheme.amarillo.withValues(alpha: 0.55),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: AppTheme.azul,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           for (final p in _opciones)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1345,15 +1397,7 @@ class _EntreRondasState extends State<EntreRondas> {
                 ),
               ),
             ),
-          TextButton(
-            onPressed: () => setState(
-              () => _opciones = Dibujos.elegir({
-                ...widget.recientes,
-                for (final o in _opciones) Dibujos.clave(o),
-              }),
-            ),
-            child: const Text('Otras palabras'),
-          ),
+          TextButton(onPressed: _otras, child: const Text('Otras palabras')),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1435,6 +1479,31 @@ class _EntreRondasState extends State<EntreRondas> {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Cuántos dibujos lleva cada uno en la partida: "Tú 2 de 3 · Taotao 1 de 3".
+class _Turnos extends StatelessWidget {
+  const _Turnos({
+    required this.marcador,
+    required this.uid,
+    required this.partnerName,
+  });
+
+  final Marcador marcador;
+  final String uid;
+  final String partnerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = marcador;
+    final otro = m.members.firstWhere((x) => x != uid, orElse: () => '');
+    final n = m.porCadaUno;
+    return Text(
+      'Dibujos de cada uno: tú ${m.dibujados(uid)} de $n  ·  '
+      '$partnerName ${m.dibujados(otro)} de $n',
+      style: const TextStyle(color: AppTheme.gris, fontSize: 13),
     );
   }
 }
