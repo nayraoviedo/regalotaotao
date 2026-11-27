@@ -14,12 +14,12 @@ enum TipoSaludo {
     _ => null,
   };
 
-  /// Qué saludo toca a esta hora: buenos días de 4 a 12, buenas noches de
-  /// 19 a 4. En la tarde no toca ninguno.
+  /// Qué saludo toca a esta hora: buenos días de 5 a 12, buenas noches de
+  /// 21 (9 de la noche) a 5. En la tarde no toca ninguno.
   static TipoSaludo? aEstaHora(DateTime ahora) {
     final h = ahora.hour;
-    if (h >= 4 && h < 12) return dias;
-    if (h >= 19 || h < 4) return noches;
+    if (h >= 5 && h < 12) return dias;
+    if (h >= 21 || h < 5) return noches;
     return null;
   }
 
