@@ -16,6 +16,7 @@ import 'hitos.dart';
 import '../../widgets/doodle.dart';
 import '../../widgets/hoy_builder.dart';
 import '../../widgets/texto_doodle.dart';
+import '../../models/fechas.dart';
 
 const _meses = [
   'enero',
@@ -122,20 +123,13 @@ class DiasJuntosView extends StatelessWidget {
   final Widget? capsula;
 
   @override
-  Widget build(BuildContext context) =>
-      HoyBuilder(hoy: hoy, builder: _build);
+  Widget build(BuildContext context) => HoyBuilder(hoy: hoy, builder: _build);
 
   /// [today] cambia solo a medianoche, así el contador y el dato curioso
   /// se renuevan aunque la pantalla se quede abierta.
   Widget _build(BuildContext context, DateTime today) {
     final start = couple.startDate;
-    final dias = start == null
-        ? null
-        : DateTime(
-            today.year,
-            today.month,
-            today.day,
-          ).difference(DateTime(start.year, start.month, start.day)).inDays;
+    final dias = start == null ? null : diasEntre(start, today);
 
     return Scaffold(
       extendBodyBehindAppBar: true,

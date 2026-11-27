@@ -1,3 +1,5 @@
+import '../../models/fechas.dart';
+
 /// Hitos de la relación: cada 100 días y cada aniversario.
 class Hito {
   const Hito({
@@ -32,7 +34,7 @@ class Hito {
   static Hito proximo(DateTime inicio, DateTime hoy) {
     final start = DateTime(inicio.year, inicio.month, inicio.day);
     final today = DateTime(hoy.year, hoy.month, hoy.day);
-    final juntos = today.difference(start).inDays;
+    final juntos = diasEntre(start, today);
 
     // Todos los hitos (en días) hasta un poco después de hoy.
     final hitos = <int, String>{};
@@ -41,7 +43,7 @@ class Hito {
     }
     for (var n = 1; ; n++) {
       final aniv = DateTime(start.year + n, start.month, start.day);
-      final d = aniv.difference(start).inDays;
+      final d = diasEntre(start, aniv);
       // Si coincide con un múltiplo de 100, gana el aniversario.
       hitos[d] = n == 1 ? '1 año' : '$n años';
       if (d >= juntos) break;

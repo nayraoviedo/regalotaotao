@@ -1650,6 +1650,16 @@ void main() {
       // El menú ☰ muestra todas, con lo que les falta.
       await t.tap(find.text('Menú'));
       await t.pumpAndSettle();
+      await t.scrollUntilVisible(
+        find.text('Almuerzo y cena'),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(Drawer),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       expect(find.text('Almuerzo y cena'), findsOneWidget);
       expect(
         find.byWidgetPredicate(

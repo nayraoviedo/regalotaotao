@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/peli.dart';
 import '../models/recomendacion.dart' show Resena;
 import 'db.dart';
 import 'notify_service.dart';
+import 'resumen_service.dart';
 
 /// Dramas y pelis que ven juntos (couples/{id}/pelis/{id}).
 class PelisService {
@@ -56,6 +59,23 @@ class PelisService {
     });
     if (avanzo) {
       NotifyService.instance.send(NotifyKind.capitulo, coupleId, p.id);
+    }
+    // Para el resumen del mes: capítulos que avanzaron y pelis terminadas.
+    final terminoPeli =
+        p.tipo == TipoPeli.pelicula &&
+        p.estado == EstadoPeli.vista &&
+        antes.estado != EstadoPeli.vista;
+    final caps = p.tipo.tieneCapitulos && p.capitulo > antes.capitulo
+        ? p.capitulo - antes.capitulo
+        : 0;
+    if (caps > 0 || terminoPeli) {
+      unawaited(
+        ResumenService.instance.vieron(
+          coupleId,
+          capitulos: caps,
+          pelis: terminoPeli ? 1 : 0,
+        ),
+      );
     }
   }
 

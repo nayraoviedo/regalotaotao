@@ -31,6 +31,12 @@ class _PairingScreenState extends State<PairingScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
   Future<void> _link() async {
     if (_code.text.trim().isEmpty) return;
     setState(() {
@@ -44,7 +50,7 @@ class _PairingScreenState extends State<PairingScreen> {
       );
       // AuthGate cambia solo a la pantalla de inicio.
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

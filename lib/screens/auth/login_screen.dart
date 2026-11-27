@@ -22,6 +22,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _verContrasena = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     setState(() {
       _loading = true;
@@ -38,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await AuthService.instance.signIn(_email.text.trim(), _password.text);
       }
     } catch (e) {
-      setState(() => _error = AuthService.message(e));
+      if (mounted) setState(() => _error = AuthService.message(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -52,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthService.instance.signInWithGoogle();
     } catch (e) {
-      setState(() => _error = AuthService.message(e));
+      if (mounted) setState(() => _error = AuthService.message(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

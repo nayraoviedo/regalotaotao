@@ -6,6 +6,7 @@ import '../../services/together_service.dart';
 import '../../widgets/doodle.dart';
 import 'carta_style.dart';
 import 'criatura.dart';
+import '../../models/fechas.dart';
 
 const _meses = [
   'enero',
@@ -35,7 +36,7 @@ const _dias = [
 String nombreDelDia(DateTime d, DateTime hoy) {
   final a = DateTime(hoy.year, hoy.month, hoy.day);
   final b = DateTime(d.year, d.month, d.day);
-  final diff = a.difference(b).inDays;
+  final diff = diasEntre(b, a);
   if (diff == 0) return 'Hoy';
   if (diff == 1) return 'Ayer';
   final base = '${_dias[d.weekday - 1]} ${d.day} de ${_meses[d.month - 1]}';
@@ -144,7 +145,7 @@ class _HistorialPreguntasScreenState extends State<HistorialPreguntasScreen> {
         final utiles = dias.where((d) => d.tieneRespuestas).toList();
         _dias.addAll(utiles);
         nuevos += utiles.length;
-        _hasta = desde.subtract(const Duration(days: 1));
+        _hasta = DateTime(desde.year, desde.month, desde.day - 1);
         if (TogetherService.todayKey(_hasta).compareTo(_primerDia!) < 0) {
           _fin = true;
         }

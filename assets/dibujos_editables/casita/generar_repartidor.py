@@ -525,6 +525,43 @@ RECETAS = {
         "..www..www..",
     ], {"w": (250, 228, 234), "r": ROJO}),
     "helado_sandia": en_tazon(ROSA, AZUL_CLARO, [(3, 0, VERDE), (5, 0, TRAZO), (7, 0, ROJO), (9, 0, TRAZO)]),
+    # ---- más rollos de canela (27-11-2026)
+    "rollos_canela_glaseado": en_plato([
+        "..gggg.gggg.",
+        ".gggggggggg.",
+        ".gCcCg.gCcCg",
+        "..CCCC.CCCC.",
+    ], {"g": GLASEADO, "C": CANELA, "c": MASA}),
+    "rollos_canela_chocolate": en_plato([
+        "..hhhh.hhhh.",
+        ".hChCh.hChCh",
+        ".gcCcg.gcCcg",
+        "..CCCC.CCCC.",
+    ], {"h": (110, 64, 40), "g": GLASEADO, "C": CANELA, "c": MASA}),
+    "rollos_canela_miel": en_plato([
+        "..mmmm.mmmm.",
+        ".mCcCm.mCcCm",
+        ".gcCcg.gcCcg",
+        "..CCCC.CCCC.",
+    ], {"m": (240, 176, 50), "g": GLASEADO, "C": CANELA, "c": MASA}),
+    "rollos_canela_calabaza": en_plato([
+        "..gggg.gggg.",
+        ".gNcNg.gNcNg",
+        ".gcNcg.gcNcg",
+        "..NNNN.NNNN.",
+    ], {"g": GLASEADO, "N": NARANJA, "c": MASA}),
+    "rollos_canela_fresa": en_plato([
+        "..grrg.grrg.",
+        ".gCcCg.gCcCg",
+        ".gcCcg.gcCcg",
+        "..CCCC.CCCC.",
+    ], {"g": GLASEADO, "r": ROJO, "C": CANELA, "c": MASA}),
+    "rollos_canela_arandano": en_plato([
+        "..gbbg.gbbg.",
+        ".gCcCg.gCcCg",
+        ".gcCcg.gcCcg",
+        "..CCCC.CCCC.",
+    ], {"g": GLASEADO, "b": (70, 80, 160), "C": CANELA, "c": MASA}),
 }
 
 
