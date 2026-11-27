@@ -5,6 +5,9 @@ import 'package:taotao/models/recomendacion.dart' show Resena;
 import 'package:taotao/screens/pelis/peli_form.dart';
 import 'package:taotao/screens/pelis/pelis_inicio.dart';
 import 'package:taotao/screens/pelis/pelis_screen.dart';
+import 'package:taotao/screens/pelis/ruleta_pelis.dart';
+
+import 'dart:math' as math;
 
 Peli peli({
   String id = 'p1',
@@ -366,4 +369,148 @@ void main() {
       expect(res?.progreso, 'Cap. 7 de 25');
     },
   );
+
+  group('Ruleta', () {
+    test('solo entra lo que ven o tienen por ver, máximo 12', () {
+      final pelis = [
+        for (var i = 0; i < 20; i++) peli(id: '$i', estado: EstadoPeli.porVer),
+        peli(id: 'v', estado: EstadoPeli.vista),
+      ];
+      final o = opcionesRuleta(pelis, azar: math.Random(1));
+      expect(o.length, maxEnRuleta);
+      expect(o.any((p) => p.id == 'v'), isFalse);
+      expect(opcionesRuleta([peli(estado: EstadoPeli.vista)]), isEmpty);
+    });
+
+    testWidgets('gira, elige una y la comparte', (t) async {
+      String? vista;
+      GiroRuleta? compartido;
+      final opciones = [
+        peli(id: '1', titulo: 'Hidden Love'),
+        peli(id: '2', titulo: 'Spy x Family', tipo: TipoPeli.anime),
+        peli(id: '3', titulo: 'Chihiro', tipo: TipoPeli.pelicula),
+      ];
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: RuletaPelis(
+              opciones: opciones,
+              miUid: 'a',
+              azar: math.Random(3),
+              onGirar: (g) async => compartido = g,
+              onVer: (id) => vista = id,
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('Girar la ruleta'));
+      await t.pump(const Duration(seconds: 1));
+      expect(find.text('Girando…'), findsOneWidget);
+      expect(compartido?.por, 'a');
+      expect(compartido?.opciones.length, 3);
+      await t.pumpAndSettle();
+      expect(find.textContaining('Hoy toca'), findsOneWidget);
+      await t.tap(find.text('¡A verla!'));
+      expect(vista, compartido!.resultado.id);
+    });
+
+    testWidgets('si gira tu pareja, gira igual y cae en lo mismo', (t) async {
+      final ahora = DateTime(2026, 11, 27, 10);
+      Widget ruleta(GiroRuleta? g) => app(
+        Scaffold(
+          body: RuletaPelis(
+            opciones: [
+              peli(id: '1'),
+              peli(id: '2'),
+            ],
+            giro: g,
+            miUid: 'a',
+            partnerName: 'Tao',
+            ahora: () => ahora,
+            onGirar: (_) async {},
+            onVer: (_) {},
+          ),
+        ),
+      );
+      await t.pumpWidget(ruleta(null));
+      final giro = GiroRuleta(
+        por: 'b',
+        opciones: const [
+          OpcionRuleta('x', 'Go Ahead'),
+          OpcionRuleta('y', 'Hidden Love'),
+          OpcionRuleta('z', 'Chihiro'),
+        ],
+        elegida: 2,
+        jitter: 0.1,
+        token: 't1',
+        cuando: ahora,
+      );
+      await t.pumpWidget(ruleta(giro));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.text('¡Tao está girando la ruleta!'), findsOneWidget);
+      await t.pumpAndSettle();
+      expect(find.text('Tao giró y toca: Chihiro'), findsOneWidget);
+    });
+
+    testWidgets('un giro viejo se muestra quieto con su resultado', (t) async {
+      final ahora = DateTime(2026, 11, 27, 10);
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: RuletaPelis(
+              opciones: const [],
+              giro: GiroRuleta(
+                por: 'a',
+                opciones: const [
+                  OpcionRuleta('x', 'Go Ahead'),
+                  OpcionRuleta('y', 'Hidden Love'),
+                ],
+                elegida: 0,
+                jitter: 0,
+                token: 't0',
+                cuando: ahora.subtract(const Duration(hours: 3)),
+              ),
+              miUid: 'a',
+              ahora: () => ahora,
+              onGirar: (_) async {},
+              onVer: (_) {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Hoy toca: Go Ahead'), findsOneWidget);
+      expect(find.text('Girando…'), findsNothing);
+    });
+
+    test('GiroRuleta: ida y vuelta, y datos malos no rompen', () {
+      const g = GiroRuleta(
+        por: 'a',
+        opciones: [OpcionRuleta('x', 'Uno'), OpcionRuleta('y', 'Dos')],
+        elegida: 1,
+        jitter: 0.2,
+        token: 't',
+      );
+      final r = GiroRuleta.fromMap(g.toMap())!;
+      expect(r.resultado.titulo, 'Dos');
+      expect(r.jitter, 0.2);
+      expect(GiroRuleta.fromMap({'opciones': [], 'elegida': 0}), isNull);
+      expect(GiroRuleta.fromMap(null), isNull);
+    });
+
+    testWidgets('con menos de dos pide agregar más', (t) async {
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: RuletaPelis(
+              opciones: [peli()],
+              onGirar: (_) async {},
+              onVer: (_) {},
+            ),
+          ),
+        ),
+      );
+      expect(find.textContaining('al menos dos'), findsOneWidget);
+      expect(find.text('Girar la ruleta'), findsNothing);
+    });
+  });
 }

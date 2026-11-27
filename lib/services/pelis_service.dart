@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/peli.dart';
 import '../models/recomendacion.dart' show Resena;
 import 'db.dart';
+import 'notify_service.dart';
 
 /// Dramas y pelis que ven juntos (couples/{id}/pelis/{id}).
 class PelisService {
@@ -37,14 +38,26 @@ class PelisService {
       });
 
   /// Cambia el título, el tipo, en qué van, etc. Si recién la terminaron,
-  /// guarda cuándo.
-  Future<void> editar(String coupleId, Peli antes, Peli p) =>
-      _col(coupleId).doc(p.id).update({
-        ...p.contenido(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        if (p.estado == EstadoPeli.vista && antes.estado != EstadoPeli.vista)
-          'terminadaEn': FieldValue.serverTimestamp(),
-      });
+  /// guarda cuándo. Si [uid] avanzó de capítulo, se anota y se le avisa a
+  /// su pareja (Worker, aviso "capitulo").
+  Future<void> editar(
+    String coupleId,
+    Peli antes,
+    Peli p, {
+    String? uid,
+  }) async {
+    final avanzo = uid != null && p.capitulo > antes.capitulo;
+    await _col(coupleId).doc(p.id).update({
+      ...p.contenido(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (p.estado == EstadoPeli.vista && antes.estado != EstadoPeli.vista)
+        'terminadaEn': FieldValue.serverTimestamp(),
+      if (avanzo) 'avanzoPor': uid,
+    });
+    if (avanzo) {
+      NotifyService.instance.send(NotifyKind.capitulo, coupleId, p.id);
+    }
+  }
 
   /// Guarda (o quita, con `null`) mi reseña.
   Future<void> resenar(String coupleId, String id, String uid, Resena? r) =>
@@ -55,4 +68,18 @@ class PelisService {
 
   Future<void> borrar(String coupleId, String id) =>
       _col(coupleId).doc(id).delete();
+
+  // ---- Ruleta compartida ----
+  DocumentReference<Map<String, dynamic>> _ruleta(String coupleId) =>
+      Db.coupleSub(coupleId, 'ruleta').doc('actual');
+
+  Stream<GiroRuleta?> watchRuleta(String coupleId) =>
+      _ruleta(coupleId).snapshots().map((d) => GiroRuleta.fromMap(d.data()));
+
+  /// Guarda el giro (en el otro celular gira igual) y le avisa a la pareja.
+  Future<void> girar(String coupleId, GiroRuleta g) async {
+    await _ruleta(coupleId)
+        .set({...g.toMap(), 'at': FieldValue.serverTimestamp()});
+    NotifyService.instance.send(NotifyKind.ruleta, coupleId, 'actual');
+  }
 }

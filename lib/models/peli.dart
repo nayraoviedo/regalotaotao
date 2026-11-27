@@ -269,3 +269,71 @@ List<Peli> topDeLosDos(List<Peli> pelis) {
   });
   return con;
 }
+
+/// Una opción de la ruleta (lo justo para dibujarla en los dos celulares).
+class OpcionRuleta {
+  const OpcionRuleta(this.id, this.titulo);
+  final String id;
+  final String titulo;
+
+  factory OpcionRuleta.de(Peli p) => OpcionRuleta(p.id, p.titulo);
+
+  Map<String, dynamic> toMap() => {'id': id, 'titulo': titulo};
+}
+
+/// El último giro de la ruleta (couples/{id}/ruleta/actual). Los dos lo
+/// escuchan: quien gira lo guarda y en el otro celular gira igual y cae en
+/// la misma.
+class GiroRuleta {
+  const GiroRuleta({
+    required this.por,
+    required this.opciones,
+    required this.elegida,
+    required this.jitter,
+    required this.token,
+    this.cuando,
+  });
+
+  final String por;
+  final List<OpcionRuleta> opciones;
+
+  /// Índice de la que salió.
+  final int elegida;
+
+  /// Dónde cae la flechita dentro de su porción (de -0.3 a 0.3), para que
+  /// en los dos celulares se detenga en el mismo lugar.
+  final double jitter;
+
+  /// Identifica cada giro (para no girar dos veces el mismo).
+  final String token;
+  final DateTime? cuando;
+
+  OpcionRuleta get resultado => opciones[elegida];
+
+  static GiroRuleta? fromMap(Map<String, dynamic>? d) {
+    if (d == null) return null;
+    final ops = [
+      for (final o in (d['opciones'] as List? ?? const []))
+        if (o is Map)
+          OpcionRuleta(o['id'] as String? ?? '', o['titulo'] as String? ?? ''),
+    ];
+    final e = (d['elegida'] as num?)?.toInt() ?? -1;
+    if (ops.length < 2 || e < 0 || e >= ops.length) return null;
+    return GiroRuleta(
+      por: d['por'] as String? ?? '',
+      opciones: ops,
+      elegida: e,
+      jitter: ((d['jitter'] as num?)?.toDouble() ?? 0).clamp(-0.3, 0.3),
+      token: d['token'] as String? ?? '',
+      cuando: (d['at'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'por': por,
+    'opciones': [for (final o in opciones) o.toMap()],
+    'elegida': elegida,
+    'jitter': jitter,
+    'token': token,
+  };
+}
