@@ -149,7 +149,7 @@ const NOMBRES_CASITA = {
   espantapajaros: "un espantapájaros gatito",
   girasoles: "semillas de girasoles gigantes",
   tomatera: "semillas de tomate",
-  maiz: "semillas de maíz",
+  maiz: "semillas de elote (choclo)",
   zanahorias: "semillas de zanahoria",
   fresas: "semillas de fresa",
   lechugas: "semillas de lechuga",
@@ -620,6 +620,16 @@ const KINDS = {
     message: (name, d) => ({
       title: "🐟 ¿Lo compramos?",
       body: `${name} quiere comprar ${NOMBRES_CASITA[d.propuesta.cosa] || "algo"} para la casita. ¿Le das el sí?`,
+    }),
+  },
+  // Cocinar juntos: uno puso algo en la olla y la pareja tiene que picar.
+  olla: {
+    collection: "casita",
+    check: (d, uid) => d.cocinando?.de === uid,
+    dedupeKey: (d) => d.cocinando.id,
+    message: (name, d) => ({
+      title: "🍳 ¡A cocinar juntos!",
+      body: `${name} está cocinando ${d.cocinando.nombre || "algo rico"}. Ayúdale a picar para que salga 🔪`,
     }),
   },
   // Juegos de pareja: al empezar una partida le toca a la pareja; cuando

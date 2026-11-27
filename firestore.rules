@@ -1267,13 +1267,17 @@ service cloud.firestore {
           && request.resource.data.keys()
                .hasOnly(['pescaditos', 'ultimoMov', 'tenemos', 'puestos', 'ropa', 'topes', 'foto',
                          'regalos', 'meta', 'ahorrado', 'aportes', 'propuesta', 'pushSentFor', 'bebes',
-                         'sembrado', 'despensa', 'cocinado', 'reparto'])
+                         'sembrado', 'despensa', 'cocinado', 'reparto', 'cocinando', 'libro'])
           // Cuándo se sembró cada semilla: {cosa: milisegundos}.
           && request.resource.data.get('sembrado', {}) is map
           // Lo recogido del huerto ({tomate: 3}) y lo último que cocinaron
           // con eso ({receta, en}).
           && request.resource.data.get('despensa', {}) is map
           && request.resource.data.get('cocinado', {}) is map
+          // Cocinar juntos: lo que está en la olla esperando que la pareja
+          // pique, y el libro de recetas ({receta: {veces, primera, ultima}}).
+          && request.resource.data.get('cocinando', {}) is map
+          && request.resource.data.get('libro', {}) is map
           // La semana (su lunes, yyyy-MM-dd) en que recibieron la caja del
           // repartidor con lo básico.
           && request.resource.data.get('reparto', '') is string

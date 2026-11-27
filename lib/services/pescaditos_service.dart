@@ -647,7 +647,10 @@ class PescaditosService {
         'pescaditos': estado.pescaditos - precio,
         'ultimoMov': movRef.id,
         'despensa': {
-          for (final e in Repartidor.caja.entries)
+          for (final e in Repartidor.cajaPara(
+            semana,
+            despensa: estado.despensa,
+          ).entries)
             e.key.name: estado.hay(e.key) + e.value,
         },
         'reparto': semana,
@@ -656,26 +659,91 @@ class PescaditosService {
     });
   }
 
-  /// Cocinan [receta] con lo de la despensa. Devuelve false si ya no
-  /// alcanza (por ejemplo, la pareja cocinó otra cosa justo antes).
+  /// Lo que se guarda al cocinar [receta]: se gasta de la despensa, es lo
+  /// que comen y se anota en el libro de recetas.
+  static Map<String, Object?> _alCocinar(EstadoCasita estado, Receta receta) {
+    final ahora = DateTime.now().millisecondsSinceEpoch;
+    final antes = estado.libro[receta];
+    return {
+      'despensa': {
+        for (final e in receta.ingredientes.entries)
+          e.key.name: estado.hay(e.key) - e.value,
+      },
+      'cocinado': {'receta': receta.name, 'en': ahora},
+      'libro': {
+        receta.name: {
+          'veces': (antes?.veces ?? 0) + 1,
+          'primera': antes?.primera.millisecondsSinceEpoch ?? ahora,
+          'ultima': ahora,
+        },
+      },
+    };
+  }
+
+  /// Cocinan [receta] con lo de la despensa (cuando no tienen pareja
+  /// vinculada). Devuelve false si ya no alcanza.
   Future<bool> cocinar(String coupleId, Receta receta) async {
     final ref = _estado(coupleId);
     return Db.instance.runTransaction((tx) async {
       final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
       if (!estado.puedeCocinar(receta)) return false;
+      tx.set(ref, _alCocinar(estado, receta), SetOptions(merge: true));
+      return true;
+    });
+  }
+
+  /// Cocinar juntos: uno pone [receta] en la olla y le avisa a la pareja,
+  /// que tiene que ayudar picando ([picar]) para que salga. Devuelve false
+  /// si no alcanza o ya hay algo en la olla.
+  Future<bool> ponerEnLaOlla(String coupleId, String uid, Receta receta) async {
+    final ref = _estado(coupleId);
+    final ahora = DateTime.now();
+    final listo = await Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      if (!estado.puedeCocinar(receta) || estado.ollaEn(ahora) != null) {
+        return false;
+      }
       tx.set(ref, {
-        'despensa': {
-          for (final e in receta.ingredientes.entries)
-            e.key.name: estado.hay(e.key) - e.value,
-        },
-        'cocinado': {
+        'cocinando': {
+          'id': '${receta.name}_${ahora.millisecondsSinceEpoch}',
           'receta': receta.name,
-          'en': DateTime.now().millisecondsSinceEpoch,
+          'nombre': receta.nombre,
+          'de': uid,
+          'en': ahora.millisecondsSinceEpoch,
         },
       }, SetOptions(merge: true));
       return true;
     });
+    if (listo) NotifyService.instance.send(NotifyKind.olla, coupleId, 'estado');
+    return listo;
   }
+
+  /// La pareja ayuda picando: ahora sí sale lo de la olla. Devuelve la
+  /// receta, o null si ya no había nada (o ya no alcanza).
+  Future<Receta?> picar(String coupleId, String uid) async {
+    final ref = _estado(coupleId);
+    return Db.instance.runTransaction((tx) async {
+      final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
+      final olla = estado.ollaEn(DateTime.now());
+      if (olla == null || olla.de == uid) return null;
+      if (!estado.puedeCocinar(olla.receta)) {
+        tx.set(ref, {
+          'cocinando': FieldValue.delete(),
+        }, SetOptions(merge: true));
+        return null;
+      }
+      tx.set(ref, {
+        ..._alCocinar(estado, olla.receta),
+        'cocinando': FieldValue.delete(),
+      }, SetOptions(merge: true));
+      return olla.receta;
+    });
+  }
+
+  /// Quien puso la olla la apaga (ya no quiere cocinar eso).
+  Future<void> apagarOlla(String coupleId) =>
+      _estado(coupleId)
+          .set({'cocinando': FieldValue.delete()}, SetOptions(merge: true));
 
   /// Le pone nombre a un gatito bebé adoptado.
   Future<void> nombrarBebe(String coupleId, Cosa bebe, String nombre) =>

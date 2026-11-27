@@ -187,6 +187,91 @@ BASICOS = {
 }
 
 
+PESCADO = (150, 176, 206)
+PESCADO_OSC = (100, 130, 170)
+CHOCO = (110, 64, 40)
+CHOCO_CLARO = (150, 96, 60)
+MIEL = (240, 176, 50)
+MISO = (200, 150, 90)
+PAVO = (176, 110, 70)
+PAVO_CLARO = (214, 150, 100)
+
+BASICOS.update({
+    "pescado": ([
+        "..........",
+        "..........",
+        "..oooooo.o",
+        ".oPPPPPPoo",
+        "oPkPPpPPPo",
+        "oPPPPpPPPo",
+        ".oPPPPPPoo",
+        "..oooooo.o",
+        "..........",
+        "..........",
+    ], {"o": TRAZO, "P": PESCADO, "p": PESCADO_OSC, "k": TRAZO}),
+    "chocolate": ([
+        "..........",
+        ".oooooooo.",
+        ".oCcCcCco.",
+        ".occccccо.".replace("о", "o"),
+        ".oCcCcCco.",
+        ".occccccо.".replace("о", "o"),
+        ".oRRRRRRo.",
+        ".oRWWWWRo.",
+        ".oRRRRRRo.",
+        ".oooooooo.",
+    ], {"o": TRAZO, "C": CHOCO_CLARO, "c": CHOCO, "R": ROJO, "W": BLANCO}),
+    "miel": ([
+        "...oooo...",
+        "..oAAAAo..",
+        "..oooooo..",
+        ".oMMMMMMo.",
+        ".oMWMMMMo.",
+        ".oMMmmMMo.",
+        ".oMmMMmMo.",
+        ".oMMmmMMo.",
+        ".oMMMMMMo.",
+        "..oooooo..",
+    ], {"o": TRAZO, "A": AZUL_CLARO, "M": MIEL, "m": AMARILLO_OSC, "W": BLANCO}),
+    "miso": ([
+        "..........",
+        "..........",
+        "...oooo...",
+        "..oMMMMo..",
+        ".oMMmMMMo.",
+        "oooooooooo",
+        "oWWWWWWWWo",
+        ".oWAAAAWo.",
+        "..oWWWWo..",
+        "...oooo...",
+    ], {"o": TRAZO, "M": MISO, "m": CARAMELO, "W": BLANCO, "A": AZUL_CLARO}),
+    "pavo": ([
+        "..........",
+        "...oooo...",
+        "..oPPPPoo.",
+        ".oPPpPPPWo",
+        "oPPPPPpPWo",
+        "oPpPPPPPo.",
+        ".oPPPPPPo.",
+        "..oooooo..",
+        "..........",
+        "..........",
+    ], {"o": TRAZO, "P": PAVO, "p": PAVO_CLARO, "W": BLANCO}),
+    "cuy": ([
+        "..........",
+        "..........",
+        "..oo..oo..",
+        ".oCCooCCo.",
+        "oCCCCCCCCo",
+        "oCkCCCWCCo",
+        "oCCCrCWWCo",
+        ".oCCCCCCo.",
+        "..oooooo..",
+        "..........",
+    ], {"o": TRAZO, "C": (200, 140, 90), "W": BLANCO, "k": TRAZO, "r": ROSA}),
+})
+
+
 def basico(nombre):
     filas, pal = BASICOS[nombre]
     m = Mini(12, 12)
@@ -246,6 +331,36 @@ def pizza(cubierta, pal):
 
 
 RECETAS = {
+    "sushi": en_plato([
+        "............",
+        ".kwk.kwk.kwk",
+        ".wpw.wsw.wpw",
+        ".kwk.kwk.kwk",
+    ], {"k": (40, 70, 50), "w": BLANCO, "p": PALTA, "s": (240, 140, 110)}),
+    "pescado_arroz": en_plato([
+        "............",
+        ".ppppp.www..",
+        "pPkpppwwwww.",
+        ".ppppp.www..",
+    ], {"p": (150, 176, 206), "P": (100, 130, 170), "k": TRAZO, "w": BLANCO}),
+    "galletas_chocolate": en_plato([
+        "............",
+        "..ttt..ttt..",
+        ".tCtCt.tCttC",
+        "..ttt..ttt..",
+    ], {"t": TRIGO, "C": (110, 64, 40)}),
+    "fresas_chocolate": en_plato([
+        "..v..v..v...",
+        ".rrr.rrr.rrr",
+        ".ccc.ccc.ccc",
+        "..c...c...c.",
+    ], {"v": VERDE, "r": ROJO, "c": (110, 64, 40)}),
+    "tostadas_miel": en_plato([
+        "............",
+        "..mmmmmmm...",
+        "..MyMyMyM...",
+        "..ppppppp...",
+    ], {"m": (240, 176, 50), "y": AMARILLO, "M": MANTEQUILLA, "p": PAN}),
     "rollos_canela": en_plato([
         "..gggg.gggg.",
         ".gCcCg.gCcCg",
@@ -320,6 +435,96 @@ RECETAS = {
         ".cCcCc.cCcCc",
         "..ccc..ccc..",
     ], {"c": TRIGO, "C": CANELA_OSC}),
+    # ---- lote de recetas de varios países (27-11-2026)
+    "huevos_rancheros": en_plato([
+        "............",
+        ".ttttttttt..",
+        ".trrwyrwyrt.",
+        ".ttttttttt..",
+    ], {"t": AMARILLO, "r": ROJO, "w": HUEVO, "y": YEMA}),
+    "shakshuka": en_plato([
+        "............",
+        "..rrrrrrrr..",
+        ".rwyrrrwyrv.",
+        "..rrrrrrrr..",
+    ], {"r": ROJO_OSC, "w": HUEVO, "y": YEMA, "v": VERDE}),
+    "pan_frances": en_plato([
+        "............",
+        "..pppp.pppp.",
+        "..pPmp.pPmp.",
+        "..PPPP.PPPP.",
+    ], {"p": PAN, "P": PAN_OSC, "m": MANTEQUILLA}),
+    "waffles_fresa": en_plato([
+        "...r..r.....",
+        "..wWwWwWw...",
+        "..WwWwWwW...",
+        "..wWwWwWw...",
+    ], {"w": PAN, "W": PAN_OSC, "r": ROJO}),
+    "congee": en_tazon(HUEVO, AZUL_CLARO, [(3, 0, VERDE), (6, 0, YEMA), (8, 0, VERDE)]),
+    "pad_thai": en_plato([
+        "............",
+        ".nnynnvnny..",
+        "nnpnnynnpnnv",
+        ".nnnnnnnnn..",
+    ], {"n": (236, 196, 130), "y": YEMA, "v": VERDE, "p": POLLO_OSC}),
+    "pollo_teriyaki": en_plato([
+        "............",
+        ".TTTT.wwww..",
+        "TtTTtTwwwww.",
+        ".TTTT.wwww..",
+    ], {"T": CARAMELO, "t": (140, 80, 40), "w": BLANCO}),
+    "ramen": en_tazon((230, 190, 130), ROJO, [(3, 0, HUEVO), (4, 0, YEMA), (7, 0, VERDE), (9, 0, CARNE_CLARA)]),
+    "goulash": en_tazon(CARNE, CREMA, [(3, 0, NARANJA), (6, 0, ROJO_OSC), (8, 0, NARANJA)]),
+    "pescado_papas": en_plato([
+        "............",
+        ".ppppp.y.y.y",
+        "pPpPpp.yyyy.",
+        ".ppppp.y.y..",
+    ], {"p": (226, 170, 90), "P": PAN_OSC, "y": AMARILLO}),
+    "ceviche": en_tazon(HUEVO, AZUL, [(3, 0, ROSA), (5, 0, VERDE), (7, 0, (150, 90, 160)), (9, 0, AMARILLO)]),
+    "enchiladas": en_plato([
+        "............",
+        ".rrrrrrrrrr.",
+        ".rqrrqrrqrr.",
+        ".RRRRRRRRRR.",
+    ], {"r": ROJO, "q": QUESO, "R": ROJO_OSC}),
+    "moussaka": en_plato([
+        "............",
+        "..qqqqqqqq..",
+        "..BBBBBBBB..",
+        "..cccccccc..",
+    ], {"q": MANTEQUILLA, "B": BERENJENA, "c": CARNE}),
+    "quiche": en_plato([
+        "............",
+        "..pppppppp..",
+        ".pyvyyrvyyp.",
+        "..pppppppp..",
+    ], {"p": PAN, "y": YEMA, "v": VERDE, "r": ROJO}),
+    "tarta_fresa": en_plato([
+        "............",
+        "..rrrrrrrr..",
+        ".rwrwrwrwrw.",
+        "..pppppppp..",
+    ], {"r": ROJO, "w": GLASEADO, "p": PAN}),
+    "pie_calabaza_receta": en_plato([
+        "............",
+        "..ppppppp...",
+        ".pnnnwnnnp..",
+        "..ppppppp...",
+    ], {"p": PAN, "n": NARANJA, "w": GLASEADO}),
+    "brownies": en_plato([
+        "............",
+        ".bbbb.bbbb..",
+        ".bBbb.bBbb..",
+        ".BBBB.BBBB..",
+    ], {"b": (110, 64, 40), "B": (80, 44, 28)}),
+    "mochi_fresa": en_plato([
+        "............",
+        "..www..www..",
+        ".wwrww.wrww.",
+        "..www..www..",
+    ], {"w": (250, 228, 234), "r": ROJO}),
+    "helado_sandia": en_tazon(ROSA, AZUL_CLARO, [(3, 0, VERDE), (5, 0, TRAZO), (7, 0, ROJO), (9, 0, TRAZO)]),
 }
 
 

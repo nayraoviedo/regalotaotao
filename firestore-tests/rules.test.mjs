@@ -315,6 +315,10 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('B compra algo grande solo, sin pedir el sí', ganar('B','compra_sofa_rosa',{tipo:'compra',cantidad:-120,ref:'sofa_rosa'},115,{tenemos:['cuadro_corazon','sofa_azul','sofa_rosa']}));
   await ok('A le pone nombre al gatito bebé', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:{calico:'Mochi'}},{merge:true}));
   await no('los nombres de los bebés van en un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{bebes:'Mochi'},{merge:true}));
+  await ok('A pone algo en la olla para cocinar juntos', setDoc(doc(db('A'),'couples/c1/casita/estado'),{cocinando:{id:'pizza_1',receta:'pizzaAjo',nombre:'pizza de ajo',de:'A',en:1}},{merge:true}));
+  await ok('B pica y sale: se anota en el libro', setDoc(doc(db('B'),'couples/c1/casita/estado'),{cocinando:deleteField(),libro:{pizzaAjo:{veces:1,primera:1,ultima:1}}},{merge:true}));
+  await no('la olla tiene que ser un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{cocinando:'x'},{merge:true}));
+  await no('el libro tiene que ser un mapa', setDoc(doc(db('A'),'couples/c1/casita/estado'),{libro:[1]},{merge:true}));
   await ok('B quita el cuadro', setDoc(doc(db('B'),'couples/c1/casita/estado'),{puestos:{cuadro:''}},{merge:true}));
   await no('B no se regala pescaditos', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{pescaditos:999}));
   await no('B no borra lo que compraron', updateDoc(doc(db('B'),'couples/c1/casita/estado'),{tenemos:[]}));

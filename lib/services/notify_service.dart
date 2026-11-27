@@ -27,6 +27,7 @@ enum NotifyKind {
   notaLeida,
   capsula,
   saludo,
+  olla,
   capitulo,
   ruleta,
 }

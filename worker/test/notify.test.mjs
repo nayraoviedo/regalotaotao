@@ -76,7 +76,7 @@ beforeEach(() => {
     "couples/c1/letters/l5": { from: "ana", to: "beto", cuando: "sea Qixi", fiesta: "qixi", avisarEn: null, openedAt: null },
     "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
     "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
-    "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
+    "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" }, cocinando: { id: "ramen_1", receta: "ramen", nombre: "ramen", de: "ana", en: 1 } },
     "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
     "couples/c1/juegos/j1": { juego: "probable", por: "ana", terminada: false, preguntas: [1, 2, 3, 4, 5], respuestas: { ana: ["ana", "beto", "ana", "ana", "beto"] } },
     "couples/c1/dibujos/d1": { dibuja: "ana", palabra: "gato", clave: "gato", estado: "dibujando", mensajes: [] },
@@ -241,6 +241,14 @@ test("compras de la casita avisan a la pareja", async () => {
   assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_cama_estrellas" }, t)).status, 200);
   assert.deepEqual(sent.map((m) => m.notification.body), ["Ana te dejó un regalo envuelto en la casita. ¡Ábrelo!"]);
   assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, await idToken("beto"))).status, 403);
+});
+
+test("cocinar juntos: la pareja ayuda a picar", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "olla", coupleId: "c1", docId: "estado" }, t)).status, 200);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].notification.body, /^Ana está cocinando ramen\. Ayúdale a picar/);
+  assert.equal((await call({ kind: "olla", coupleId: "c1", docId: "estado" }, await idToken("beto"))).status, 403);
 });
 
 test("las compras grandes le piden el sí a la pareja", async () => {
