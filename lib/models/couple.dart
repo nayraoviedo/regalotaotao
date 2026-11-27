@@ -46,7 +46,11 @@ class Couple {
     return Couple(
       id: doc.id,
       members: List<String>.from(d['members'] as List? ?? const []),
-      startDate: (d['startDate'] as Timestamp?)?.toDate(),
+      // Mismo día para los dos aunque vivan en países con distinta hora.
+      startDate: switch (d['startDate']) {
+        final Timestamp t => fechaGuardada(t.toDate()),
+        _ => null,
+      },
       endedAt: (d['endedAt'] as Timestamp?)?.toDate(),
     );
   }

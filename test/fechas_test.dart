@@ -19,4 +19,17 @@ void main() {
     expect(JuegosExtrasService.ayer(DateTime(2026, 3, 9, 0, 30)), '2026-03-08');
     expect(JuegosExtrasService.ayer(DateTime(2026, 1, 1, 12)), '2025-12-31');
   });
+
+  test('la fecha de inicio es el mismo día en los dos países', () {
+    // Elegida el 14 de febrero en Bolivia (UTC-4) o en China (UTC+8), como
+    // se guardaba antes (medianoche local de quien la eligió)…
+    final bolivia = DateTime.utc(2023, 2, 14, 4);
+    final china = DateTime.utc(2023, 2, 13, 16);
+    // …y como se guarda ahora.
+    final nueva = fechaParaGuardar(DateTime(2023, 2, 14));
+    for (final t in [bolivia, china, nueva]) {
+      expect(fechaGuardada(t), DateTime(2023, 2, 14));
+    }
+    expect(nueva, DateTime.utc(2023, 2, 14));
+  });
 }
