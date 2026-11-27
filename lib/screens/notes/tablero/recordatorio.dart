@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../widgets/doodle.dart';
 import '../../../widgets/permisos_alarma.dart';
 import 'notas_style.dart';
+import '../../../models/fechas.dart';
 
 /// Recordatorio de una nota: a la hora elegida suena una alarma con
 /// maullidos. La programa cada celular (AlarmaRecordatorios) y además la
@@ -29,7 +30,7 @@ String textoDelRecordatorio(DateTime cuando, {DateTime? ahora}) {
   final hoy = DateUtils.dateOnly(ahora ?? DateTime.now());
   final dia = DateUtils.dateOnly(cuando);
   final hora = '${cuando.hour}:${cuando.minute.toString().padLeft(2, '0')}';
-  final diferencia = dia.difference(hoy).inDays;
+  final diferencia = diasEntre(hoy, dia);
   final fecha = switch (diferencia) {
     0 => 'hoy',
     1 => 'mañana',

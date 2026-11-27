@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'fechas.dart';
+
 /// Una cápsula del tiempo de la pareja: un frasco donde los dos guardan
 /// mensajes (y fotos) que quedan cerrados para LOS DOS hasta [abrirEl].
 ///
@@ -48,7 +50,7 @@ class Capsula {
     if (abierta(hoy)) return '¡ya se puede abrir!';
     final d0 = DateTime(hoy.year, hoy.month, hoy.day);
     final d1 = DateTime(abrirEl.year, abrirEl.month, abrirEl.day);
-    final dias = d1.difference(d0).inDays;
+    final dias = diasEntre(d0, d1);
     if (dias <= 0) {
       final h = abrirEl.difference(hoy).inHours;
       return h <= 0 ? 'en un ratito' : 'en $h ${h == 1 ? 'hora' : 'horas'}';

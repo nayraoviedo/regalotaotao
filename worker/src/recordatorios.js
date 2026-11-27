@@ -87,9 +87,10 @@ async function avisar(deps, nota, ahora) {
   const coupleId = esCompartida
     ? partes[1]
     : (await deps.leer(`users/${autor}`))?.data.coupleId;
-  const members = coupleId
-    ? (await deps.leer(`couples/${coupleId}`))?.data.members || []
-    : [];
+  const couple = coupleId ? (await deps.leer(`couples/${coupleId}`))?.data : null;
+  // Si ya se desvincularon, una nota de los dos no avisa a nadie y una
+  // privada solo le llega a quien la escribió.
+  const members = couple && couple.endedAt == null ? couple.members || [] : [];
   const pareja = members.includes(autor) ? members.find((m) => m !== autor) : null;
 
   let para;
@@ -164,7 +165,9 @@ async function avisarCarta(deps, carta, ahora) {
   if (!(ahora - cuando <= MUY_VIEJO_MS)) return 0;
   const fiesta = FIESTAS[d.fiesta];
   if (!fiesta || d.openedAt != null) return 0;
-  const members = (await deps.leer(`couples/${partes[1]}`))?.data.members || [];
+  const couple = (await deps.leer(`couples/${partes[1]}`))?.data;
+  if (!couple || couple.endedAt != null) return 0;
+  const members = couple.members || [];
   if (!members.includes(d.from) || !members.includes(d.to) || d.from === d.to) return 0;
   const nombre = (await deps.leer(`users/${d.from}`))?.data.name || "Tu pareja";
   const [emoji, que] = fiesta;
@@ -183,7 +186,9 @@ async function avisarCapsula(deps, capsula, ahora) {
   const cuando = Date.parse(d.avisarEn);
   if (!(await deps.limpiar(capsula.path, capsula.updateTime))) return 0;
   if (!(ahora - cuando <= MUY_VIEJO_MS)) return 0;
-  const members = (await deps.leer(`couples/${partes[1]}`))?.data.members || [];
+  const couple = (await deps.leer(`couples/${partes[1]}`))?.data;
+  if (!couple || couple.endedAt != null) return 0;
+  const members = couple.members || [];
   if (!members.includes(d.creadaPor)) return 0;
   const titulo = String(d.titulo || "su cápsula").slice(0, 60);
   let enviados = 0;

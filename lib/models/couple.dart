@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'fechas.dart';
+
 class Couple {
   Couple({
     required this.id,
@@ -25,7 +27,7 @@ class Couple {
   int? get daysTogether {
     if (startDate == null) return null;
     final today = _dateOnly(DateTime.now());
-    return today.difference(_dateOnly(startDate!)).inDays;
+    return diasEntre(startDate!, today);
   }
 
   /// Próximo aniversario (misma fecha cada año).
@@ -44,7 +46,11 @@ class Couple {
     return Couple(
       id: doc.id,
       members: List<String>.from(d['members'] as List? ?? const []),
-      startDate: (d['startDate'] as Timestamp?)?.toDate(),
+      // Mismo día para los dos aunque vivan en países con distinta hora.
+      startDate: switch (d['startDate']) {
+        final Timestamp t => fechaGuardada(t.toDate()),
+        _ => null,
+      },
       endedAt: (d['endedAt'] as Timestamp?)?.toDate(),
     );
   }

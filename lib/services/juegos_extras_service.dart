@@ -21,9 +21,12 @@ class JuegosExtrasService {
   CollectionReference<Map<String, dynamic>> _racha(String c) =>
       Db.coupleSub(c, 'rachaJuegos');
 
-  static String ayer([DateTime? d]) => PescaditosService.dia(
-    (d ?? DateTime.now()).subtract(const Duration(days: 1)),
-  );
+  // Restando un día del calendario (no 24 horas): la noche en que empieza
+  // el horario de verano el día tiene 23 horas y "hace 24 h" ya es anteayer.
+  static String ayer([DateTime? d]) {
+    final x = d ?? DateTime.now();
+    return PescaditosService.dia(DateTime(x.year, x.month, x.day - 1));
+  }
 
   // ---- Racha ----
 

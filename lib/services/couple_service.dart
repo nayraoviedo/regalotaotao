@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/couple.dart';
+import '../models/fechas.dart';
 import 'db.dart';
 
 class PairingException implements Exception {
@@ -107,5 +108,6 @@ class CoupleService {
   }
 
   Future<void> setStartDate(String coupleId, DateTime date) =>
-      Db.couple(coupleId).update({'startDate': Timestamp.fromDate(date)});
+      Db.couple(coupleId)
+          .update({'startDate': Timestamp.fromDate(fechaParaGuardar(date))});
 }

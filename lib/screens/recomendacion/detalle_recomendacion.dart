@@ -7,6 +7,7 @@ import 'recomendacion_card.dart';
 import 'resenas.dart';
 import 'reproductor.dart';
 import '../../widgets/doodle.dart';
+import '../../models/fechas.dart';
 
 const _coral = Color(0xFFE8735A);
 
@@ -16,7 +17,7 @@ String fechaCorta(String dia, {DateTime? ahora}) {
   if (d == null) return dia;
   final n = ahora ?? DateTime.now();
   final hoy = DateTime(n.year, n.month, n.day);
-  final dif = hoy.difference(DateTime(d.year, d.month, d.day)).inDays;
+  final dif = diasEntre(d, hoy);
   if (dif == 0) return 'hoy';
   if (dif == 1) return 'ayer';
   const meses = [

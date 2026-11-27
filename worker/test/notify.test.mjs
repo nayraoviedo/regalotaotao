@@ -398,6 +398,14 @@ test("no se puede avisar a alguien que no es tu pareja", async () => {
   assert.equal(sent.length, 0);
 });
 
+test("después de desvincularse ya no se le manda avisos a la ex pareja", async () => {
+  docs["couples/c1"].data.endedAt = "2026-11-27T10:00:00Z";
+  const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("ana"));
+  assert.equal(r.status, 403);
+  assert.equal(r.body.error, "pareja_terminada");
+  assert.equal(sent.length, 0);
+});
+
 test("documentos viejos no se envían", async () => {
   docs["couples/c1/missYou/m1"].updateTime = new Date(Date.now() - 3600_000).toISOString();
   const r = await call({ kind: "missYou", coupleId: "c1", docId: "m1" }, await idToken("ana"));
