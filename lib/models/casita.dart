@@ -246,6 +246,7 @@ enum Ingrediente {
   chocolate('', 'tableta de chocolate', 'tabletas de chocolate', '🍫', caja: 3),
   miel('', 'frasco de miel', 'frascos de miel', '🍯', caja: 2),
   miso('', 'cucharada de miso', 'cucharadas de miso', '🥣', caja: 3),
+  cuy('', 'cuy', 'cuyes', '🐹', caja: 2),
   pavo(
     '',
     'pavo',
@@ -514,6 +515,12 @@ enum Receta {
     'kimchi',
     'kimchi',
     {Ingrediente.lechuga: 2, Ingrediente.cebolla: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  cuy(
+    'cuy',
+    'cuy con papas',
+    {Ingrediente.papa: 2, Ingrediente.choclo: 1, Ingrediente.cuy: 1},
     {Comida.almuerzo, Comida.cena},
   ),
   // ---- Sopas ----
@@ -869,6 +876,19 @@ enum Receta {
     },
     {Comida.almuerzo, Comida.cena},
     fiestas: {Festividad.accionGracias, Festividad.navidad},
+  ),
+  picana(
+    'picana',
+    'picana navideña',
+    {
+      Ingrediente.choclo: 1,
+      Ingrediente.papa: 1,
+      Ingrediente.zanahoria: 1,
+      Ingrediente.carne: 1,
+      Ingrediente.pollo: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+    fiestas: {Festividad.navidad},
   ),
   fideosLargaVida(
     'fideos_larga_vida',

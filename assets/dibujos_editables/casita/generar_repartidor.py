@@ -257,6 +257,18 @@ BASICOS.update({
         "..........",
         "..........",
     ], {"o": TRAZO, "P": PAVO, "p": PAVO_CLARO, "W": BLANCO}),
+    "cuy": ([
+        "..........",
+        "..........",
+        "..oo..oo..",
+        ".oCCooCCo.",
+        "oCCCCCCCCo",
+        "oCkCCCWCCo",
+        "oCCCrCWWCo",
+        ".oCCCCCCo.",
+        "..oooooo..",
+        "..........",
+    ], {"o": TRAZO, "C": (200, 140, 90), "W": BLANCO, "k": TRAZO, "r": ROSA}),
 })
 
 

@@ -70,6 +70,7 @@ const Map<String, String> emojiDoodle = {
   '🍫': 'assets/casita/ingrediente_chocolate.png',
   '🍯': 'assets/casita/ingrediente_miel.png',
   '🥣': 'assets/casita/ingrediente_miso.png',
+  '🐹': 'assets/casita/ingrediente_cuy.png',
   '📦': 'assets/casita/repartidor.png',
 };
 

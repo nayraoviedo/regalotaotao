@@ -902,10 +902,14 @@ void main() {
 
     test('cada receta tiene de verdad lo que dice su nombre', () {
       final nombres = Receta.values.map((r) => r.nombre).join(' ');
-      // Sin recetas bolivianas (pedido de nayra) ni cuy sin cuy.
-      for (final no in ['cuy', 'huminta', 'picana']) {
-        expect(nombres, isNot(contains(no)));
-      }
+      expect(nombres, isNot(contains('huminta')));
+      // El cuy con papas lleva cuy (lo trae el repartidor) y la picana
+      // lleva carne y pollo.
+      expect(Receta.cuy.ingredientes, contains(Ingrediente.cuy));
+      expect(
+        Receta.picana.ingredientes.keys,
+        containsAll([Ingrediente.carne, Ingrediente.pollo]),
+      );
       expect(Receta.pavo.ingredientes, contains(Ingrediente.pavo));
       expect(Receta.sopaMiso.ingredientes, contains(Ingrediente.miso));
       expect(Receta.sopaPollo.ingredientes, contains(Ingrediente.pollo));
