@@ -28,6 +28,11 @@ class TipoPeli {
   /// Las películas no tienen capítulos.
   bool get tieneCapitulos => id != 'pelicula';
 
+  /// En qué pestañas puede ir: las películas no tienen "Viendo".
+  List<EstadoPeli> get estados => tieneCapitulos
+      ? EstadoPeli.values
+      : const [EstadoPeli.porVer, EstadoPeli.vista];
+
   static const drama = TipoPeli(
     'drama',
     'Drama',
@@ -86,7 +91,7 @@ class Peli {
     required this.id,
     required this.titulo,
     required this.tipo,
-    required this.estado,
+    required EstadoPeli estado,
     required this.addedBy,
     this.capitulo = 0,
     this.capitulos,
@@ -94,13 +99,55 @@ class Peli {
     this.resenas = const {},
     this.creadaEn,
     this.terminadaEn,
-  });
+  }) : estadoElegido = estado;
 
   final String id;
   final String titulo;
   final TipoPeli tipo;
-  final EstadoPeli estado;
+
+  /// Lo que eligieron a mano. Cuenta solo si no se sabe por los capítulos
+  /// (películas, o sin saber cuántos capítulos tiene).
+  final EstadoPeli estadoElegido;
   final String addedBy;
+
+  /// En qué pestaña va. Si saben cuántos capítulos tiene, sale del
+  /// capítulo en que van: "Ya vimos" solo al llegar al último (24 de 24),
+  /// "Viendo" si ya empezaron y "Por ver" si no.
+  EstadoPeli get estado {
+    // Las películas solo van en "Por ver" o "Ya vimos".
+    if (!tipo.tieneCapitulos) {
+      return estadoElegido == EstadoPeli.vista
+          ? EstadoPeli.vista
+          : EstadoPeli.porVer;
+    }
+    final total = capitulos;
+    if (total == null || total <= 0) {
+      return estadoElegido;
+    }
+    if (capitulo >= total) return EstadoPeli.vista;
+    if (capitulo > 0) return EstadoPeli.viendo;
+    return estadoElegido == EstadoPeli.vista
+        ? EstadoPeli.porVer
+        : estadoElegido;
+  }
+
+  /// La mueve a otra pestaña a mano, ajustando el capítulo para que cuadre:
+  /// "Ya vimos" la deja en el último, "Por ver" en el 0 y "Viendo", si ya
+  /// estaba terminada, en el penúltimo.
+  Peli conEstado(EstadoPeli e) {
+    final total = capitulos;
+    if (!tipo.tieneCapitulos || total == null || total <= 0) {
+      return copyWith(estado: e);
+    }
+    return copyWith(
+      estado: e,
+      capitulo: switch (e) {
+        EstadoPeli.vista => total,
+        EstadoPeli.porVer => 0,
+        EstadoPeli.viendo => capitulo >= total ? total - 1 : capitulo,
+      },
+    );
+  }
 
   /// Último capítulo que vieron juntos (0 si aún no empiezan).
   final int capitulo;
@@ -128,7 +175,7 @@ class Peli {
     id: id,
     titulo: titulo ?? this.titulo,
     tipo: tipo ?? this.tipo,
-    estado: estado ?? this.estado,
+    estado: estado ?? estadoElegido,
     addedBy: addedBy,
     capitulo: capitulo ?? this.capitulo,
     capitulos: capitulos == null ? this.capitulos : capitulos(),

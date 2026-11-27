@@ -640,12 +640,12 @@ class DetallePeli extends StatelessWidget {
           const SizedBox(height: 14),
           SegmentedButton<EstadoPeli>(
             segments: [
-              for (final e in EstadoPeli.values)
+              for (final e in p.tipo.estados)
                 ButtonSegment(value: e, label: Text(e.label)),
             ],
             selected: {p.estado},
             showSelectedIcon: false,
-            onSelectionChanged: (s) => onCambiar(p.copyWith(estado: s.first)),
+            onSelectionChanged: (s) => onCambiar(p.conEstado(s.first)),
           ),
           if (p.tipo.tieneCapitulos) ...[
             const SizedBox(height: 12),

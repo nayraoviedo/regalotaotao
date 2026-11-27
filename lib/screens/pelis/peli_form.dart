@@ -83,6 +83,25 @@ class _PeliFormState extends State<PeliForm> {
     super.dispose();
   }
 
+  /// Las películas no tienen "Viendo": ahí cuenta como "Por ver".
+  EstadoPeli get _estadoVisible =>
+      _tipo.estados.contains(_estado) ? _estado : EstadoPeli.porVer;
+
+  /// Al elegir la pestaña, el capítulo se acomoda para que cuadre (si
+  /// saben cuántos capítulos tiene): Ya vimos = el último, Por ver = 0.
+  void _elegir(EstadoPeli e) {
+    _estado = e;
+    final total = int.tryParse(_capitulos.text.trim());
+    if (!_tipo.tieneCapitulos || total == null || total <= 0) return;
+    final cap = int.tryParse(_capitulo.text.trim()) ?? 0;
+    final nuevo = switch (e) {
+      EstadoPeli.vista => total,
+      EstadoPeli.porVer => 0,
+      EstadoPeli.viendo => cap >= total ? total - 1 : cap,
+    };
+    _capitulo.text = nuevo == 0 ? '' : '$nuevo';
+  }
+
   void _guardar() {
     final total = int.tryParse(_capitulos.text.trim());
     final a = widget.actual;
@@ -104,7 +123,7 @@ class _PeliFormState extends State<PeliForm> {
       base.copyWith(
         titulo: _titulo.text.trim(),
         tipo: _tipo,
-        estado: _estado,
+        estado: _estadoVisible,
         capitulo: cap,
         capitulos: () => total != null && total > 0 ? total : null,
         donde: _donde.text.trim(),
@@ -174,12 +193,12 @@ class _PeliFormState extends State<PeliForm> {
           _etiqueta('¿En qué van?'),
           SegmentedButton<EstadoPeli>(
             segments: [
-              for (final e in EstadoPeli.values)
+              for (final e in _tipo.estados)
                 ButtonSegment(value: e, label: Text(e.label)),
             ],
-            selected: {_estado},
+            selected: {_estadoVisible},
             showSelectedIcon: false,
-            onSelectionChanged: (s) => setState(() => _estado = s.first),
+            onSelectionChanged: (s) => setState(() => _elegir(s.first)),
           ),
           if (_tipo.tieneCapitulos) ...[
             _etiqueta('¿En qué capítulo van?'),
