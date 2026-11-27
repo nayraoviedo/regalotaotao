@@ -894,20 +894,70 @@ void main() {
       // El lunes siguiente vuelve.
       expect(recibido.repartidorEsperando(DateTime(2026, 11, 30, 9)), isTrue);
 
-      // Trae sal, leche, queso, carne… y todo se usa en alguna receta.
-      expect(
-        Repartidor.caja.keys,
-        containsAll([
-          Ingrediente.sal,
-          Ingrediente.leche,
-          Ingrediente.queso,
-          Ingrediente.carne,
-        ]),
-      );
       for (final i in Ingrediente.basicos) {
         expect(i.semilla, isEmpty);
         expect(Ingrediente.deSemilla(''), isNull);
-        expect(Repartidor.caja[i], greaterThan(0));
+      }
+    });
+
+    test('cada receta tiene de verdad lo que dice su nombre', () {
+      final nombres = Receta.values.map((r) => r.nombre).join(' ');
+      // Sin recetas bolivianas (pedido de nayra) ni cuy sin cuy.
+      for (final no in ['cuy', 'huminta', 'picana']) {
+        expect(nombres, isNot(contains(no)));
+      }
+      expect(Receta.pavo.ingredientes, contains(Ingrediente.pavo));
+      expect(Receta.sopaMiso.ingredientes, contains(Ingrediente.miso));
+      expect(Receta.sopaPollo.ingredientes, contains(Ingrediente.pollo));
+      expect(Receta.sushi.ingredientes, contains(Ingrediente.pescado));
+      expect(Ingrediente.choclo.uno, 'elote (choclo)');
+      final e = EstadoCasita.fromMap({
+        'despensa': {'trigo': 1, 'queso': 1},
+      });
+      expect(e.faltan(Receta.pizzaCuatroQuesos), {Ingrediente.queso: 2});
+    });
+
+    test('la caja del repartidor cambia cada semana y trae lo que falta', () {
+      final semanas = [
+        for (var k = 0; k < 12; k++)
+          Repartidor.semana(DateTime(2027, 1, 4 + 7 * k)),
+      ];
+      final cajas = [for (final s in semanas) Repartidor.cajaPara(s)];
+      // La misma semana siempre trae lo mismo (en los dos celulares).
+      expect(Repartidor.cajaPara(semanas.first), cajas.first);
+      // Pero no todas las semanas traen lo mismo.
+      expect(cajas.map((c) => c.toString()).toSet().length, greaterThan(3));
+      for (final c in cajas) {
+        // Sal, leche y huevos siempre; nunca viene casi vacía.
+        expect(
+          c.keys,
+          containsAll([Ingrediente.sal, Ingrediente.leche, Ingrediente.huevo]),
+        );
+        expect(c.length, greaterThanOrEqualTo(Repartidor.minimoDeCosas));
+        for (final e in c.entries) {
+          expect(e.key.delRepartidor, isTrue);
+          expect(e.value, inInclusiveRange(1, e.key.caja));
+        }
+        // El pavo solo en Acción de Gracias y Navidad.
+        expect(c.containsKey(Ingrediente.pavo), isFalse);
+      }
+      expect(
+        Repartidor.cajaPara('2026-11-23').containsKey(Ingrediente.pavo),
+        isTrue,
+      );
+      expect(
+        Repartidor.cajaPara('2026-12-21').containsKey(Ingrediente.pavo),
+        isTrue,
+      );
+      // Lo que se les acabó viene sí o sí.
+      final llenos = {for (final i in Ingrediente.basicos) i.name: 5};
+      for (final s in semanas) {
+        final caja = Repartidor.cajaPara(
+          s,
+          despensa: {...llenos, 'queso': 0, 'chocolate': 0},
+        );
+        expect(caja[Ingrediente.queso], greaterThanOrEqualTo(2));
+        expect(caja[Ingrediente.chocolate], greaterThanOrEqualTo(2));
       }
     });
 
@@ -1530,6 +1580,53 @@ void main() {
       await t.pumpWidget(vista('2026-11-23', 20));
       await t.pumpAndSettle();
       expect(find.text('¡Toc, toc! Llegó el repartidor'), findsNothing);
+    });
+
+    testWidgets('el lugar para cocinar: despensa y menú de recetas', (t) async {
+      final cocinadas = <Receta>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: CasitaView(
+            estado: EstadoCasita.fromMap({
+              'tenemos': ['cuarto_cocina'],
+              'reparto': '2026-11-23',
+              'despensa': {'tomate': 2, 'sal': 1, 'trigo': 1},
+            }),
+            movimientos: const [],
+            me: me,
+            partner: null,
+            onComprar: (c, g) async {},
+            onPoner: (l, c) async {},
+            onVestir: (g, p, c) async {},
+            onCocinar: (r) async {
+              cocinadas.add(r);
+              return true;
+            },
+            cuartoInicial: Cuarto.cocina,
+            hoy: DateTime(2026, 11, 26, 10),
+          ),
+        ),
+      );
+      expect(find.text('Les alcanza para 1 receta'), findsOneWidget);
+      await t.ensureVisible(find.text('Ir a cocinar'));
+      await t.tap(find.text('Ir a cocinar'));
+      await t.pumpAndSettle();
+      expect(find.text('Despensa'), findsOneWidget);
+      expect(find.text('Pueden cocinar ahora'), findsOneWidget);
+      expect(find.text('Sopa de tomate'), findsOneWidget);
+      await t.tap(find.text('Cocinar'));
+      await t.pump();
+      expect(cocinadas, [Receta.sopaTomate]);
+      // El menú ☰ muestra todas, con lo que les falta.
+      await t.tap(find.text('Menú'));
+      await t.pumpAndSettle();
+      expect(find.text('Almuerzo y cena'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is TextoDoodle && w.texto.startsWith('Les falta:'),
+        ),
+        findsWidgets,
+      );
     });
 
     testWidgets('adoptar un bebé y ponerle nombre', (t) async {

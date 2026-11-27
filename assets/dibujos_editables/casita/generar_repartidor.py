@@ -187,6 +187,79 @@ BASICOS = {
 }
 
 
+PESCADO = (150, 176, 206)
+PESCADO_OSC = (100, 130, 170)
+CHOCO = (110, 64, 40)
+CHOCO_CLARO = (150, 96, 60)
+MIEL = (240, 176, 50)
+MISO = (200, 150, 90)
+PAVO = (176, 110, 70)
+PAVO_CLARO = (214, 150, 100)
+
+BASICOS.update({
+    "pescado": ([
+        "..........",
+        "..........",
+        "..oooooo.o",
+        ".oPPPPPPoo",
+        "oPkPPpPPPo",
+        "oPPPPpPPPo",
+        ".oPPPPPPoo",
+        "..oooooo.o",
+        "..........",
+        "..........",
+    ], {"o": TRAZO, "P": PESCADO, "p": PESCADO_OSC, "k": TRAZO}),
+    "chocolate": ([
+        "..........",
+        ".oooooooo.",
+        ".oCcCcCco.",
+        ".occccccо.".replace("о", "o"),
+        ".oCcCcCco.",
+        ".occccccо.".replace("о", "o"),
+        ".oRRRRRRo.",
+        ".oRWWWWRo.",
+        ".oRRRRRRo.",
+        ".oooooooo.",
+    ], {"o": TRAZO, "C": CHOCO_CLARO, "c": CHOCO, "R": ROJO, "W": BLANCO}),
+    "miel": ([
+        "...oooo...",
+        "..oAAAAo..",
+        "..oooooo..",
+        ".oMMMMMMo.",
+        ".oMWMMMMo.",
+        ".oMMmmMMo.",
+        ".oMmMMmMo.",
+        ".oMMmmMMo.",
+        ".oMMMMMMo.",
+        "..oooooo..",
+    ], {"o": TRAZO, "A": AZUL_CLARO, "M": MIEL, "m": AMARILLO_OSC, "W": BLANCO}),
+    "miso": ([
+        "..........",
+        "..........",
+        "...oooo...",
+        "..oMMMMo..",
+        ".oMMmMMMo.",
+        "oooooooooo",
+        "oWWWWWWWWo",
+        ".oWAAAAWo.",
+        "..oWWWWo..",
+        "...oooo...",
+    ], {"o": TRAZO, "M": MISO, "m": CARAMELO, "W": BLANCO, "A": AZUL_CLARO}),
+    "pavo": ([
+        "..........",
+        "...oooo...",
+        "..oPPPPoo.",
+        ".oPPpPPPWo",
+        "oPPPPPpPWo",
+        "oPpPPPPPo.",
+        ".oPPPPPPo.",
+        "..oooooo..",
+        "..........",
+        "..........",
+    ], {"o": TRAZO, "P": PAVO, "p": PAVO_CLARO, "W": BLANCO}),
+})
+
+
 def basico(nombre):
     filas, pal = BASICOS[nombre]
     m = Mini(12, 12)
@@ -246,6 +319,36 @@ def pizza(cubierta, pal):
 
 
 RECETAS = {
+    "sushi": en_plato([
+        "............",
+        ".kwk.kwk.kwk",
+        ".wpw.wsw.wpw",
+        ".kwk.kwk.kwk",
+    ], {"k": (40, 70, 50), "w": BLANCO, "p": PALTA, "s": (240, 140, 110)}),
+    "pescado_arroz": en_plato([
+        "............",
+        ".ppppp.www..",
+        "pPkpppwwwww.",
+        ".ppppp.www..",
+    ], {"p": (150, 176, 206), "P": (100, 130, 170), "k": TRAZO, "w": BLANCO}),
+    "galletas_chocolate": en_plato([
+        "............",
+        "..ttt..ttt..",
+        ".tCtCt.tCttC",
+        "..ttt..ttt..",
+    ], {"t": TRIGO, "C": (110, 64, 40)}),
+    "fresas_chocolate": en_plato([
+        "..v..v..v...",
+        ".rrr.rrr.rrr",
+        ".ccc.ccc.ccc",
+        "..c...c...c.",
+    ], {"v": VERDE, "r": ROJO, "c": (110, 64, 40)}),
+    "tostadas_miel": en_plato([
+        "............",
+        "..mmmmmmm...",
+        "..MyMyMyM...",
+        "..ppppppp...",
+    ], {"m": (240, 176, 50), "y": AMARILLO, "M": MANTEQUILLA, "p": PAN}),
     "rollos_canela": en_plato([
         "..gggg.gggg.",
         ".gCcCg.gCcCg",

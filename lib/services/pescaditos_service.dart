@@ -647,7 +647,10 @@ class PescaditosService {
         'pescaditos': estado.pescaditos - precio,
         'ultimoMov': movRef.id,
         'despensa': {
-          for (final e in Repartidor.caja.entries)
+          for (final e in Repartidor.cajaPara(
+            semana,
+            despensa: estado.despensa,
+          ).entries)
             e.key.name: estado.hay(e.key) + e.value,
         },
         'reparto': semana,

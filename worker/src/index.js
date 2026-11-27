@@ -149,7 +149,7 @@ const NOMBRES_CASITA = {
   espantapajaros: "un espantapájaros gatito",
   girasoles: "semillas de girasoles gigantes",
   tomatera: "semillas de tomate",
-  maiz: "semillas de maíz",
+  maiz: "semillas de elote (choclo)",
   zanahorias: "semillas de zanahoria",
   fresas: "semillas de fresa",
   lechugas: "semillas de lechuga",
