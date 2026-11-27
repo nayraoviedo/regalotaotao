@@ -465,7 +465,7 @@ class _EnVivoState extends State<_EnVivo> {
   final _svc = DibujoService.instance;
   late final _trazos = _svc.watchTrazos(widget.coupleId, widget.ronda.id);
   int _color = 0;
-  int _grosor = Dibujos.grosores[1];
+  int _grosor = Dibujos.grosorPorDefecto;
 
   /// Revisa cada segundo si se acabó el minuto.
   Timer? _reloj;
@@ -496,7 +496,7 @@ class _EnVivoState extends State<_EnVivo> {
     final antes = _intentoAgotar;
     if (antes != null && ahora.difference(antes).inSeconds < 4) return;
     _intentoAgotar = ahora;
-    unawaited(_svc.agotar(widget.coupleId, r).catchError((_) {}));
+    unawaited(_svc.agotar(widget.coupleId, r, widget.uid).catchError((_) {}));
   }
 
   Future<void> _mandar(String texto) async {
@@ -633,7 +633,7 @@ class RondaEnVivo extends StatelessWidget {
       builder: (context, c) {
         final ancho = c.maxWidth.clamp(0, 560).toDouble();
         final reservado =
-            altoChat + 86 + (ronda.enPartida ? 36 : 0) + (_dibujo ? 96 : 0);
+            altoChat + 86 + (ronda.enPartida ? 36 : 0) + (_dibujo ? 150 : 0);
         final lado = (ancho - 24).clamp(
           120.0,
           (c.maxHeight - reservado).clamp(120.0, 900.0),
@@ -744,7 +744,9 @@ class BarraPartida extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            'Dibujo ${ronda.numero} de ${ronda.total}',
+            // Entre ronda y ronda ya se muestra el dibujo que sigue.
+            'Dibujo ${ronda.enJuego || ronda.ultima ? ronda.numero : ronda.numero + 1} '
+            'de ${ronda.total}',
             style: TextStyle(
               color: AppTheme.crema,
               fontSize: 12.5,
@@ -976,57 +978,76 @@ class Herramientas extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       child: Column(
         children: [
-          SizedBox(
-            height: 36,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
+          // Todos los lápices a la vista, en 3 filas.
+          GridView.count(
+            crossAxisCount: (Dibujos.ordenColores.length / 3).ceil(),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            mainAxisSpacing: 2,
+            crossAxisSpacing: 2,
+            childAspectRatio: 1.15,
+            children: [
+              for (final i in Dibujos.ordenColores)
+                _Color(
+                  color: Dibujos.colores[i],
+                  goma: i == Dibujos.goma,
+                  elegido: i == color,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onColor?.call(i);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            // En pantallas angostas "Borrar todo" queda solo con el dibujito.
+            builder: (context, c) => Row(
               children: [
-                for (var i = 0; i < Dibujos.colores.length; i++)
-                  _Color(
-                    color: Dibujos.colores[i],
-                    goma: i == Dibujos.goma,
-                    elegido: i == color,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      onColor?.call(i);
-                    },
+                for (final g in Dibujos.grosores)
+                  _Grosor(
+                    grosor: g,
+                    elegido: g == grosor,
+                    color: color == Dibujos.goma
+                        ? AppTheme.gris
+                        : Dibujos.colores[color],
+                    onTap: () => onGrosor?.call(g),
+                  ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Deshacer',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onDeshacer,
+                  icon: Icon(Icons.undo_rounded, color: AppTheme.azul),
+                ),
+                if (c.maxWidth >= 390)
+                  TextButton.icon(
+                    onPressed: onLimpiar,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 40),
+                    ),
+                    icon: Doodle(
+                      Icons.delete_outline,
+                      size: 20,
+                      color: AppTheme.azul,
+                    ),
+                    label: const Text('Borrar todo'),
+                  )
+                else
+                  IconButton(
+                    tooltip: 'Borrar todo',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onLimpiar,
+                    icon: Doodle(
+                      Icons.delete_outline,
+                      size: 22,
+                      color: AppTheme.azul,
+                    ),
                   ),
               ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final g in Dibujos.grosores)
-                _Grosor(
-                  grosor: g,
-                  elegido: g == grosor,
-                  color: color == Dibujos.goma
-                      ? AppTheme.gris
-                      : Dibujos.colores[color],
-                  onTap: () => onGrosor?.call(g),
-                ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Deshacer',
-                visualDensity: VisualDensity.compact,
-                onPressed: onDeshacer,
-                icon: Icon(Icons.undo_rounded, color: AppTheme.azul),
-              ),
-              TextButton.icon(
-                onPressed: onLimpiar,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 40),
-                ),
-                icon: Doodle(
-                  Icons.delete_outline,
-                  size: 20,
-                  color: AppTheme.azul,
-                ),
-                label: const Text('Borrar todo'),
-              ),
-            ],
           ),
         ],
       ),
@@ -1055,33 +1076,35 @@ class _Color extends StatelessWidget {
       label: goma ? 'Goma' : 'Color',
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: elegido ? 34 : 28,
-          height: elegido ? 34 : 28,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: elegido
-                  ? AppTheme.azul
-                  : AppTheme.gris.withValues(alpha: 0.5),
-              width: elegido ? 3 : 1.5,
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: elegido ? 30 : 24,
+            height: elegido ? 30 : 24,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: elegido
+                    ? AppTheme.azul
+                    : AppTheme.gris.withValues(alpha: 0.5),
+                width: elegido ? 3 : 1.5,
+              ),
             ),
-          ),
-          child: goma
-              ? Center(
-                  child: Text(
-                    'goma',
-                    style: TextStyle(
-                      color: AppTheme.azul,
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w800,
+            child: goma
+                ? Center(
+                    child: Text(
+                      'goma',
+                      style: TextStyle(
+                        color: AppTheme.azul,
+                        fontSize: 7.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                )
-              : null,
+                  )
+                : null,
+          ),
         ),
       ),
     );
@@ -1112,15 +1135,15 @@ class _Grosor extends StatelessWidget {
         child: Container(
           width: 36,
           height: 36,
-          margin: const EdgeInsets.only(right: 4),
+          margin: const EdgeInsets.only(right: 2),
           decoration: BoxDecoration(
             color: elegido ? AppTheme.amarillo.withValues(alpha: 0.35) : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: Container(
-              width: 4 + grosor * 0.7,
-              height: 4 + grosor * 0.7,
+              width: 3 + grosor * 0.65,
+              height: 3 + grosor * 0.65,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),
@@ -1196,7 +1219,21 @@ class EntreRondas extends StatefulWidget {
 }
 
 class _EntreRondasState extends State<EntreRondas> {
+  /// Tema de las palabras (null: de todo un poco).
+  String? _tema;
   late List<String> _opciones = Dibujos.elegir(widget.recientes);
+
+  void _otras({bool cambiarTodas = true}) => setState(
+    () => _opciones = Dibujos.elegir(
+      {
+        ...widget.recientes,
+        if (cambiarTodas)
+          for (final o in _opciones) Dibujos.clave(o),
+      },
+      null,
+      _tema,
+    ),
+  );
   final _propia = TextEditingController();
   int _total = Dibujos.partidaPorDefecto;
 
@@ -1234,6 +1271,14 @@ class _EntreRondasState extends State<EntreRondas> {
             uid: widget.uid,
             partnerName: widget.partnerName,
           ),
+          if (m != null && m.porCadaUno > 0) ...[
+            const SizedBox(height: 6),
+            _Turnos(
+              marcador: m,
+              uid: widget.uid,
+              partnerName: widget.partnerName,
+            ),
+          ],
           const SizedBox(height: 10),
         ],
         if (r == null)
@@ -1259,9 +1304,9 @@ class _EntreRondasState extends State<EntreRondas> {
             ),
             const SizedBox(height: 4),
             const Text(
-              '¿Cuántos dibujos? Se turnan para dibujar, cada dibujo tiene '
-              '1 minuto y al final gana quien junte más puntos (adivinar '
-              'rápido da más).',
+              '¿Cuántos dibujos hace cada uno? Se turnan para dibujar, cada '
+              'dibujo tiene 1 minuto y al final gana quien junte más puntos '
+              '(adivinar rápido da más).',
               style: TextStyle(color: AppTheme.gris, fontSize: 14),
             ),
             const SizedBox(height: 8),
@@ -1270,7 +1315,7 @@ class _EntreRondasState extends State<EntreRondas> {
               children: [
                 for (final n in Dibujos.opcionesPartida)
                   ChoiceChip(
-                    label: Text('$n dibujos'),
+                    label: Text('${n ~/ 2} cada uno'),
                     selected: _total == n,
                     onSelected: (_) => setState(() => _total = n),
                     selectedColor: AppTheme.amarillo.withValues(alpha: 0.55),
@@ -1301,7 +1346,35 @@ class _EntreRondasState extends State<EntreRondas> {
             'solo ve tu dibujo.',
             style: const TextStyle(color: AppTheme.gris, fontSize: 14),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final t in [null, ...Dibujos.temas.keys])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(t ?? 'De todo'),
+                      selected: _tema == t,
+                      onSelected: (_) {
+                        _tema = t;
+                        _otras(cambiarTodas: false);
+                      },
+                      showCheckmark: false,
+                      selectedColor: AppTheme.amarillo.withValues(alpha: 0.55),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: AppTheme.azul,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           for (final p in _opciones)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1324,15 +1397,7 @@ class _EntreRondasState extends State<EntreRondas> {
                 ),
               ),
             ),
-          TextButton(
-            onPressed: () => setState(
-              () => _opciones = Dibujos.elegir({
-                ...widget.recientes,
-                for (final o in _opciones) Dibujos.clave(o),
-              }),
-            ),
-            child: const Text('Otras palabras'),
-          ),
+          TextButton(onPressed: _otras, child: const Text('Otras palabras')),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1414,6 +1479,31 @@ class _EntreRondasState extends State<EntreRondas> {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Cuántos dibujos lleva cada uno en la partida: "Tú 2 de 3 · Taotao 1 de 3".
+class _Turnos extends StatelessWidget {
+  const _Turnos({
+    required this.marcador,
+    required this.uid,
+    required this.partnerName,
+  });
+
+  final Marcador marcador;
+  final String uid;
+  final String partnerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = marcador;
+    final otro = m.members.firstWhere((x) => x != uid, orElse: () => '');
+    final n = m.porCadaUno;
+    return Text(
+      'Dibujos de cada uno: tú ${m.dibujados(uid)} de $n  ·  '
+      '$partnerName ${m.dibujados(otro)} de $n',
+      style: const TextStyle(color: AppTheme.gris, fontSize: 13),
     );
   }
 }

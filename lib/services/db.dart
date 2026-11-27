@@ -29,6 +29,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   capsulas/{id}                   cápsulas del tiempo (cuándo se abren)
 ///   capsulas/{id}/cosas/{id}        lo guardado (se lee desde que se abre)
 ///   saludos/{id}                    buenos días y buenas noches
+///   pelis/{id}                      dramas y pelis que ven juntos (reseñas)
 class Db {
   static final _fs = FirebaseFirestore.instance;
 

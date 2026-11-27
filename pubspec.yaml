@@ -91,6 +91,8 @@ flutter:
     - assets/animaciones/
     # Dibujos de las categorías de la recomendación del día.
     - assets/recomendaciones/
+    # Dramas y pelis (ver assets/dibujos_editables/pelis/).
+    - assets/pelis/
     - assets/casita/
     # Frasco de la cápsula del tiempo (ver capsula_screen.dart).
     - assets/capsula/

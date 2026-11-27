@@ -602,6 +602,50 @@ service cloud.firestore {
         allow delete: if isMember(coupleId) && resource.data.from == me();
       }
 
+      // Dramas y pelis que ven juntos. Los dos agregan, cambian en qué
+      // capítulo van y borran; cada uno deja solo su propia reseña.
+      match /pelis/{peliId} {
+        function peliValida() {
+          let p = request.resource.data;
+          return p.keys().hasOnly(['titulo', 'tipo', 'estado', 'capitulo',
+                                   'capitulos', 'donde', 'addedBy', 'resenas',
+                                   'createdAt', 'updatedAt', 'terminadaEn'])
+            && p.titulo is string
+            && p.titulo.size() > 0
+            && p.titulo.size() <= 120
+            && p.tipo in ['drama', 'pelicula', 'serie', 'anime']
+            && p.estado in ['porVer', 'viendo', 'vista']
+            && p.capitulo is int
+            && p.capitulo >= 0
+            && p.capitulo <= 5000
+            && (p.get('capitulos', null) == null
+              || (p.capitulos is int && p.capitulos > 0
+                  && p.capitulos <= 5000))
+            && p.get('donde', '') is string
+            && p.get('donde', '').size() <= 60;
+        }
+        function resenasPeliOk() {
+          let antes = resource.data.get('resenas', {});
+          let rs = request.resource.data.get('resenas', {});
+          return rs is map
+            && rs.diff(antes).affectedKeys().hasOnly([me()])
+            && (!(me() in rs)
+              || (rs[me()].keys().hasOnly(['estrellas', 'texto'])
+                && rs[me()].estrellas is int
+                && rs[me()].estrellas >= 1
+                && rs[me()].estrellas <= 5
+                && rs[me()].texto is string
+                && rs[me()].texto.size() <= 500));
+        }
+        allow read, delete: if isMember(coupleId);
+        allow create: if isMember(coupleId) && peliValida()
+          && request.resource.data.addedBy == me()
+          && request.resource.data.get('resenas', {}).size() == 0;
+        allow update: if isMember(coupleId) && peliValida()
+          && request.resource.data.addedBy == resource.data.addedBy
+          && resenasPeliOk();
+      }
+
       // Música juntos: una sola sala por pareja (musica/sala) con la
       // canción que suena, si está en play, el segundo, la cola, quién está
       // escuchando y la cuenta 3-2-1. La manejan los dos.
