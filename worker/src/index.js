@@ -149,7 +149,7 @@ const NOMBRES_CASITA = {
   espantapajaros: "un espantapájaros gatito",
   girasoles: "semillas de girasoles gigantes",
   tomatera: "semillas de tomate",
-  maiz: "semillas de maíz",
+  maiz: "semillas de elote (choclo)",
   zanahorias: "semillas de zanahoria",
   fresas: "semillas de fresa",
   lechugas: "semillas de lechuga",
@@ -558,6 +558,34 @@ const KINDS = {
           };
     },
   },
+  // Nuestra cartelera: quien avanza un capítulo le avisa a su pareja.
+  capitulo: {
+    collection: "pelis",
+    check: (d, uid) => d.avanzoPor === uid && Number(d.capitulo) > 0,
+    dedupeKey: (d) => String(Number(d.capitulo) || 0),
+    message: (name, d) => {
+      const titulo = String(d.titulo || "su drama").slice(0, 60);
+      const cap = Number(d.capitulo) || 0;
+      const total = Number(d.capitulos) || 0;
+      return total > 0 && cap >= total
+        ? { title: "🎬 ¡Lo terminaron!", body: `${name} vio el último capítulo de «${titulo}». Déjale tu reseña ⭐` }
+        : {
+            title: "📺 Un capítulo más",
+            body: `${name} avanzó al cap. ${cap}${total > 0 ? ` de ${total}` : ""} de «${titulo}»`,
+          };
+    },
+  },
+  // Ruleta de la cartelera: quien gira le avisa a su pareja.
+  ruleta: {
+    collection: "ruleta",
+    check: (d, uid) => d.por === uid && Array.isArray(d.opciones) && d.opciones.length >= 2,
+    dedupeKey: (d) => String(d.token || ""),
+    message: (name, d) => {
+      const o = d.opciones[Number(d.elegida)] || {};
+      const titulo = String(o.titulo || "algo").slice(0, 60);
+      return { title: "🎡 ¡Giró la ruleta!", body: `${name} giró la ruleta de la cartelera y hoy toca «${titulo}» 🍿` };
+    },
+  },
   // Buenos días y buenas noches.
   saludo: {
     collection: "saludos",
@@ -592,6 +620,16 @@ const KINDS = {
     message: (name, d) => ({
       title: "🐟 ¿Lo compramos?",
       body: `${name} quiere comprar ${NOMBRES_CASITA[d.propuesta.cosa] || "algo"} para la casita. ¿Le das el sí?`,
+    }),
+  },
+  // Cocinar juntos: uno puso algo en la olla y la pareja tiene que picar.
+  olla: {
+    collection: "casita",
+    check: (d, uid) => d.cocinando?.de === uid,
+    dedupeKey: (d) => d.cocinando.id,
+    message: (name, d) => ({
+      title: "🍳 ¡A cocinar juntos!",
+      body: `${name} está cocinando ${d.cocinando.nombre || "algo rico"}. Ayúdale a picar para que salga 🔪`,
     }),
   },
   // Juegos de pareja: al empezar una partida le toca a la pareja; cuando

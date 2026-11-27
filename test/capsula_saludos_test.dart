@@ -130,6 +130,14 @@ void main() {
       expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 15)), isNull);
       expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 22)), TipoSaludo.noches);
       expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 2)), TipoSaludo.noches);
+      // Buenos días desde las 5 y buenas noches desde las 9 de la noche.
+      expect(
+        TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 4, 59)),
+        TipoSaludo.noches,
+      );
+      expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 5)), TipoSaludo.dias);
+      expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 20, 59)), isNull);
+      expect(TipoSaludo.aEstaHora(DateTime(2026, 1, 1, 21)), TipoSaludo.noches);
     });
 
     test('la tarjeta: invitar, responder y ya saludaste', () {

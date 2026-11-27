@@ -35,6 +35,8 @@ const enc = (v) =>
   v === null ? { nullValue: null }
   : Array.isArray(v) ? { arrayValue: { values: v.map(enc) } }
   : typeof v === "number" ? { integerValue: String(v) }
+  : v && typeof v === "object" && !(v instanceof Date)
+    ? { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, enc(x)])) } }
   : { stringValue: v };
 const prefix = `projects/${PROJECT}/databases/(default)/documents/`;
 const stamp = () => new Date(Date.now() + updateCounter++).toISOString();
@@ -59,6 +61,9 @@ beforeEach(() => {
       titulo: "Para dentro de un año", creadaPor: "ana", ultimo: "ana", aportes: {},
       abrirEl: new Date("2027-11-26T12:00:00Z"),
     },
+    "couples/c1/pelis/d1": { titulo: "Taming the husband", tipo: "drama", capitulo: 9, capitulos: 24, avanzoPor: "ana" },
+    "couples/c1/pelis/d2": { titulo: "Go Ahead", tipo: "drama", capitulo: 40, capitulos: 40, avanzoPor: "ana" },
+    "couples/c1/ruleta/actual": { por: "ana", opciones: [{ id: "d1", titulo: "Hidden Love" }, { id: "d2", titulo: "Go Ahead" }], elegida: 1, jitter: 0.1, token: "t1" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -71,7 +76,7 @@ beforeEach(() => {
     "couples/c1/letters/l5": { from: "ana", to: "beto", cuando: "sea Qixi", fiesta: "qixi", avisarEn: null, openedAt: null },
     "couples/c1/casitaMovs/compra_sofa_azul": { uid: "ana", tipo: "compra", cantidad: -120, ref: "sofa_azul" },
     "couples/c1/casitaMovs/compra_cama_estrellas": { uid: "ana", tipo: "compra", cantidad: -150, ref: "cama_estrellas", regalo: true },
-    "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" } },
+    "couples/c1/casita/estado": { pescaditos: 400, propuesta: { id: "cuarto_jardin_1", cosa: "cuarto_jardin", de: "ana" }, cocinando: { id: "ramen_1", receta: "ramen", nombre: "ramen", de: "ana", en: 1 } },
     "couples/c1/casitaMovs/pomodoro_a1": { uid: "ana", tipo: "pomodoro", cantidad: 10, ref: "a1" },
     "couples/c1/juegos/j1": { juego: "probable", por: "ana", terminada: false, preguntas: [1, 2, 3, 4, 5], respuestas: { ana: ["ana", "beto", "ana", "ana", "beto"] } },
     "couples/c1/dibujos/d1": { dibuja: "ana", palabra: "gato", clave: "gato", estado: "dibujando", mensajes: [] },
@@ -184,6 +189,28 @@ test("besos, abrazos y cascabel llegan con su texto", async () => {
   assert.equal((await call({ kind: "bell", coupleId: "c1", docId: "k1" }, await idToken("beto"))).status, 403);
 });
 
+test("cartelera: avisa cuando la pareja avanza un capítulo", async () => {
+  const t = await idToken("ana");
+  for (const docId of ["d1", "d2"]) {
+    assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId }, t)).status, 200);
+  }
+  assert.deepEqual(sent.map((m) => [m.notification.title, m.notification.body]), [
+    ["📺 Un capítulo más", "Ana avanzó al cap. 9 de 24 de «Taming the husband»"],
+    ["🎬 ¡Lo terminaron!", "Ana vio el último capítulo de «Go Ahead». Déjale tu reseña ⭐"],
+  ]);
+  // El mismo capítulo no avisa dos veces, y Beto no avisa por lo que avanzó Ana.
+  assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, t)).body.yaEnviado, true);
+  assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, await idToken("beto"))).status, 403);
+});
+
+test("ruleta: avisa qué les tocó", async () => {
+  assert.equal((await call({ kind: "ruleta", coupleId: "c1", docId: "actual" }, await idToken("ana"))).status, 200);
+  assert.deepEqual(sent.map((m) => [m.notification.title, m.notification.body]), [
+    ["🎡 ¡Giró la ruleta!", "Ana giró la ruleta de la cartelera y hoy toca «Go Ahead» 🍿"],
+  ]);
+  assert.equal((await call({ kind: "ruleta", coupleId: "c1", docId: "actual" }, await idToken("beto"))).status, 403);
+});
+
 test("buenos días y buenas noches", async () => {
   const t = await idToken("ana");
   for (const docId of ["s1", "s2"]) {
@@ -214,6 +241,14 @@ test("compras de la casita avisan a la pareja", async () => {
   assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_cama_estrellas" }, t)).status, 200);
   assert.deepEqual(sent.map((m) => m.notification.body), ["Ana te dejó un regalo envuelto en la casita. ¡Ábrelo!"]);
   assert.equal((await call({ kind: "compra", coupleId: "c1", docId: "compra_sofa_azul" }, await idToken("beto"))).status, 403);
+});
+
+test("cocinar juntos: la pareja ayuda a picar", async () => {
+  const t = await idToken("ana");
+  assert.equal((await call({ kind: "olla", coupleId: "c1", docId: "estado" }, t)).status, 200);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].notification.body, /^Ana está cocinando ramen\. Ayúdale a picar/);
+  assert.equal((await call({ kind: "olla", coupleId: "c1", docId: "estado" }, await idToken("beto"))).status, 403);
 });
 
 test("las compras grandes le piden el sí a la pareja", async () => {

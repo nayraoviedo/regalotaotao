@@ -12,6 +12,7 @@ import '../../services/tema_service.dart';
 import '../notes/tablero/formas.dart';
 import '../../theme.dart';
 import '../together/gatitos.dart';
+import 'cocina_screen.dart';
 import 'cuarto.dart';
 import '../../widgets/doodle.dart';
 import '../notes/cartas/carta_screen.dart';
@@ -78,6 +79,11 @@ class CasitaScreen extends StatelessWidget {
               servicio.nombrarBebe(coupleId, bebe, nombre),
           onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
           onCocinar: (receta) => servicio.cocinar(coupleId, receta),
+          onPonerEnOlla: partner == null
+              ? null
+              : (receta) => servicio.ponerEnLaOlla(coupleId, me.uid, receta),
+          onPicar: () => servicio.picar(coupleId, me.uid),
+          onApagarOlla: () => servicio.apagarOlla(coupleId),
           onRecibirReparto: () => servicio.recibirReparto(coupleId, me.uid),
           onCartaSorpresa: partner == null
               ? null
@@ -120,6 +126,9 @@ class CasitaView extends StatefulWidget {
     this.onNombrar,
     this.onRecoger,
     this.onCocinar,
+    this.onPonerEnOlla,
+    this.onPicar,
+    this.onApagarOlla,
     this.onRecibirReparto,
     this.categoriaInicial,
     this.cuartoInicial,
@@ -165,6 +174,12 @@ class CasitaView extends StatefulWidget {
 
   /// Cocinar una receta con lo de la despensa.
   final Future<bool> Function(Receta receta)? onCocinar;
+
+  /// Cocinar juntos: uno pone la receta en la olla y la pareja ayuda
+  /// picando ([onPicar]); solo entonces sale. Null sin pareja.
+  final Future<bool> Function(Receta receta)? onPonerEnOlla;
+  final Future<Receta?> Function()? onPicar;
+  final Future<void> Function()? onApagarOlla;
 
   /// Recibir la caja de la semana del repartidor (va a la despensa).
   final Future<bool> Function()? onRecibirReparto;
@@ -414,6 +429,20 @@ class _CasitaViewState extends State<CasitaView> {
 
   bool _ocupado = false;
 
+  /// Están en el lugar para cocinar (despensa + menú).
+  bool _cocinando = false;
+
+  String get _resumenCocina {
+    final listas = Receta.values.where(
+      (r) => _estado.disponible(r, _hoy) && _estado.puedeCocinar(r),
+    );
+    return switch (listas.length) {
+      0 => 'Todavía no alcanza para ninguna receta',
+      1 => 'Les alcanza para 1 receta',
+      final n => 'Les alcanza para $n recetas',
+    };
+  }
+
   Future<void> _recoger(Cosa semilla) async {
     setState(() => _ocupado = true);
     try {
@@ -432,6 +461,7 @@ class _CasitaViewState extends State<CasitaView> {
   }
 
   Future<void> _cocinar(Receta r) async {
+    if (widget.onPonerEnOlla case final poner?) return _ponerEnOlla(r, poner);
     setState(() => _ocupado = true);
     try {
       final listo = await widget.onCocinar!(r);
@@ -450,13 +480,69 @@ class _CasitaViewState extends State<CasitaView> {
     }
   }
 
+  Future<void> _ponerEnOlla(
+    Receta r,
+    Future<bool> Function(Receta) poner,
+  ) async {
+    final pareja = widget.partner?.name ?? 'tu pareja';
+    setState(() => _ocupado = true);
+    try {
+      final listo = await poner(r);
+      _aviso(
+        listo
+            ? '🍳 Pusiste ${r.nombre} en la olla. Le avisamos a $pareja: '
+                  'cuando te ayude a picar, ¡sale!'
+            : 'Ya hay algo en la olla o no alcanza lo de la despensa.',
+      );
+    } catch (_) {
+      _aviso('No se pudo poner en la olla. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _picar() async {
+    setState(() => _ocupado = true);
+    try {
+      final r = await widget.onPicar!();
+      _aviso(
+        r != null
+            ? '🔪 ¡Picaste todo! Cocinaron juntos ${r.nombre} y quedó '
+                  'anotado en su libro de recetas.'
+            : 'La olla ya no estaba esperando o no alcanzó la despensa.',
+      );
+    } catch (_) {
+      _aviso('No se pudo picar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _apagarOlla() async {
+    setState(() => _ocupado = true);
+    try {
+      await widget.onApagarOlla!();
+      _aviso('Apagaste la olla. Pueden elegir otra receta.');
+    } catch (_) {
+      _aviso('No se pudo apagar la olla. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  /// Lo que trae el repartidor esta semana (con lo que se les acabó).
+  Map<Ingrediente, int> get _cajaDeHoy =>
+      Repartidor.cajaPara(Repartidor.semana(_hoy), despensa: _estado.despensa);
+
   Future<void> _recibirReparto() async {
+    final caja = _cajaDeHoy;
     setState(() => _ocupado = true);
     try {
       final listo = await widget.onRecibirReparto!();
       _aviso(
         listo
-            ? '📦 Guardaron la caja en la despensa: ${Repartidor.contenido}. '
+            ? '📦 Guardaron la caja en la despensa: '
+                  '${Repartidor.contenido(caja)}. '
                   '¡A cocinar!'
             : 'Tu pareja ya recibió la caja de esta semana. Está en la '
                   'despensa.',
@@ -1189,6 +1275,25 @@ class _CasitaViewState extends State<CasitaView> {
 
   @override
   Widget build(BuildContext context) {
+    if (_cocinando && widget.onCocinar != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _cocinando = false);
+        },
+        child: CocinaView(
+          estado: _estado,
+          ahora: _hoy,
+          ocupado: _ocupado,
+          onCocinar: _cocinar,
+          onSalir: () => setState(() => _cocinando = false),
+          yo: widget.me.uid,
+          pareja: widget.onPonerEnOlla == null ? null : widget.partner?.name,
+          onPicar: widget.onPicar == null ? null : _picar,
+          onApagar: widget.onApagarOlla == null ? null : _apagarOlla,
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -1225,11 +1330,20 @@ class _CasitaViewState extends State<CasitaView> {
                 de: widget.partner?.name ?? 'Tu pareja',
                 onAbrir: () => _abrirRegalo(cosa, regalo),
               ),
+          if (_estado.ollaEn(_hoy) case final olla?
+              when olla.de != widget.me.uid && widget.onPicar != null)
+            _AvisoOllaPareja(
+              receta: olla.receta,
+              pareja: widget.partner?.name ?? 'Tu pareja',
+              ocupado: _ocupado,
+              onPicar: _picar,
+            ),
           if (widget.onRecibirReparto != null &&
               _estado.repartidorEsperando(_hoy))
             AvisoRepartidor(
               ocupado: _ocupado,
               pescaditos: _estado.libres,
+              caja: _cajaDeHoy,
               onRecibir: _recibirReparto,
             ),
           if (_estado.pendiente case final p? when widget.onAprobar != null)
@@ -1311,11 +1425,19 @@ class _CasitaViewState extends State<CasitaView> {
               _estado.abierto(_cuarto) &&
               widget.onCocinar != null) ...[
             const SizedBox(height: 12),
-            _Despensa(
-              estado: _estado,
-              ahora: _hoy,
-              ocupado: _ocupado,
-              onCocinar: _cocinar,
+            Center(
+              child: FilledButton.icon(
+                onPressed: () => setState(() => _cocinando = true),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
+                icon: const TextoDoodle('🍳'),
+                label: const Text('Ir a cocinar'),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _resumenCocina,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
             ),
           ],
           if (_estado.abierto(_cuarto) && _comidas.isNotEmpty) ...[
@@ -2028,6 +2150,7 @@ class AvisoRepartidor extends StatelessWidget {
     super.key,
     required this.ocupado,
     required this.pescaditos,
+    required this.caja,
     required this.onRecibir,
   });
 
@@ -2035,6 +2158,9 @@ class AvisoRepartidor extends StatelessWidget {
 
   /// Los que tienen para gastar (sin lo apartado en la alcancía).
   final int pescaditos;
+
+  /// Lo que trae esta semana.
+  final Map<Ingrediente, int> caja;
   final VoidCallback onRecibir;
 
   @override
@@ -2068,8 +2194,8 @@ class AvisoRepartidor extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Cada lunes les trae lo básico para cocinar las '
-                        'recetas. La caja cuesta ${Repartidor.precio} '
+                        'Cada lunes trae algo distinto, y siempre lo que se '
+                        'les acabó. La caja cuesta ${Repartidor.precio} '
                         'pescaditos.',
                         style: TextStyle(
                           fontSize: 13,
@@ -2083,7 +2209,7 @@ class AvisoRepartidor extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextoDoodle(
-              Repartidor.contenido,
+              Repartidor.contenido(caja),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 14),
             ),
@@ -2632,105 +2758,50 @@ class _CartaSorpresaEnTienda extends StatelessWidget {
   }
 }
 
-/// La despensa de la cocina (lo recogido del huerto) y lo que se puede
-/// cocinar con eso.
-class _Despensa extends StatelessWidget {
-  const _Despensa({
-    required this.estado,
-    required this.ahora,
+/// La pareja puso algo en la olla: hay que ayudar picando para que salga.
+class _AvisoOllaPareja extends StatelessWidget {
+  const _AvisoOllaPareja({
+    required this.receta,
+    required this.pareja,
     required this.ocupado,
-    required this.onCocinar,
+    required this.onPicar,
   });
 
-  final EstadoCasita estado;
-  final DateTime ahora;
+  final Receta receta;
+  final String pareja;
   final bool ocupado;
-  final ValueChanged<Receta> onCocinar;
+  final VoidCallback onPicar;
 
   @override
   Widget build(BuildContext context) {
-    final recetas = Receta.values.where((r) => r.disponible(estado, ahora));
-    // En diciembre, si todavía no compraron el recetario de Navidad.
-    // Los recetarios de la fiesta de ahora que todavía no compraron.
-    final sinComprar = [
-      for (final c in Catalogo.recetarios)
-        if (c.aLaVenta(ahora) && !estado.tiene(c)) c,
-    ];
-    final hay = [
-      for (final i in Ingrediente.values)
-        if (estado.hay(i) > 0) '${i.emoji} ${i.cuantos(estado.hay(i))}',
-    ];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Despensa',
-            style: TextStyle(color: AppTheme.azul, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          TextoDoodle(
-            hay.isEmpty
-                ? 'Está vacía. Recojan lo que crece en el huerto, y cada '
-                      'lunes el repartidor les trae lo básico (sal, leche, '
-                      'queso…).'
-                : hay.join(' · '),
-            style: const TextStyle(color: AppTheme.gris, fontSize: 13),
-          ),
-          if (hay.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              'Cocinar',
-              style: TextStyle(
-                color: AppTheme.azul,
-                fontWeight: FontWeight.w700,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Image.asset(
+              Casita.asset('plato_${receta.dibujo}'),
+              width: 48,
+              height: 48,
+              filterQuality: FilterQuality.none,
+              errorBuilder: (_, _, _) => const SizedBox(width: 48),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$pareja puso ${receta.nombre} en la olla. '
+                '¡Ayúdale a picar para que salga!',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                // Primero lo que alcanza para cocinar.
-                // Lo de fiesta solo aparece en su fecha.
-                for (final r in [
-                  ...recetas.where(estado.puedeCocinar),
-                  ...recetas.where((r) => !estado.puedeCocinar(r)),
-                ])
-                  ActionChip(
-                    label: TextoDoodle(
-                      '${r.nombre[0].toUpperCase()}${r.nombre.substring(1)} '
-                      '(${r.cuesta})',
-                    ),
-                    onPressed: ocupado || !estado.puedeCocinar(r)
-                        ? null
-                        : () => onCocinar(r),
-                  ),
-              ],
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: ocupado ? null : onPicar,
+              child: const Text('Picar'),
             ),
           ],
-          for (final c in sinComprar) ...[
-            const SizedBox(height: 8),
-            TextoDoodle(
-              '${c.fiesta?.emoji ?? '📖'} En la tienda (De temporada) está '
-              'el ${c.nombre}: ${Catalogo.recetasDe(c).map((r) => r.nombre).join(', ')}.',
-              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
-            ),
-          ],
-          if (estado.cocinado case final r?
-              when estado.platoDe(r.comidas.first, ahora) != null) ...[
-            const SizedBox(height: 8),
-            TextoDoodle(
-              '🍲 Hoy comen ${r.nombre} del huerto.',
-              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
