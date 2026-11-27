@@ -123,6 +123,11 @@ class Dibujos {
   static const grosores = <int>[3, 7, 14, 24, 40];
   static const grosorPorDefecto = 14;
 
+  /// El bote de pintura se guarda como un trazo de un solo punto (donde se
+  /// tocó) con este grosor, que ningún pincel usa. Así las reglas no
+  /// cambian y en una versión vieja de la app se ve como un puntote.
+  static const grosorRelleno = 60;
+
   /// Palabras para dibujar, por tema: cositas fáciles y tiernas.
   static const temas = <String, List<String>>{
     'Animales': [
@@ -818,6 +823,28 @@ class Marcador {
   int get porCadaUno => rondas.isEmpty ? 0 : (rondas.first.total + 1) ~/ 2;
 }
 
+/// La hora del servidor vista desde este celular. El minuto de cada dibujo
+/// se cuenta con la hora del servidor: si el reloj del celular va
+/// adelantado o atrasado, [desfase] lo corrige (se mide cuando llega una
+/// hora recién puesta por el servidor).
+class RelojServidor {
+  RelojServidor._();
+
+  static Duration desfase = Duration.zero;
+
+  static DateTime ahora() => DateTime.now().add(desfase);
+
+  /// [servidor] es una hora que el servidor acaba de poner (hace menos de
+  /// unos segundos). Diferencias chiquitas no se toman en cuenta.
+  static void medir(DateTime servidor) {
+    final d = servidor.difference(DateTime.now());
+    if ((d - desfase).abs() > const Duration(seconds: 2)) desfase = d;
+  }
+}
+
+/// Con qué se dibuja: lápiz, bote de pintura (rellena un área) o goma.
+enum Herramienta { lapiz, bote, goma }
+
 /// Un trazo del dibujo: puntos (x, y, x, y…) en el lienzo de 1000 × 1000.
 class Trazo {
   const Trazo({
@@ -846,6 +873,9 @@ class Trazo {
 
   Color get pintura =>
       Dibujos.colores[color.clamp(0, Dibujos.colores.length - 1)];
+
+  /// Es un toque del bote de pintura (rellena el área donde se tocó).
+  bool get relleno => grosor == Dibujos.grosorRelleno && puntos.length == 2;
 
   Map<String, Object> toMap(String uid) => {
     'n': n,

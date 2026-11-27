@@ -608,7 +608,12 @@ class _TurnoState extends State<_Turno> {
     return LayoutBuilder(
       builder: (context, c) {
         final ancho = math.min(c.maxWidth, 560.0);
-        final lado = math.min(ancho - 24, c.maxHeight * (dibuja ? 0.55 : 0.5));
+        // Al dibujar, el papel ocupa todo lo que dejan el título, las
+        // herramientas y el botón de listo.
+        final lado = math.min(
+          ancho - 24,
+          dibuja ? math.max(160.0, c.maxHeight - 280) : c.maxHeight * 0.5,
+        );
         return Center(
           child: SizedBox(
             width: ancho,
@@ -707,6 +712,7 @@ class DibujoLocalState extends State<DibujoLocal> {
   int _borradoHasta = 0;
   int _color = 0;
   int _grosor = Dibujos.grosorPorDefecto;
+  Herramienta _herramienta = Herramienta.lapiz;
 
   /// Los trazos que se ven, renumerados desde 0.
   List<Trazo> get trazos {
@@ -742,8 +748,9 @@ class DibujoLocalState extends State<DibujoLocal> {
             child: Lienzo(
               trazos: lista,
               borradoHasta: _borradoHasta,
-              color: _color,
+              color: _herramienta == Herramienta.goma ? Dibujos.goma : _color,
               grosor: _grosor,
+              bote: _herramienta == Herramienta.bote,
               siguiente: lista.isEmpty ? 0 : lista.last.n + 1,
               onTrazo: (t) {
                 if ((_puntos > Telefono.maxPuntos || _trazos.length >= 350) &&
@@ -758,8 +765,10 @@ class DibujoLocalState extends State<DibujoLocal> {
         Herramientas(
           color: _color,
           grosor: _grosor,
+          herramienta: _herramienta,
           onColor: (c) => setState(() => _color = c),
           onGrosor: (g) => setState(() => _grosor = g),
+          onHerramienta: (h) => setState(() => _herramienta = h),
           onDeshacer: () {
             final vivos = [
               for (final t in lista)
