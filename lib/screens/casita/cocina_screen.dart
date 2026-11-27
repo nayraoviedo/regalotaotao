@@ -15,13 +15,30 @@ class CocinaView extends StatelessWidget {
     required this.ocupado,
     required this.onCocinar,
     required this.onSalir,
+    this.yo,
+    this.pareja,
+    this.onPicar,
+    this.onApagar,
   });
 
   final EstadoCasita estado;
   final DateTime ahora;
   final bool ocupado;
+
+  /// Cocinar [Receta]: si tienen pareja, la pone en la olla y la pareja
+  /// tiene que ayudar picando ([onPicar]) para que salga.
   final ValueChanged<Receta> onCocinar;
   final VoidCallback onSalir;
+
+  /// uid de quien mira y el nombre de su pareja (null sin pareja).
+  final String? yo;
+  final String? pareja;
+
+  /// Ayudar picando lo que la pareja puso en la olla.
+  final VoidCallback? onPicar;
+
+  /// Apagar la olla que uno mismo puso.
+  final VoidCallback? onApagar;
 
   /// Dónde queda el platito en los dibujos `plato_<receta>.png`.
   static const zonaPlato = ZonaCasita(22, 84, 14, 13);
@@ -36,6 +53,9 @@ class CocinaView extends StatelessWidget {
   Widget build(BuildContext context) {
     final recetas = _recetas;
     final listas = recetas.where(estado.puedeCocinar).toList();
+    final olla = estado.ollaEn(ahora);
+    // Mientras hay algo en la olla no se pone otra cosa.
+    final ocupada = ocupado || olla != null;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -48,6 +68,15 @@ class CocinaView extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => LibroRecetasScreen(estado: estado),
+              ),
+            ),
+            icon: const TextoDoodle('📖'),
+            label: const Text('Libro'),
+          ),
           Builder(
             builder: (context) => TextButton.icon(
               onPressed: () => Scaffold.of(context).openEndDrawer(),
@@ -62,7 +91,7 @@ class CocinaView extends StatelessWidget {
         child: _Menu(
           recetas: recetas,
           estado: estado,
-          ocupado: ocupado,
+          ocupado: ocupada,
           onCocinar: (r) {
             Navigator.of(context).maybePop();
             onCocinar(r);
@@ -72,6 +101,24 @@ class CocinaView extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          if (olla != null) ...[
+            _AvisoOlla(
+              olla: olla,
+              mia: olla.de == yo,
+              pareja: pareja ?? 'Tu pareja',
+              ocupado: ocupado,
+              onPicar: onPicar,
+              onApagar: onApagar,
+            ),
+            const SizedBox(height: 12),
+          ] else if (pareja != null) ...[
+            TextoDoodle(
+              '🍳 Cocinan juntos: tú pones la receta en la olla y $pareja '
+              'te ayuda picando para que salga.',
+              style: const TextStyle(color: AppTheme.gris, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+          ],
           _DespensaCard(estado: estado),
           const SizedBox(height: 16),
           Text(
@@ -95,7 +142,7 @@ class CocinaView extends StatelessWidget {
             _TarjetaReceta(
               receta: r,
               faltan: const {},
-              ocupado: ocupado,
+              ocupado: ocupada,
               onCocinar: () => onCocinar(r),
             ),
           for (final c in Catalogo.recetarios)
@@ -287,11 +334,18 @@ class _Menu extends StatelessWidget {
       ],
       'Desayuno': [
         for (final r in recetas)
-          if (r.fiestas.isEmpty && r.comidas.contains(Comida.desayuno)) r,
+          if (r.fiestas.isEmpty &&
+              !r.postre &&
+              r.comidas.contains(Comida.desayuno))
+            r,
       ],
       'Almuerzo y cena': [
         for (final r in recetas)
           if (r.fiestas.isEmpty && !r.comidas.contains(Comida.desayuno)) r,
+      ],
+      'Postres': [
+        for (final r in recetas)
+          if (r.fiestas.isEmpty && r.postre) r,
       ],
     };
     return SafeArea(
@@ -328,6 +382,172 @@ class _Menu extends StatelessWidget {
                   onCocinar: () => onCocinar(r),
                 ),
             ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Lo que está en la olla: si la puse yo, espero que mi pareja pique; si
+/// la puso mi pareja, me toca ayudar.
+class _AvisoOlla extends StatelessWidget {
+  const _AvisoOlla({
+    required this.olla,
+    required this.mia,
+    required this.pareja,
+    required this.ocupado,
+    this.onPicar,
+    this.onApagar,
+  });
+
+  final Olla olla;
+  final bool mia;
+  final String pareja;
+  final bool ocupado;
+  final VoidCallback? onPicar;
+  final VoidCallback? onApagar;
+
+  @override
+  Widget build(BuildContext context) {
+    final nombre = olla.receta.nombre;
+    return Card(
+      color: const Color(0xFFFFF3DC),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  height: 48,
+                  child: RecorteCasita(
+                    capas: [Casita.asset('plato_${olla.receta.dibujo}')],
+                    zona: CocinaView.zonaPlato,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextoDoodle(
+                    mia
+                        ? '🍳 Pusiste $nombre en la olla. Falta que $pareja '
+                              'te ayude picando para que salga.'
+                        : '🍳 $pareja está cocinando $nombre. ¡Ayúdale a '
+                              'picar para que salga!',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (mia)
+              OutlinedButton(
+                onPressed: ocupado ? null : onApagar,
+                child: const Text('Apagar la olla'),
+              )
+            else
+              FilledButton(
+                onPressed: ocupado ? null : onPicar,
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
+                child: const TextoDoodle('Picar 🔪'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// El libro de recetas: lo que ya cocinaron juntos, cuántas veces y cuándo.
+class LibroRecetasScreen extends StatelessWidget {
+  const LibroRecetasScreen({super.key, required this.estado});
+
+  final EstadoCasita estado;
+
+  static const _meses = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+
+  static String fecha(DateTime d) =>
+      '${d.day} ${_meses[d.month - 1]} ${d.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final entradas = estado.libro.entries.toList()
+      ..sort((a, b) => b.value.ultima.compareTo(a.value.ultima));
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Nuestro libro de recetas',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          TextoDoodle(
+            entradas.isEmpty
+                ? '📖 Todavía está en blanco. Cada plato que cocinen se '
+                      'anota aquí con su fecha.'
+                : '📖 Ya cocinaron ${entradas.length} de '
+                      '${Receta.values.length} recetas.',
+            style: const TextStyle(color: AppTheme.gris, fontSize: 14),
+          ),
+          for (final e in entradas)
+            Card(
+              margin: const EdgeInsets.only(top: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 52,
+                      height: 48,
+                      child: RecorteCasita(
+                        capas: [Casita.asset('plato_${e.key.dibujo}')],
+                        zona: CocinaView.zonaPlato,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            CocinaView.mayuscula(e.key.nombre),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            e.value.veces == 1
+                                ? 'La cocinaron el ${fecha(e.value.primera)}'
+                                : '${e.value.veces} veces · la primera el '
+                                      '${fecha(e.value.primera)}, la última '
+                                      'el ${fecha(e.value.ultima)}',
+                            style: const TextStyle(
+                              color: AppTheme.gris,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

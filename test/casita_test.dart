@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:taotao/models/app_user.dart';
 import 'package:taotao/models/casita.dart';
 import 'package:taotao/screens/casita/casita_screen.dart';
+import 'package:taotao/screens/casita/cocina_screen.dart';
 import 'package:taotao/screens/casita/casa_en_corte.dart';
 import 'package:taotao/screens/casita/cuarto.dart';
 import 'package:taotao/services/foto_pixelada.dart';
@@ -249,6 +250,31 @@ void main() {
   });
 
   group('Estado de la casita', () {
+    test('la olla y el libro de recetas se leen del estado', () {
+      final en = DateTime(2026, 11, 26, 9);
+      final e = EstadoCasita.fromMap({
+        'cocinando': {
+          'id': 'x',
+          'receta': 'pizzaPepperoni',
+          'de': 'a',
+          'en': en.millisecondsSinceEpoch,
+        },
+        'libro': {
+          'brownies': {'veces': 2, 'primera': 1, 'ultima': 2},
+          'noExiste': {'veces': 1, 'primera': 1, 'ultima': 1},
+        },
+      });
+      expect(
+        e.ollaEn(en.add(const Duration(hours: 3)))?.receta,
+        Receta.pizzaPepperoni,
+      );
+      expect(e.ollaEn(en.add(const Duration(days: 2))), isNull);
+      expect(e.libro.keys, [Receta.brownies]);
+      expect(e.libro[Receta.brownies]!.veces, 2);
+      expect(Receta.brownies.postre, isTrue);
+      expect(Receta.ramen.postre, isFalse);
+    });
+
     test('al principio: pared, piso, ventana y los dos gatitos', () {
       const e = EstadoCasita.vacio;
       expect(e.puesto(Lugar.pared)?.id, 'pared_crema');
@@ -1631,6 +1657,80 @@ void main() {
         ),
         findsWidgets,
       );
+    });
+
+    testWidgets('cocinar juntos: uno pone la olla y la pareja pica', (t) async {
+      final enOlla = <Receta>[];
+      Widget vista(AppUser yo, AppUser otro, EstadoCasita estado) =>
+          MaterialApp(
+            home: CasitaView(
+              estado: estado,
+              movimientos: const [],
+              me: yo,
+              partner: otro,
+              onComprar: (c, g) async {},
+              onPoner: (l, c) async {},
+              onVestir: (g, p, c) async {},
+              onCocinar: (r) async => true,
+              onPonerEnOlla: (r) async {
+                enOlla.add(r);
+                return true;
+              },
+              onPicar: () async => Receta.sopaTomate,
+              onApagarOlla: () async {},
+              cuartoInicial: Cuarto.cocina,
+              hoy: DateTime(2026, 11, 26, 10),
+            ),
+          );
+      final base = {
+        'tenemos': ['cuarto_cocina'],
+        'reparto': '2026-11-23',
+        'despensa': {'tomate': 2, 'sal': 1, 'trigo': 1},
+      };
+      await t.pumpWidget(vista(me, partner, EstadoCasita.fromMap(base)));
+      await t.ensureVisible(find.text('Ir a cocinar'));
+      await t.tap(find.text('Ir a cocinar'));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.text('Cocinar'));
+      await t.tap(find.text('Cocinar'));
+      await t.pump();
+      expect(enOlla, [Receta.sopaTomate]);
+
+      // Del otro lado: la olla de nayra espera a que Xixi pique.
+      final conOlla = EstadoCasita.fromMap({
+        ...base,
+        'cocinando': {
+          'id': 'sopaTomate_1',
+          'receta': 'sopaTomate',
+          'nombre': 'Sopa de tomate',
+          'de': 'a',
+          'en': DateTime(2026, 11, 26, 9).millisecondsSinceEpoch,
+        },
+      });
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(vista(partner, me, conOlla));
+      await t.pumpAndSettle();
+      expect(find.textContaining('puso sopa de tomate en la olla'), findsOne);
+      await t.tap(find.text('Picar'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('Cocinaron juntos'), findsOneWidget);
+    });
+
+    testWidgets('el libro de recetas guarda lo cocinado con su fecha', (
+      t,
+    ) async {
+      final estado = EstadoCasita.fromMap({
+        'libro': {
+          'sopaTomate': {
+            'veces': 3,
+            'primera': DateTime(2026, 11, 20).millisecondsSinceEpoch,
+            'ultima': DateTime(2026, 11, 26).millisecondsSinceEpoch,
+          },
+        },
+      });
+      await t.pumpWidget(MaterialApp(home: LibroRecetasScreen(estado: estado)));
+      expect(find.textContaining('Sopa de tomate'), findsWidgets);
+      expect(find.textContaining('nov'), findsWidgets);
     });
 
     testWidgets('adoptar un bebé y ponerle nombre', (t) async {

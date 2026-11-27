@@ -594,6 +594,16 @@ const KINDS = {
       body: `${name} quiere comprar ${NOMBRES_CASITA[d.propuesta.cosa] || "algo"} para la casita. ¿Le das el sí?`,
     }),
   },
+  // Cocinar juntos: uno puso algo en la olla y la pareja tiene que picar.
+  olla: {
+    collection: "casita",
+    check: (d, uid) => d.cocinando?.de === uid,
+    dedupeKey: (d) => d.cocinando.id,
+    message: (name, d) => ({
+      title: "🍳 ¡A cocinar juntos!",
+      body: `${name} está cocinando ${d.cocinando.nombre || "algo rico"}. Ayúdale a picar para que salga 🔪`,
+    }),
+  },
   // Juegos de pareja: al empezar una partida le toca a la pareja; cuando
   // la pareja responde, quien empezó ya puede ver los resultados.
   juego: {

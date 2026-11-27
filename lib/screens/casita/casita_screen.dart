@@ -79,6 +79,11 @@ class CasitaScreen extends StatelessWidget {
               servicio.nombrarBebe(coupleId, bebe, nombre),
           onRecoger: (semilla) => servicio.recoger(coupleId, semilla),
           onCocinar: (receta) => servicio.cocinar(coupleId, receta),
+          onPonerEnOlla: partner == null
+              ? null
+              : (receta) => servicio.ponerEnLaOlla(coupleId, me.uid, receta),
+          onPicar: () => servicio.picar(coupleId, me.uid),
+          onApagarOlla: () => servicio.apagarOlla(coupleId),
           onRecibirReparto: () => servicio.recibirReparto(coupleId, me.uid),
           onCartaSorpresa: partner == null
               ? null
@@ -121,6 +126,9 @@ class CasitaView extends StatefulWidget {
     this.onNombrar,
     this.onRecoger,
     this.onCocinar,
+    this.onPonerEnOlla,
+    this.onPicar,
+    this.onApagarOlla,
     this.onRecibirReparto,
     this.categoriaInicial,
     this.cuartoInicial,
@@ -166,6 +174,12 @@ class CasitaView extends StatefulWidget {
 
   /// Cocinar una receta con lo de la despensa.
   final Future<bool> Function(Receta receta)? onCocinar;
+
+  /// Cocinar juntos: uno pone la receta en la olla y la pareja ayuda
+  /// picando ([onPicar]); solo entonces sale. Null sin pareja.
+  final Future<bool> Function(Receta receta)? onPonerEnOlla;
+  final Future<Receta?> Function()? onPicar;
+  final Future<void> Function()? onApagarOlla;
 
   /// Recibir la caja de la semana del repartidor (va a la despensa).
   final Future<bool> Function()? onRecibirReparto;
@@ -447,6 +461,7 @@ class _CasitaViewState extends State<CasitaView> {
   }
 
   Future<void> _cocinar(Receta r) async {
+    if (widget.onPonerEnOlla case final poner?) return _ponerEnOlla(r, poner);
     setState(() => _ocupado = true);
     try {
       final listo = await widget.onCocinar!(r);
@@ -460,6 +475,56 @@ class _CasitaViewState extends State<CasitaView> {
       );
     } catch (_) {
       _aviso('No se pudo cocinar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _ponerEnOlla(
+    Receta r,
+    Future<bool> Function(Receta) poner,
+  ) async {
+    final pareja = widget.partner?.name ?? 'tu pareja';
+    setState(() => _ocupado = true);
+    try {
+      final listo = await poner(r);
+      _aviso(
+        listo
+            ? '🍳 Pusiste ${r.nombre} en la olla. Le avisamos a $pareja: '
+                  'cuando te ayude a picar, ¡sale!'
+            : 'Ya hay algo en la olla o no alcanza lo de la despensa.',
+      );
+    } catch (_) {
+      _aviso('No se pudo poner en la olla. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _picar() async {
+    setState(() => _ocupado = true);
+    try {
+      final r = await widget.onPicar!();
+      _aviso(
+        r != null
+            ? '🔪 ¡Picaste todo! Cocinaron juntos ${r.nombre} y quedó '
+                  'anotado en su libro de recetas.'
+            : 'La olla ya no estaba esperando o no alcanzó la despensa.',
+      );
+    } catch (_) {
+      _aviso('No se pudo picar. Prueba otra vez.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _apagarOlla() async {
+    setState(() => _ocupado = true);
+    try {
+      await widget.onApagarOlla!();
+      _aviso('Apagaste la olla. Pueden elegir otra receta.');
+    } catch (_) {
+      _aviso('No se pudo apagar la olla. Prueba otra vez.');
     } finally {
       if (mounted) setState(() => _ocupado = false);
     }
@@ -1222,6 +1287,10 @@ class _CasitaViewState extends State<CasitaView> {
           ocupado: _ocupado,
           onCocinar: _cocinar,
           onSalir: () => setState(() => _cocinando = false),
+          yo: widget.me.uid,
+          pareja: widget.onPonerEnOlla == null ? null : widget.partner?.name,
+          onPicar: widget.onPicar == null ? null : _picar,
+          onApagar: widget.onApagarOlla == null ? null : _apagarOlla,
         ),
       );
     }
@@ -1261,6 +1330,14 @@ class _CasitaViewState extends State<CasitaView> {
                 de: widget.partner?.name ?? 'Tu pareja',
                 onAbrir: () => _abrirRegalo(cosa, regalo),
               ),
+          if (_estado.ollaEn(_hoy) case final olla?
+              when olla.de != widget.me.uid && widget.onPicar != null)
+            _AvisoOllaPareja(
+              receta: olla.receta,
+              pareja: widget.partner?.name ?? 'Tu pareja',
+              ocupado: _ocupado,
+              onPicar: _picar,
+            ),
           if (widget.onRecibirReparto != null &&
               _estado.repartidorEsperando(_hoy))
             AvisoRepartidor(
@@ -2675,6 +2752,55 @@ class _CartaSorpresaEnTienda extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// La pareja puso algo en la olla: hay que ayudar picando para que salga.
+class _AvisoOllaPareja extends StatelessWidget {
+  const _AvisoOllaPareja({
+    required this.receta,
+    required this.pareja,
+    required this.ocupado,
+    required this.onPicar,
+  });
+
+  final Receta receta;
+  final String pareja;
+  final bool ocupado;
+  final VoidCallback onPicar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Image.asset(
+              Casita.asset('plato_${receta.dibujo}'),
+              width: 48,
+              height: 48,
+              filterQuality: FilterQuality.none,
+              errorBuilder: (_, _, _) => const SizedBox(width: 48),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '$pareja puso ${receta.nombre} en la olla. '
+                '¡Ayúdale a picar para que salga!',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: ocupado ? null : onPicar,
+              child: const Text('Picar'),
+            ),
+          ],
         ),
       ),
     );

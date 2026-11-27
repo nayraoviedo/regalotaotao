@@ -703,6 +703,192 @@ enum Receta {
     {Ingrediente.trigo: 1, Ingrediente.palta: 1, Ingrediente.sal: 1},
     {Comida.desayuno},
   ),
+  // ---- Del mundo, con el huerto y el repartidor ----
+  huevosRancheros(
+    'huevos_rancheros',
+    'huevos rancheros',
+    {Ingrediente.tomate: 1, Ingrediente.pimiento: 1, Ingrediente.huevo: 2},
+    {Comida.desayuno},
+  ),
+  shakshuka(
+    'shakshuka',
+    'shakshuka',
+    {Ingrediente.tomate: 2, Ingrediente.pimiento: 1, Ingrediente.huevo: 2},
+    {Comida.desayuno},
+  ),
+  panFrances(
+    'pan_frances',
+    'pan francés con canela',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.huevo: 1,
+      Ingrediente.leche: 1,
+      Ingrediente.canela: 1,
+    },
+    {Comida.desayuno},
+  ),
+  wafflesFresa(
+    'waffles_fresa',
+    'waffles con fresa',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.fresa: 1,
+      Ingrediente.huevo: 1,
+      Ingrediente.mantequilla: 1,
+    },
+    {Comida.desayuno},
+  ),
+  congee(
+    'congee',
+    'congee (sopita de arroz)',
+    {Ingrediente.arroz: 1, Ingrediente.cebolla: 1, Ingrediente.pollo: 1},
+    {Comida.desayuno},
+  ),
+  padThai(
+    'pad_thai',
+    'pad thai',
+    {
+      Ingrediente.arroz: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.huevo: 1,
+      Ingrediente.pollo: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  polloTeriyaki(
+    'pollo_teriyaki',
+    'pollo teriyaki con arroz',
+    {
+      Ingrediente.arroz: 1,
+      Ingrediente.ajo: 1,
+      Ingrediente.pollo: 1,
+      Ingrediente.azucar: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ramen(
+    'ramen',
+    'ramen',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.huevo: 1,
+      Ingrediente.carne: 1,
+      Ingrediente.miso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  goulash(
+    'goulash',
+    'goulash',
+    {
+      Ingrediente.papa: 1,
+      Ingrediente.pimiento: 1,
+      Ingrediente.cebolla: 1,
+      Ingrediente.carne: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  pescadoPapas(
+    'pescado_papas',
+    'pescado con papas fritas',
+    {Ingrediente.papa: 2, Ingrediente.trigo: 1, Ingrediente.pescado: 1},
+    {Comida.almuerzo, Comida.cena},
+  ),
+  ceviche(
+    'ceviche',
+    'ceviche',
+    {
+      Ingrediente.cebolla: 1,
+      Ingrediente.choclo: 1,
+      Ingrediente.pescado: 1,
+      Ingrediente.sal: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  enchiladas(
+    'enchiladas',
+    'enchiladas de pollo',
+    {
+      Ingrediente.choclo: 1,
+      Ingrediente.tomate: 1,
+      Ingrediente.pollo: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  moussaka(
+    'moussaka',
+    'moussaka',
+    {
+      Ingrediente.berenjena: 1,
+      Ingrediente.papa: 1,
+      Ingrediente.carne: 1,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  quiche(
+    'quiche',
+    'quiche de verduras',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.pimiento: 1,
+      Ingrediente.huevo: 2,
+      Ingrediente.queso: 1,
+    },
+    {Comida.almuerzo, Comida.cena},
+  ),
+  tartaFresa(
+    'tarta_fresa',
+    'tarta de fresa',
+    {
+      Ingrediente.fresa: 2,
+      Ingrediente.trigo: 1,
+      Ingrediente.azucar: 1,
+      Ingrediente.mantequilla: 1,
+    },
+    {Comida.desayuno},
+    postre: true,
+  ),
+  pieCalabaza(
+    'pie_calabaza_receta',
+    'pie de calabaza',
+    {
+      Ingrediente.calabaza: 1,
+      Ingrediente.trigo: 1,
+      Ingrediente.azucar: 1,
+      Ingrediente.huevo: 1,
+    },
+    {Comida.desayuno},
+    postre: true,
+  ),
+  brownies(
+    'brownies',
+    'brownies',
+    {
+      Ingrediente.trigo: 1,
+      Ingrediente.chocolate: 2,
+      Ingrediente.huevo: 1,
+      Ingrediente.azucar: 1,
+    },
+    {Comida.desayuno},
+    postre: true,
+  ),
+  mochiFresa(
+    'mochi_fresa',
+    'mochi de fresa',
+    {Ingrediente.arroz: 2, Ingrediente.fresa: 1, Ingrediente.azucar: 1},
+    {Comida.desayuno},
+    postre: true,
+  ),
+  heladoSandia(
+    'helado_sandia',
+    'helado de sandía',
+    {Ingrediente.sandia: 1, Ingrediente.leche: 1, Ingrediente.azucar: 1},
+    {Comida.desayuno},
+    postre: true,
+  ),
   // ---- Con lo que trae el repartidor ----
   sushi(
     'sushi',
@@ -1075,7 +1261,11 @@ enum Receta {
     this.comidas, {
     this.fiestas = const {},
     this.recetario,
+    this.postre = false,
   });
+
+  /// Va en "Postres" en el menú (se comen en el desayuno o de merienda).
+  final bool postre;
 
   /// Id del recetario ([Especial.recetario]) que hay que comprar para
   /// cocinarla (null si viene con la cocina).
@@ -2596,6 +2786,8 @@ class EstadoCasita {
     this.cocinado,
     this.cocinadoEn,
     this.reparto,
+    this.olla,
+    this.libro = const {},
   });
 
   static const vacio = EstadoCasita();
@@ -2670,6 +2862,21 @@ class EstadoCasita {
   /// La última semana en que recibieron la caja del repartidor (el lunes,
   /// "yyyy-MM-dd"; ver [Repartidor.semana]).
   final String? reparto;
+
+  /// Lo que uno de los dos puso a cocinar y espera que el otro pique.
+  /// Usa [ollaEn]: una olla de hace más de un día ya no cuenta.
+  final Olla? olla;
+
+  /// La olla que de verdad sigue esperando ayuda.
+  Olla? ollaEn(DateTime ahora) => switch (olla) {
+    final o?
+        when ahora.millisecondsSinceEpoch - o.en < Olla.espera.inMilliseconds =>
+      o,
+    _ => null,
+  };
+
+  /// Libro de recetas: lo que ya cocinaron juntos, cuántas veces y cuándo.
+  final Map<Receta, EntradaLibro> libro;
 
   /// ¿El repartidor está tocando la puerta? Llega cada lunes, y solo si ya
   /// tienen cocina (donde se guarda lo que trae).
@@ -2847,6 +3054,12 @@ class EstadoCasita {
         _ => null,
       },
       reparto: d['reparto'] as String?,
+      olla: Olla.fromMap(d['cocinando']),
+      libro: {
+        for (final e in ((d['libro'] as Map?) ?? const {}).entries)
+          if (Receta.values.asNameMap()[e.key] case final r?)
+            if (EntradaLibro.fromMap(e.value) case final l?) r: l,
+      },
       propuesta: d['propuesta'] is Map
           ? Propuesta.fromMap(Map<String, dynamic>.from(d['propuesta'] as Map))
           : null,
@@ -3402,4 +3615,62 @@ class PaseoBebe {
 
   /// Donde duerme el bebé [i] (en fila, adelante).
   static PaseoBebe durmiendo(int i) => PaseoBebe(_izq + (i % 6) * 12.5, _abajo);
+}
+
+/// Algo en la olla: uno de los dos empezó a cocinar [receta] y falta que el
+/// otro le ayude picando para que salga (`casita/estado.cocinando`).
+class Olla {
+  const Olla({
+    required this.id,
+    required this.receta,
+    required this.de,
+    required this.en,
+  });
+
+  /// Cuánto espera la olla a que la pareja ayude.
+  static const espera = Duration(days: 1);
+
+  final String id;
+  final Receta receta;
+
+  /// uid de quien la puso a cocinar.
+  final String de;
+
+  /// Cuándo (milisegundos).
+  final int en;
+
+  static Olla? fromMap(Object? m) => switch (m) {
+    {
+      'id': final String id,
+      'receta': final String r,
+      'de': final String de,
+      'en': final num en,
+    }
+        when Receta.values.asNameMap()[r] != null =>
+      Olla(id: id, receta: Receta.values.byName(r), de: de, en: en.toInt()),
+    _ => null,
+  };
+}
+
+/// Una receta del libro: cuántas veces la cocinaron y cuándo.
+class EntradaLibro {
+  const EntradaLibro({
+    required this.veces,
+    required this.primera,
+    required this.ultima,
+  });
+
+  final int veces;
+  final DateTime primera;
+  final DateTime ultima;
+
+  static EntradaLibro? fromMap(Object? m) => switch (m) {
+    {'veces': final num v, 'primera': final num p, 'ultima': final num u} =>
+      EntradaLibro(
+        veces: v.toInt(),
+        primera: DateTime.fromMillisecondsSinceEpoch(p.toInt()),
+        ultima: DateTime.fromMillisecondsSinceEpoch(u.toInt()),
+      ),
+    _ => null,
+  };
 }
