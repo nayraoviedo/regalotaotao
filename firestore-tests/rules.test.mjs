@@ -165,6 +165,24 @@ await ok('A avanza un capítulo y se anota', setDoc(doc(db('A'),'couples/c1/peli
 await no('A no se hace pasar por B al avanzar', updateDoc(doc(db('A'),'couples/c1/pelis/p6'),{capitulo:3,avanzoPor:'B'}));
 await no('la app no marca el aviso como enviado', updateDoc(doc(db('A'),'couples/c1/pelis/p6'),{pushSentFor:'3'}));
 await ok('B sigue avanzando y se anota', updateDoc(doc(db('B'),'couples/c1/pelis/p6'),{capitulo:3,avanzoPor:'B'}));
+// Resumen del mes: platos y capítulos solo suben, de a poco.
+{
+  const { increment } = await import('firebase/firestore');
+  const res = (u, mes = '2026-11') => doc(db(u), `couples/c1/resumen/${mes}`);
+  await ok('A anota un plato del mes', setDoc(res('A'), { platos: increment(1) }, { merge: true }));
+  await ok('B anota un plato cocinado juntos', setDoc(res('B'), { platos: increment(1), platosJuntos: increment(1) }, { merge: true }));
+  await ok('A anota 3 capítulos y una peli', setDoc(res('A'), { capitulos: increment(3), pelis: increment(1) }, { merge: true }));
+  await ok('B lee el resumen del mes', getDoc(res('B')));
+  await no('C no lee el resumen', getDoc(res('C')));
+  await no('C no anota platos', setDoc(res('C'), { platos: increment(1) }, { merge: true }));
+  await no('no se suman 5 platos de golpe', setDoc(res('A'), { platos: increment(5) }, { merge: true }));
+  await no('no se restan capítulos', setDoc(res('A'), { capitulos: 0 }, { merge: true }));
+  await no('no se agregan otros campos', setDoc(res('A'), { besos: 100 }, { merge: true }));
+  await no('el mes tiene que ser yyyy-MM', setDoc(res('A', 'noviembre'), { platos: increment(1) }, { merge: true }));
+  await no('no se borra el resumen', deleteDoc(res('A')));
+  const r = (await getDoc(res('A'))).data();
+  if (r.platos !== 2 || r.platosJuntos !== 1 || r.capitulos !== 3 || r.pelis !== 1) { console.log('FAIL resumen', r); process.exitCode = 1; } else console.log('OK   resumen suma bien');
+}
 const giro = {por:'A',opciones:[{id:'p1',titulo:'Uno'},{id:'p2',titulo:'Dos'}],elegida:1,jitter:0.1,token:'t1'};
 await ok('A gira la ruleta', setDoc(doc(db('A'),'couples/c1/ruleta/actual'),giro));
 await ok('B ve el giro', getDoc(doc(db('B'),'couples/c1/ruleta/actual')));

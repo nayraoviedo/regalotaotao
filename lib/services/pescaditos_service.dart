@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +11,7 @@ import '../models/juntos.dart';
 import '../models/sudoku.dart';
 import 'db.dart';
 import 'notify_service.dart';
+import 'resumen_service.dart';
 
 export '../models/casita.dart';
 
@@ -684,12 +687,16 @@ class PescaditosService {
   /// vinculada). Devuelve false si ya no alcanza.
   Future<bool> cocinar(String coupleId, Receta receta) async {
     final ref = _estado(coupleId);
-    return Db.instance.runTransaction((tx) async {
+    final listo = await Db.instance.runTransaction((tx) async {
       final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
       if (!estado.puedeCocinar(receta)) return false;
       tx.set(ref, _alCocinar(estado, receta), SetOptions(merge: true));
       return true;
     });
+    if (listo) {
+      unawaited(ResumenService.instance.platoCocinado(coupleId, juntos: false));
+    }
+    return listo;
   }
 
   /// Cocinar juntos: uno pone [receta] en la olla y le avisa a la pareja,
@@ -722,7 +729,7 @@ class PescaditosService {
   /// receta, o null si ya no había nada (o ya no alcanza).
   Future<Receta?> picar(String coupleId, String uid) async {
     final ref = _estado(coupleId);
-    return Db.instance.runTransaction((tx) async {
+    final plato = await Db.instance.runTransaction<Receta?>((tx) async {
       final estado = EstadoCasita.fromMap((await tx.get(ref)).data());
       final olla = estado.ollaEn(DateTime.now());
       if (olla == null || olla.de == uid) return null;
@@ -738,6 +745,10 @@ class PescaditosService {
       }, SetOptions(merge: true));
       return olla.receta;
     });
+    if (plato != null) {
+      unawaited(ResumenService.instance.platoCocinado(coupleId, juntos: true));
+    }
+    return plato;
   }
 
   /// Quien puso la olla la apaga (ya no quiere cocinar eso).

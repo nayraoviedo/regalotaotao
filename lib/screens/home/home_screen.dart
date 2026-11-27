@@ -41,6 +41,8 @@ import 'mimos.dart';
 import 'saludos.dart';
 import '../capsula/capsula_inicio.dart';
 import '../pelis/pelis_inicio.dart';
+import '../resumen/resumen_inicio.dart';
+import '../resumen/resumen_screen.dart';
 import '../recomendacion/recomendacion_inicio.dart';
 import '../casita/casita_inicio.dart';
 import '../musica/musica_inicio.dart';
@@ -532,6 +534,18 @@ class _HomeBodyState extends State<_HomeBody> {
               coupleId: couple.id,
               uid: me.uid,
               partnerName: partnerName,
+            ),
+            resumen: ResumenInicio(
+              coupleId: couple.id,
+              onTap: (mes) => _open(
+                ResumenScreen(
+                  coupleId: couple.id,
+                  me: me,
+                  partner: partner,
+                  inicioPareja: couple.startDate,
+                  mes: mes,
+                ),
+              ),
             ),
             recomendacion: RecomendacionInicio(
               coupleId: couple.id,
