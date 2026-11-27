@@ -645,7 +645,7 @@ class DetallePeli extends StatelessWidget {
             ],
             selected: {p.estado},
             showSelectedIcon: false,
-            onSelectionChanged: (s) => onCambiar(p.copyWith(estado: s.first)),
+            onSelectionChanged: (s) => onCambiar(p.conEstado(s.first)),
           ),
           if (p.tipo.tieneCapitulos) ...[
             const SizedBox(height: 12),

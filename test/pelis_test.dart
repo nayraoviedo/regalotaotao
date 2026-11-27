@@ -100,6 +100,68 @@ void main() {
     });
   });
 
+  group('La pestaña sale del capítulo', () {
+    test('8 de 24 marcado como visto sigue en Viendo', () {
+      final p = peli(estado: EstadoPeli.vista, capitulo: 8, capitulos: 24);
+      expect(p.estado, EstadoPeli.viendo);
+      expect(p.contenido()['estado'], 'viendo');
+    });
+    test('24 de 24 va a Ya vimos aunque digan Viendo', () {
+      expect(peli(capitulo: 24, capitulos: 24).estado, EstadoPeli.vista);
+    });
+    test('sin empezar y marcado visto va a Por ver', () {
+      expect(
+        peli(estado: EstadoPeli.vista, capitulos: 24).estado,
+        EstadoPeli.porVer,
+      );
+    });
+    test('sin total o película: cuenta lo que eligieron', () {
+      expect(
+        peli(estado: EstadoPeli.vista, capitulo: 8).estado,
+        EstadoPeli.vista,
+      );
+      expect(
+        peli(tipo: TipoPeli.pelicula, estado: EstadoPeli.vista).estado,
+        EstadoPeli.vista,
+      );
+    });
+    test('moverla a mano acomoda el capítulo', () {
+      final p = peli(capitulo: 8, capitulos: 24);
+      expect(p.conEstado(EstadoPeli.vista).capitulo, 24);
+      expect(p.conEstado(EstadoPeli.vista).estado, EstadoPeli.vista);
+      expect(p.conEstado(EstadoPeli.porVer).capitulo, 0);
+      final hecha = peli(capitulo: 24, capitulos: 24);
+      expect(hecha.conEstado(EstadoPeli.viendo).capitulo, 23);
+      expect(hecha.conEstado(EstadoPeli.viendo).estado, EstadoPeli.viendo);
+    });
+    testWidgets('en la lista, 8 de 24 sale en Viendo y no en Ya vimos', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        app(
+          ListaPelis(
+            pelis: [
+              peli(
+                titulo: 'Taming the husband',
+                estado: EstadoPeli.vista,
+                capitulo: 8,
+                capitulos: 24,
+              ),
+            ],
+            miUid: 'a',
+            partnerName: 'Tao',
+            onAgregar: (_) {},
+            onCapitulo: (_) {},
+            onVer: (_) {},
+          ),
+        ),
+      );
+      expect(find.text('Viendo (1)'), findsOneWidget);
+      expect(find.text('Ya vimos'), findsOneWidget);
+      expect(find.text('Taming the husband'), findsOneWidget);
+    });
+  });
+
   group('Tarjeta del inicio', () {
     test('qué dice', () {
       expect(
@@ -242,35 +304,36 @@ void main() {
     expect(res?.estado, EstadoPeli.viendo);
   });
 
-  testWidgets('formulario: se pone en qué capítulo van, también en Por ver', (
-    t,
-  ) async {
-    Peli? res;
-    await t.pumpWidget(
-      app(
-        Builder(
-          builder: (c) => TextButton(
-            onPressed: () async => res = await showPeliForm(
-              c,
-              uid: 'a',
-              estado: EstadoPeli.porVer,
+  testWidgets(
+    'formulario: con capítulo empezado pasa a Viendo aunque estuvieras en Por ver',
+    (t) async {
+      Peli? res;
+      await t.pumpWidget(
+        app(
+          Builder(
+            builder: (c) => TextButton(
+              onPressed: () async => res = await showPeliForm(
+                c,
+                uid: 'a',
+                estado: EstadoPeli.porVer,
+              ),
+              child: const Text('abrir'),
             ),
-            child: const Text('abrir'),
           ),
         ),
-      ),
-    );
-    await t.tap(find.text('abrir'));
-    await t.pumpAndSettle();
-    await t.enterText(find.byType(TextField).first, 'Hidden Love');
-    await t.enterText(find.byKey(const ValueKey('capitulo')), '7');
-    await t.enterText(find.byKey(const ValueKey('capitulos')), '25');
-    await t.pump();
-    await t.tap(find.text('Agregar a nuestra lista'));
-    await t.pumpAndSettle();
-    expect(res?.estado, EstadoPeli.porVer);
-    expect(res?.capitulo, 7);
-    expect(res?.capitulos, 25);
-    expect(res?.progreso, 'Cap. 7 de 25');
-  });
+      );
+      await t.tap(find.text('abrir'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField).first, 'Hidden Love');
+      await t.enterText(find.byKey(const ValueKey('capitulo')), '7');
+      await t.enterText(find.byKey(const ValueKey('capitulos')), '25');
+      await t.pump();
+      await t.tap(find.text('Agregar a nuestra lista'));
+      await t.pumpAndSettle();
+      expect(res?.estado, EstadoPeli.viendo);
+      expect(res?.capitulo, 7);
+      expect(res?.capitulos, 25);
+      expect(res?.progreso, 'Cap. 7 de 25');
+    },
+  );
 }

@@ -83,6 +83,21 @@ class _PeliFormState extends State<PeliForm> {
     super.dispose();
   }
 
+  /// Al elegir la pestaña, el capítulo se acomoda para que cuadre (si
+  /// saben cuántos capítulos tiene): Ya vimos = el último, Por ver = 0.
+  void _elegir(EstadoPeli e) {
+    _estado = e;
+    final total = int.tryParse(_capitulos.text.trim());
+    if (!_tipo.tieneCapitulos || total == null || total <= 0) return;
+    final cap = int.tryParse(_capitulo.text.trim()) ?? 0;
+    final nuevo = switch (e) {
+      EstadoPeli.vista => total,
+      EstadoPeli.porVer => 0,
+      EstadoPeli.viendo => cap >= total ? total - 1 : cap,
+    };
+    _capitulo.text = nuevo == 0 ? '' : '$nuevo';
+  }
+
   void _guardar() {
     final total = int.tryParse(_capitulos.text.trim());
     final a = widget.actual;
@@ -179,7 +194,7 @@ class _PeliFormState extends State<PeliForm> {
             ],
             selected: {_estado},
             showSelectedIcon: false,
-            onSelectionChanged: (s) => setState(() => _estado = s.first),
+            onSelectionChanged: (s) => setState(() => _elegir(s.first)),
           ),
           if (_tipo.tieneCapitulos) ...[
             _etiqueta('¿En qué capítulo van?'),
