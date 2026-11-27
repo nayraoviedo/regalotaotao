@@ -575,6 +575,17 @@ const KINDS = {
           };
     },
   },
+  // Ruleta de la cartelera: quien gira le avisa a su pareja.
+  ruleta: {
+    collection: "ruleta",
+    check: (d, uid) => d.por === uid && Array.isArray(d.opciones) && d.opciones.length >= 2,
+    dedupeKey: (d) => String(d.token || ""),
+    message: (name, d) => {
+      const o = d.opciones[Number(d.elegida)] || {};
+      const titulo = String(o.titulo || "algo").slice(0, 60);
+      return { title: "🎡 ¡Giró la ruleta!", body: `${name} giró la ruleta de la cartelera y hoy toca «${titulo}» 🍿` };
+    },
+  },
   // Buenos días y buenas noches.
   saludo: {
     collection: "saludos",

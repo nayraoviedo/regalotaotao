@@ -656,6 +656,33 @@ service cloud.firestore {
                == resource.data.get('pushSentFor', null);
       }
 
+      // Ruleta de la cartelera: un solo documento (ruleta/actual) con el
+      // último giro. Quien gira lo escribe a su nombre; la pareja lo lee y
+      // ve la misma ruleta caer en lo mismo. El aviso lo marca el Worker.
+      match /ruleta/{rid} {
+        function giroValido() {
+          let g = request.resource.data;
+          return rid == 'actual'
+            && g.keys().hasOnly(['por', 'opciones', 'elegida', 'jitter',
+                                 'token', 'at', 'pushSentFor'])
+            && g.por == me()
+            && g.opciones is list
+            && g.opciones.size() >= 2
+            && g.opciones.size() <= 12
+            && g.elegida is int
+            && g.elegida >= 0
+            && g.elegida < g.opciones.size()
+            && g.jitter is number
+            && g.jitter >= -0.3
+            && g.jitter <= 0.3
+            && g.token is string
+            && g.token.size() <= 40
+            && !('pushSentFor' in g);
+        }
+        allow read: if isMember(coupleId);
+        allow create, update: if isMember(coupleId) && giroValido();
+      }
+
       // Música juntos: una sola sala por pareja (musica/sala) con la
       // canción que suena, si está en play, el segundo, la cola, quién está
       // escuchando y la cuenta 3-2-1. La manejan los dos.

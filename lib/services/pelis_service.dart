@@ -68,4 +68,18 @@ class PelisService {
 
   Future<void> borrar(String coupleId, String id) =>
       _col(coupleId).doc(id).delete();
+
+  // ---- Ruleta compartida ----
+  DocumentReference<Map<String, dynamic>> _ruleta(String coupleId) =>
+      Db.coupleSub(coupleId, 'ruleta').doc('actual');
+
+  Stream<GiroRuleta?> watchRuleta(String coupleId) =>
+      _ruleta(coupleId).snapshots().map((d) => GiroRuleta.fromMap(d.data()));
+
+  /// Guarda el giro (en el otro celular gira igual) y le avisa a la pareja.
+  Future<void> girar(String coupleId, GiroRuleta g) async {
+    await _ruleta(coupleId)
+        .set({...g.toMap(), 'at': FieldValue.serverTimestamp()});
+    NotifyService.instance.send(NotifyKind.ruleta, coupleId, 'actual');
+  }
 }

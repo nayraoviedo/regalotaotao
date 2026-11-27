@@ -28,6 +28,7 @@ enum NotifyKind {
   capsula,
   saludo,
   capitulo,
+  ruleta,
 }
 
 /// Le pide al Worker de Cloudflare que avise a la pareja.

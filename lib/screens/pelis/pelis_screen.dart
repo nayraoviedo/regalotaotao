@@ -72,6 +72,20 @@ class _PelisScreenState extends State<PelisScreen> {
         partnerName: widget.partnerName,
         onAgregar: _agregar,
         onCapitulo: _capituloMas,
+        onRuleta: (todas) => showRuleta(
+          context,
+          coupleId: widget.coupleId,
+          uid: widget.uid,
+          partnerName: widget.partnerName,
+          pelis: todas,
+          onVer: (p) => showDetallePeli(
+            context,
+            coupleId: widget.coupleId,
+            uid: widget.uid,
+            partnerName: widget.partnerName,
+            peli: p,
+          ),
+        ),
         onVer: (p) => showDetallePeli(
           context,
           coupleId: widget.coupleId,
@@ -104,7 +118,11 @@ class ListaPelis extends StatefulWidget {
     required this.onVer,
     this.error = false,
     this.pestana = 0,
+    this.onRuleta,
   });
+
+  /// Abre la ruleta "¿Qué vemos hoy?" (compartida con la pareja).
+  final ValueChanged<List<Peli>>? onRuleta;
 
   /// `null` mientras carga.
   final List<Peli>? pelis;
@@ -150,12 +168,11 @@ class _ListaPelisState extends State<ListaPelis>
       appBar: AppBar(
         title: const Text('Nuestra cartelera'),
         actions: [
-          if (widget.pelis != null)
+          if (widget.pelis != null && widget.onRuleta != null)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
-                onPressed: () =>
-                    showRuleta(context, pelis: todas, onVer: widget.onVer),
+                onPressed: () => widget.onRuleta!(todas),
                 icon: const Palomitas(size: 24),
                 label: const Text('Ruleta'),
               ),

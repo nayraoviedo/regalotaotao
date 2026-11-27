@@ -35,6 +35,8 @@ const enc = (v) =>
   v === null ? { nullValue: null }
   : Array.isArray(v) ? { arrayValue: { values: v.map(enc) } }
   : typeof v === "number" ? { integerValue: String(v) }
+  : v && typeof v === "object" && !(v instanceof Date)
+    ? { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, enc(x)])) } }
   : { stringValue: v };
 const prefix = `projects/${PROJECT}/databases/(default)/documents/`;
 const stamp = () => new Date(Date.now() + updateCounter++).toISOString();
@@ -61,6 +63,7 @@ beforeEach(() => {
     },
     "couples/c1/pelis/d1": { titulo: "Taming the husband", tipo: "drama", capitulo: 9, capitulos: 24, avanzoPor: "ana" },
     "couples/c1/pelis/d2": { titulo: "Go Ahead", tipo: "drama", capitulo: 40, capitulos: 40, avanzoPor: "ana" },
+    "couples/c1/ruleta/actual": { por: "ana", opciones: [{ id: "d1", titulo: "Hidden Love" }, { id: "d2", titulo: "Go Ahead" }], elegida: 1, jitter: 0.1, token: "t1" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -198,6 +201,14 @@ test("cartelera: avisa cuando la pareja avanza un capítulo", async () => {
   // El mismo capítulo no avisa dos veces, y Beto no avisa por lo que avanzó Ana.
   assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, t)).body.yaEnviado, true);
   assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, await idToken("beto"))).status, 403);
+});
+
+test("ruleta: avisa qué les tocó", async () => {
+  assert.equal((await call({ kind: "ruleta", coupleId: "c1", docId: "actual" }, await idToken("ana"))).status, 200);
+  assert.deepEqual(sent.map((m) => [m.notification.title, m.notification.body]), [
+    ["🎡 ¡Giró la ruleta!", "Ana giró la ruleta de la cartelera y hoy toca «Go Ahead» 🍿"],
+  ]);
+  assert.equal((await call({ kind: "ruleta", coupleId: "c1", docId: "actual" }, await idToken("beto"))).status, 403);
 });
 
 test("buenos días y buenas noches", async () => {

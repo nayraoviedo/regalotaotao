@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../models/peli.dart';
+import '../../services/pelis_service.dart';
 import '../../theme.dart';
 import 'dibujo_peli.dart';
 
@@ -18,9 +19,13 @@ List<Peli> opcionesRuleta(List<Peli> pelis, {math.Random? azar}) {
   return o.take(maxEnRuleta).toList();
 }
 
-/// Hoja con la ruleta para elegir qué ver hoy.
+/// Hoja con la ruleta compartida: quien la gira la guarda en Firestore y en
+/// el celular de su pareja gira igual y cae en la misma.
 Future<void> showRuleta(
   BuildContext context, {
+  required String coupleId,
+  required String uid,
+  required String partnerName,
   required List<Peli> pelis,
   required ValueChanged<Peli> onVer,
 }) => showModalBottomSheet<void>(
@@ -31,29 +36,70 @@ Future<void> showRuleta(
   shape: const RoundedRectangleBorder(
     borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
   ),
-  builder: (sheet) => RuletaPelis(
-    opciones: opcionesRuleta(pelis),
-    onVer: (p) {
-      Navigator.of(sheet).pop();
-      onVer(p);
-    },
+  builder: (sheet) => StreamBuilder<GiroRuleta?>(
+    stream: PelisService.instance.watchRuleta(coupleId),
+    builder: (sheet, snap) => RuletaPelis(
+      opciones: opcionesRuleta(pelis),
+      giro: snap.data,
+      cargando: snap.connectionState == ConnectionState.waiting,
+      miUid: uid,
+      partnerName: partnerName,
+      onGirar: (g) async {
+        try {
+          await PelisService.instance.girar(coupleId, g);
+        } catch (_) {
+          if (sheet.mounted) {
+            ScaffoldMessenger.of(sheet).showSnackBar(
+              const SnackBar(
+                content: Text('No se pudo compartir el giro con tu pareja'),
+              ),
+            );
+          }
+        }
+      },
+      onVer: (id) {
+        final p = pelis.where((p) => p.id == id).firstOrNull;
+        if (p == null) return;
+        Navigator.of(sheet).pop();
+        onVer(p);
+      },
+    ),
   ),
 );
 
-/// La ruleta (sin Firebase). Gira y se detiene en una al azar.
+/// La ruleta (sin Firebase). Muestra el último [giro] de los dos: si es
+/// nuevo (lo acaba de girar tu pareja), gira hasta caer en el mismo.
 class RuletaPelis extends StatefulWidget {
   const RuletaPelis({
     super.key,
     required this.opciones,
     required this.onVer,
+    required this.onGirar,
+    this.giro,
+    this.miUid = '',
+    this.partnerName = 'Tu pareja',
+    this.cargando = false,
     this.azar,
+    this.ahora,
     this.duracion = const Duration(milliseconds: 3200),
   });
 
+  /// Lo que puede salir si giras tú.
   final List<Peli> opciones;
-  final ValueChanged<Peli> onVer;
+
+  /// El último giro guardado (de cualquiera de los dos).
+  final GiroRuleta? giro;
+  final String miUid;
+  final String partnerName;
+  final bool cargando;
+  final ValueChanged<String> onVer;
+  final Future<void> Function(GiroRuleta) onGirar;
   final math.Random? azar;
+  final DateTime Function()? ahora;
   final Duration duracion;
+
+  /// Un giro de hace menos de esto se anima al abrir la ruleta.
+  static const reciente = Duration(minutes: 2);
 
   @override
   State<RuletaPelis> createState() => _RuletaPelisState();
@@ -66,18 +112,38 @@ class _RuletaPelisState extends State<RuletaPelis>
     vsync: this,
     duration: widget.duracion,
   );
-  // Al abrir, la flechita apunta al centro de la primera.
-  late double _desde = -math.pi / math.max(widget.opciones.length, 1);
-  late double _hasta = _desde;
-  int? _elegida;
+  late double _desde;
+  late double _hasta;
 
-  double get _giro =>
+  /// Lo que se ve en la rueda ahora.
+  late List<OpcionRuleta> _rueda;
+
+  /// El giro que ya se mostró (por su token).
+  String? _visto;
+
+  /// El que está en pantalla, con su resultado (null mientras gira).
+  GiroRuleta? _mostrado;
+  bool _resultado = false;
+
+  double get _angulo =>
       _desde + (_hasta - _desde) * Curves.easeOutCubic.transform(_ctrl.value);
 
   @override
   void initState() {
     super.initState();
     _ctrl.addListener(() => setState(() {}));
+    _rueda = [for (final p in widget.opciones) OpcionRuleta.de(p)];
+    // Al abrir, la flechita apunta al centro de la primera.
+    _desde = _hasta = -math.pi / math.max(_rueda.length, 1);
+    final g = widget.giro;
+    if (g != null) _recibir(g, alAbrir: true);
+  }
+
+  @override
+  void didUpdateWidget(RuletaPelis old) {
+    super.didUpdateWidget(old);
+    final g = widget.giro;
+    if (g != null && g.token != _visto) _recibir(g, alAbrir: false);
   }
 
   @override
@@ -86,31 +152,69 @@ class _RuletaPelisState extends State<RuletaPelis>
     super.dispose();
   }
 
-  void _girar() {
-    final n = widget.opciones.length;
-    final k = _azar.nextInt(n);
-    final seg = 2 * math.pi / n;
-    // Que el centro (más o menos) de la elegida quede bajo la flechita.
-    final jitter = (_azar.nextDouble() - 0.5) * seg * 0.6;
-    final objetivo = -((k + 0.5) * seg + jitter);
-    final actual = _giro;
-    var delta = (objetivo - actual) % (2 * math.pi);
+  /// Ángulo final para que la flechita caiga en la elegida.
+  static double _objetivo(GiroRuleta g) {
+    final seg = 2 * math.pi / g.opciones.length;
+    return -((g.elegida + 0.5 + g.jitter) * seg);
+  }
+
+  void _recibir(GiroRuleta g, {required bool alAbrir}) {
+    _visto = g.token;
+    final ahora = (widget.ahora ?? DateTime.now)();
+    final reciente =
+        g.cuando == null ||
+        ahora.difference(g.cuando!).abs() < RuletaPelis.reciente;
+    if (alAbrir && !reciente) {
+      // Uno viejo: se muestra quieto, ya en su resultado.
+      _rueda = g.opciones;
+      _desde = _hasta = _objetivo(g);
+      _mostrado = g;
+      _resultado = true;
+      return;
+    }
+    _animar(g);
+  }
+
+  void _animar(GiroRuleta g) {
+    final actual = _angulo;
+    var delta = (_objetivo(g) - actual) % (2 * math.pi);
     if (delta < 0) delta += 2 * math.pi;
-    setState(() {
-      _elegida = null;
-      _desde = actual;
-      _hasta = actual + 5 * 2 * math.pi + delta;
-    });
+    // Se llama desde initState, didUpdateWidget o dentro de un setState:
+    // en los tres casos la ruleta se vuelve a dibujar sola.
+    _rueda = g.opciones;
+    _mostrado = g;
+    _resultado = false;
+    _desde = actual;
+    _hasta = actual + 5 * 2 * math.pi + delta;
     _ctrl.forward(from: 0).whenComplete(() {
-      if (mounted) setState(() => _elegida = k);
+      if (mounted && identical(_mostrado, g)) {
+        setState(() => _resultado = true);
+      }
     });
+  }
+
+  void _girar() {
+    final o = widget.opciones;
+    final g = GiroRuleta(
+      por: widget.miUid,
+      opciones: [for (final p in o) OpcionRuleta.de(p)],
+      elegida: _azar.nextInt(o.length),
+      jitter: (_azar.nextDouble() - 0.5) * 0.6,
+      token:
+          '${DateTime.now().microsecondsSinceEpoch}${_azar.nextInt(1 << 30)}',
+    );
+    _visto = g.token;
+    setState(() => _animar(g));
+    widget.onGirar(g);
   }
 
   @override
   Widget build(BuildContext context) {
     final azul = AppTheme.azul;
-    final o = widget.opciones;
+    final puedeGirar = widget.opciones.length >= 2;
     final girando = _ctrl.isAnimating;
+    final g = _mostrado;
+    final deTuPareja = g != null && g.por != widget.miUid;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
@@ -132,14 +236,16 @@ class _RuletaPelisState extends State<RuletaPelis>
           ),
           const SizedBox(height: 4),
           Text(
-            o.length < 2
+            g == null && !puedeGirar
                 ? 'Agrega al menos dos en "Viendo" o "Por ver" y la ruleta '
                       'elige por ustedes.'
-                : 'Gira la ruleta y que la suerte elija entre lo que están '
-                      'viendo y lo que tienen por ver.',
+                : deTuPareja && girando
+                ? '¡${widget.partnerName} está girando la ruleta!'
+                : 'Cuando uno la gira, en el celular del otro gira igual y '
+                      'cae en lo mismo.',
             style: const TextStyle(color: AppTheme.gris, height: 1.35),
           ),
-          if (o.length >= 2) ...[
+          if (_rueda.length >= 2) ...[
             const SizedBox(height: 16),
             Center(
               child: SizedBox(
@@ -151,11 +257,11 @@ class _RuletaPelisState extends State<RuletaPelis>
                     Positioned(
                       top: 10,
                       child: Transform.rotate(
-                        angle: _giro,
+                        angle: _angulo,
                         child: CustomPaint(
                           size: const Size.square(280),
                           painter: _Rueda(
-                            [for (final p in o) p.titulo],
+                            [for (final o in _rueda) o.titulo],
                             azul: azul,
                             colores: [
                               AppTheme.amarillo,
@@ -177,62 +283,60 @@ class _RuletaPelisState extends State<RuletaPelis>
               ),
             ),
             const SizedBox(height: 12),
-            if (_elegida case final k?) ...[
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Hoy toca: '),
-                    TextSpan(
-                      text: o[k].titulo,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: azul, fontSize: 18),
-              ),
-              if (o[k].progreso.isNotEmpty)
-                Text(
-                  o[k].progreso,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.gris),
-                ),
-              const SizedBox(height: 12),
-              Row(
+          ],
+          if (g != null && _resultado) ...[
+            Text.rich(
+              TextSpan(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _girar,
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Otra vez'),
-                    ),
+                  TextSpan(
+                    text: deTuPareja
+                        ? '${widget.partnerName} giró y toca: '
+                        : 'Hoy toca: ',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => widget.onVer(o[k]),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('¡A verla!'),
-                    ),
+                  TextSpan(
+                    text: g.resultado.titulo,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
-            ] else
-              FilledButton(
-                onPressed: girando ? null : _girar,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  shape: const StadiumBorder(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: azul, fontSize: 18),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: puedeGirar ? _girar : null,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: const Text('Otra vez'),
+                  ),
                 ),
-                child: Text(girando ? 'Girando…' : 'Girar la ruleta'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => widget.onVer(g.resultado.id),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: const Text('¡A verla!'),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (puedeGirar || girando)
+            FilledButton(
+              onPressed: girando || widget.cargando ? null : _girar,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                shape: const StadiumBorder(),
               ),
-          ],
+              child: Text(girando ? 'Girando…' : 'Girar la ruleta'),
+            ),
         ],
       ),
     );
