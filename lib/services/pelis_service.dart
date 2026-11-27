@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/peli.dart';
 import '../models/recomendacion.dart' show Resena;
 import 'db.dart';
+import 'notify_service.dart';
 
 /// Dramas y pelis que ven juntos (couples/{id}/pelis/{id}).
 class PelisService {
@@ -37,14 +38,26 @@ class PelisService {
       });
 
   /// Cambia el título, el tipo, en qué van, etc. Si recién la terminaron,
-  /// guarda cuándo.
-  Future<void> editar(String coupleId, Peli antes, Peli p) =>
-      _col(coupleId).doc(p.id).update({
-        ...p.contenido(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        if (p.estado == EstadoPeli.vista && antes.estado != EstadoPeli.vista)
-          'terminadaEn': FieldValue.serverTimestamp(),
-      });
+  /// guarda cuándo. Si [uid] avanzó de capítulo, se anota y se le avisa a
+  /// su pareja (Worker, aviso "capitulo").
+  Future<void> editar(
+    String coupleId,
+    Peli antes,
+    Peli p, {
+    String? uid,
+  }) async {
+    final avanzo = uid != null && p.capitulo > antes.capitulo;
+    await _col(coupleId).doc(p.id).update({
+      ...p.contenido(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (p.estado == EstadoPeli.vista && antes.estado != EstadoPeli.vista)
+        'terminadaEn': FieldValue.serverTimestamp(),
+      if (avanzo) 'avanzoPor': uid,
+    });
+    if (avanzo) {
+      NotifyService.instance.send(NotifyKind.capitulo, coupleId, p.id);
+    }
+  }
 
   /// Guarda (o quita, con `null`) mi reseña.
   Future<void> resenar(String coupleId, String id, String uid, Resena? r) =>

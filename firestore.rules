@@ -609,7 +609,8 @@ service cloud.firestore {
           let p = request.resource.data;
           return p.keys().hasOnly(['titulo', 'tipo', 'estado', 'capitulo',
                                    'capitulos', 'donde', 'addedBy', 'resenas',
-                                   'createdAt', 'updatedAt', 'terminadaEn'])
+                                   'createdAt', 'updatedAt', 'terminadaEn',
+                                   'avanzoPor', 'pushSentFor'])
             && p.titulo is string
             && p.titulo.size() > 0
             && p.titulo.size() <= 120
@@ -640,10 +641,19 @@ service cloud.firestore {
         allow read, delete: if isMember(coupleId);
         allow create: if isMember(coupleId) && peliValida()
           && request.resource.data.addedBy == me()
-          && request.resource.data.get('resenas', {}).size() == 0;
+          && request.resource.data.get('resenas', {}).size() == 0
+          && !('pushSentFor' in request.resource.data)
+          && request.resource.data.get('avanzoPor', me()) == me();
         allow update: if isMember(coupleId) && peliValida()
           && request.resource.data.addedBy == resource.data.addedBy
-          && resenasPeliOk();
+          && resenasPeliOk()
+          // Quien avanza un capítulo se anota (para avisarle a su pareja);
+          // el aviso enviado lo marca solo el Worker.
+          && (request.resource.data.get('avanzoPor', null)
+                == resource.data.get('avanzoPor', null)
+              || request.resource.data.avanzoPor == me())
+          && request.resource.data.get('pushSentFor', null)
+               == resource.data.get('pushSentFor', null);
       }
 
       // Música juntos: una sola sala por pareja (musica/sala) con la

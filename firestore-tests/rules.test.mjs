@@ -161,6 +161,10 @@ await no('B no cambia la reseña de A del drama', updateDoc(doc(db('B'),'couples
 await no('6 estrellas no', updateDoc(doc(db('A'),'couples/c1/pelis/p1'),{'resenas.A':{estrellas:6,texto:''}}));
 await no('C no ve sus pelis', getDoc(doc(db('C'),'couples/c1/pelis/p1')));
 await ok('B borra la peli', deleteDoc(doc(db('B'),'couples/c1/pelis/p5')));
+await ok('A avanza un capítulo y se anota', setDoc(doc(db('A'),'couples/c1/pelis/p6'),{...peli,addedBy:'A'}).then(()=>updateDoc(doc(db('A'),'couples/c1/pelis/p6'),{capitulo:2,avanzoPor:'A'})));
+await no('A no se hace pasar por B al avanzar', updateDoc(doc(db('A'),'couples/c1/pelis/p6'),{capitulo:3,avanzoPor:'B'}));
+await no('la app no marca el aviso como enviado', updateDoc(doc(db('A'),'couples/c1/pelis/p6'),{pushSentFor:'3'}));
+await ok('B sigue avanzando y se anota', updateDoc(doc(db('B'),'couples/c1/pelis/p6'),{capitulo:3,avanzoPor:'B'}));
 await no('B no pone 0 estrellas', updateDoc(doc(db('B'),'couples/c1/bucketList/b1'),{'resenas.B':{estrellas:0,texto:''}}));
 await no('C no reseña', updateDoc(doc(db('C'),'couples/c1/bucketList/b1'),{'resenas.C':{estrellas:3,texto:''}}));
 await ok('A lo desmarca y las reseñas se quedan', updateDoc(doc(db('A'),'couples/c1/bucketList/b1'),{done:false}));

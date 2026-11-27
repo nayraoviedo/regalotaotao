@@ -59,6 +59,8 @@ beforeEach(() => {
       titulo: "Para dentro de un año", creadaPor: "ana", ultimo: "ana", aportes: {},
       abrirEl: new Date("2027-11-26T12:00:00Z"),
     },
+    "couples/c1/pelis/d1": { titulo: "Taming the husband", tipo: "drama", capitulo: 9, capitulos: 24, avanzoPor: "ana" },
+    "couples/c1/pelis/d2": { titulo: "Go Ahead", tipo: "drama", capitulo: 40, capitulos: 40, avanzoPor: "ana" },
     "couples/c1/abrazos/h1": { from: "ana", to: "beto" },
     "couples/c1/abrazos/h2": { from: "ana", to: "beto", mood: "triste" },
     "couples/c1/notes/nl1": { authorId: "beto", fromPrivate: true, title: "Para ti", text: "te quiero", leidaPor: "ana", leidaEn: "2026-11-25T01:00:00Z", avisarLeida: true },
@@ -182,6 +184,20 @@ test("besos, abrazos y cascabel llegan con su texto", async () => {
   ]);
   assert.equal((await call({ kind: "kiss", coupleId: "c1", docId: "b1" }, await idToken("beto"))).status, 403);
   assert.equal((await call({ kind: "bell", coupleId: "c1", docId: "k1" }, await idToken("beto"))).status, 403);
+});
+
+test("cartelera: avisa cuando la pareja avanza un capítulo", async () => {
+  const t = await idToken("ana");
+  for (const docId of ["d1", "d2"]) {
+    assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId }, t)).status, 200);
+  }
+  assert.deepEqual(sent.map((m) => [m.notification.title, m.notification.body]), [
+    ["📺 Un capítulo más", "Ana avanzó al cap. 9 de 24 de «Taming the husband»"],
+    ["🎬 ¡Lo terminaron!", "Ana vio el último capítulo de «Go Ahead». Déjale tu reseña ⭐"],
+  ]);
+  // El mismo capítulo no avisa dos veces, y Beto no avisa por lo que avanzó Ana.
+  assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, t)).body.yaEnviado, true);
+  assert.equal((await call({ kind: "capitulo", coupleId: "c1", docId: "d1" }, await idToken("beto"))).status, 403);
 });
 
 test("buenos días y buenas noches", async () => {

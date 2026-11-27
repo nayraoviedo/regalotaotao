@@ -5,6 +5,9 @@ import 'package:taotao/models/recomendacion.dart' show Resena;
 import 'package:taotao/screens/pelis/peli_form.dart';
 import 'package:taotao/screens/pelis/pelis_inicio.dart';
 import 'package:taotao/screens/pelis/pelis_screen.dart';
+import 'package:taotao/screens/pelis/ruleta_pelis.dart';
+
+import 'dart:math' as math;
 
 Peli peli({
   String id = 'p1',
@@ -366,4 +369,56 @@ void main() {
       expect(res?.progreso, 'Cap. 7 de 25');
     },
   );
+
+  group('Ruleta', () {
+    test('solo entra lo que ven o tienen por ver, máximo 12', () {
+      final pelis = [
+        for (var i = 0; i < 20; i++) peli(id: '$i', estado: EstadoPeli.porVer),
+        peli(id: 'v', estado: EstadoPeli.vista),
+      ];
+      final o = opcionesRuleta(pelis, azar: math.Random(1));
+      expect(o.length, maxEnRuleta);
+      expect(o.any((p) => p.id == 'v'), isFalse);
+      expect(opcionesRuleta([peli(estado: EstadoPeli.vista)]), isEmpty);
+    });
+
+    testWidgets('gira y elige una', (t) async {
+      Peli? vista;
+      final opciones = [
+        peli(id: '1', titulo: 'Hidden Love'),
+        peli(id: '2', titulo: 'Spy x Family', tipo: TipoPeli.anime),
+        peli(id: '3', titulo: 'Chihiro', tipo: TipoPeli.pelicula),
+      ];
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: RuletaPelis(
+              opciones: opciones,
+              azar: math.Random(3),
+              onVer: (p) => vista = p,
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('Girar la ruleta'));
+      await t.pump(const Duration(seconds: 1));
+      expect(find.text('Girando…'), findsOneWidget);
+      await t.pumpAndSettle();
+      expect(find.textContaining('Hoy toca'), findsOneWidget);
+      await t.tap(find.text('¡A verla!'));
+      expect(opciones, contains(vista));
+    });
+
+    testWidgets('con menos de dos pide agregar más', (t) async {
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: RuletaPelis(opciones: [peli()], onVer: (_) {}),
+          ),
+        ),
+      );
+      expect(find.textContaining('al menos dos'), findsOneWidget);
+      expect(find.text('Girar la ruleta'), findsNothing);
+    });
+  });
 }
