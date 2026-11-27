@@ -558,6 +558,34 @@ const KINDS = {
           };
     },
   },
+  // Nuestra cartelera: quien avanza un capítulo le avisa a su pareja.
+  capitulo: {
+    collection: "pelis",
+    check: (d, uid) => d.avanzoPor === uid && Number(d.capitulo) > 0,
+    dedupeKey: (d) => String(Number(d.capitulo) || 0),
+    message: (name, d) => {
+      const titulo = String(d.titulo || "su drama").slice(0, 60);
+      const cap = Number(d.capitulo) || 0;
+      const total = Number(d.capitulos) || 0;
+      return total > 0 && cap >= total
+        ? { title: "🎬 ¡Lo terminaron!", body: `${name} vio el último capítulo de «${titulo}». Déjale tu reseña ⭐` }
+        : {
+            title: "📺 Un capítulo más",
+            body: `${name} avanzó al cap. ${cap}${total > 0 ? ` de ${total}` : ""} de «${titulo}»`,
+          };
+    },
+  },
+  // Ruleta de la cartelera: quien gira le avisa a su pareja.
+  ruleta: {
+    collection: "ruleta",
+    check: (d, uid) => d.por === uid && Array.isArray(d.opciones) && d.opciones.length >= 2,
+    dedupeKey: (d) => String(d.token || ""),
+    message: (name, d) => {
+      const o = d.opciones[Number(d.elegida)] || {};
+      const titulo = String(o.titulo || "algo").slice(0, 60);
+      return { title: "🎡 ¡Giró la ruleta!", body: `${name} giró la ruleta de la cartelera y hoy toca «${titulo}» 🍿` };
+    },
+  },
   // Buenos días y buenas noches.
   saludo: {
     collection: "saludos",

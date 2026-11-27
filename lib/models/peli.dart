@@ -28,6 +28,11 @@ class TipoPeli {
   /// Las películas no tienen capítulos.
   bool get tieneCapitulos => id != 'pelicula';
 
+  /// En qué pestañas puede ir: las películas no tienen "Viendo".
+  List<EstadoPeli> get estados => tieneCapitulos
+      ? EstadoPeli.values
+      : const [EstadoPeli.porVer, EstadoPeli.vista];
+
   static const drama = TipoPeli(
     'drama',
     'Drama',
@@ -86,7 +91,7 @@ class Peli {
     required this.id,
     required this.titulo,
     required this.tipo,
-    required this.estado,
+    required EstadoPeli estado,
     required this.addedBy,
     this.capitulo = 0,
     this.capitulos,
@@ -94,13 +99,55 @@ class Peli {
     this.resenas = const {},
     this.creadaEn,
     this.terminadaEn,
-  });
+  }) : estadoElegido = estado;
 
   final String id;
   final String titulo;
   final TipoPeli tipo;
-  final EstadoPeli estado;
+
+  /// Lo que eligieron a mano. Cuenta solo si no se sabe por los capítulos
+  /// (películas, o sin saber cuántos capítulos tiene).
+  final EstadoPeli estadoElegido;
   final String addedBy;
+
+  /// En qué pestaña va. Si saben cuántos capítulos tiene, sale del
+  /// capítulo en que van: "Ya vimos" solo al llegar al último (24 de 24),
+  /// "Viendo" si ya empezaron y "Por ver" si no.
+  EstadoPeli get estado {
+    // Las películas solo van en "Por ver" o "Ya vimos".
+    if (!tipo.tieneCapitulos) {
+      return estadoElegido == EstadoPeli.vista
+          ? EstadoPeli.vista
+          : EstadoPeli.porVer;
+    }
+    final total = capitulos;
+    if (total == null || total <= 0) {
+      return estadoElegido;
+    }
+    if (capitulo >= total) return EstadoPeli.vista;
+    if (capitulo > 0) return EstadoPeli.viendo;
+    return estadoElegido == EstadoPeli.vista
+        ? EstadoPeli.porVer
+        : estadoElegido;
+  }
+
+  /// La mueve a otra pestaña a mano, ajustando el capítulo para que cuadre:
+  /// "Ya vimos" la deja en el último, "Por ver" en el 0 y "Viendo", si ya
+  /// estaba terminada, en el penúltimo.
+  Peli conEstado(EstadoPeli e) {
+    final total = capitulos;
+    if (!tipo.tieneCapitulos || total == null || total <= 0) {
+      return copyWith(estado: e);
+    }
+    return copyWith(
+      estado: e,
+      capitulo: switch (e) {
+        EstadoPeli.vista => total,
+        EstadoPeli.porVer => 0,
+        EstadoPeli.viendo => capitulo >= total ? total - 1 : capitulo,
+      },
+    );
+  }
 
   /// Último capítulo que vieron juntos (0 si aún no empiezan).
   final int capitulo;
@@ -128,7 +175,7 @@ class Peli {
     id: id,
     titulo: titulo ?? this.titulo,
     tipo: tipo ?? this.tipo,
-    estado: estado ?? this.estado,
+    estado: estado ?? estadoElegido,
     addedBy: addedBy,
     capitulo: capitulo ?? this.capitulo,
     capitulos: capitulos == null ? this.capitulos : capitulos(),
@@ -221,4 +268,72 @@ List<Peli> topDeLosDos(List<Peli> pelis) {
     return fb.compareTo(fa);
   });
   return con;
+}
+
+/// Una opción de la ruleta (lo justo para dibujarla en los dos celulares).
+class OpcionRuleta {
+  const OpcionRuleta(this.id, this.titulo);
+  final String id;
+  final String titulo;
+
+  factory OpcionRuleta.de(Peli p) => OpcionRuleta(p.id, p.titulo);
+
+  Map<String, dynamic> toMap() => {'id': id, 'titulo': titulo};
+}
+
+/// El último giro de la ruleta (couples/{id}/ruleta/actual). Los dos lo
+/// escuchan: quien gira lo guarda y en el otro celular gira igual y cae en
+/// la misma.
+class GiroRuleta {
+  const GiroRuleta({
+    required this.por,
+    required this.opciones,
+    required this.elegida,
+    required this.jitter,
+    required this.token,
+    this.cuando,
+  });
+
+  final String por;
+  final List<OpcionRuleta> opciones;
+
+  /// Índice de la que salió.
+  final int elegida;
+
+  /// Dónde cae la flechita dentro de su porción (de -0.3 a 0.3), para que
+  /// en los dos celulares se detenga en el mismo lugar.
+  final double jitter;
+
+  /// Identifica cada giro (para no girar dos veces el mismo).
+  final String token;
+  final DateTime? cuando;
+
+  OpcionRuleta get resultado => opciones[elegida];
+
+  static GiroRuleta? fromMap(Map<String, dynamic>? d) {
+    if (d == null) return null;
+    final ops = [
+      for (final o in (d['opciones'] as List? ?? const []))
+        if (o is Map)
+          OpcionRuleta(o['id'] as String? ?? '', o['titulo'] as String? ?? ''),
+    ];
+    final e = (d['elegida'] as num?)?.toInt() ?? -1;
+    if (ops.length < 2 || e < 0 || e >= ops.length) return null;
+    return GiroRuleta(
+      por: d['por'] as String? ?? '',
+      opciones: ops,
+      elegida: e,
+      jitter: ((d['jitter'] as num?)?.toDouble() ?? 0).clamp(-0.3, 0.3),
+      token: d['token'] as String? ?? '',
+      cuando: (d['at'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'por': por,
+    'opciones': [for (final o in opciones) o.toMap()],
+    'elegida': elegida,
+    'jitter': jitter,
+    'token': token,
+  };
 }

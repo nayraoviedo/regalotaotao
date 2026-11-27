@@ -9,6 +9,7 @@ import '../../widgets/doodle.dart';
 import '../recomendacion/resenas.dart';
 import 'dibujo_peli.dart';
 import 'peli_form.dart';
+import 'ruleta_pelis.dart';
 
 /// "Nuestra cartelera": dramas y pelis que ven juntos, en qué capítulo van y la reseña de
 /// cada uno.
@@ -51,7 +52,7 @@ class _PelisScreenState extends State<PelisScreen> {
   Future<void> _capituloMas(Peli p) async {
     final n = p.unCapituloMas();
     try {
-      await _svc.editar(widget.coupleId, p, n);
+      await _svc.editar(widget.coupleId, p, n, uid: widget.uid);
       if (n.estado == EstadoPeli.vista && p.estado != EstadoPeli.vista) {
         _aviso('¡Lo terminaron! Ahora déjale tu reseña');
       }
@@ -71,6 +72,20 @@ class _PelisScreenState extends State<PelisScreen> {
         partnerName: widget.partnerName,
         onAgregar: _agregar,
         onCapitulo: _capituloMas,
+        onRuleta: (todas) => showRuleta(
+          context,
+          coupleId: widget.coupleId,
+          uid: widget.uid,
+          partnerName: widget.partnerName,
+          pelis: todas,
+          onVer: (p) => showDetallePeli(
+            context,
+            coupleId: widget.coupleId,
+            uid: widget.uid,
+            partnerName: widget.partnerName,
+            peli: p,
+          ),
+        ),
         onVer: (p) => showDetallePeli(
           context,
           coupleId: widget.coupleId,
@@ -103,7 +118,11 @@ class ListaPelis extends StatefulWidget {
     required this.onVer,
     this.error = false,
     this.pestana = 0,
+    this.onRuleta,
   });
+
+  /// Abre la ruleta "¿Qué vemos hoy?" (compartida con la pareja).
+  final ValueChanged<List<Peli>>? onRuleta;
 
   /// `null` mientras carga.
   final List<Peli>? pelis;
@@ -148,6 +167,17 @@ class _ListaPelisState extends State<ListaPelis>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nuestra cartelera'),
+        actions: [
+          if (widget.pelis != null && widget.onRuleta != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: () => widget.onRuleta!(todas),
+                icon: const Palomitas(size: 24),
+                label: const Text('Ruleta'),
+              ),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppTheme.azul,
@@ -512,7 +542,7 @@ Future<void> showDetallePeli(
         }
         Future<void> cambiar(Peli n) async {
           try {
-            await svc.editar(coupleId, p, n);
+            await svc.editar(coupleId, p, n, uid: uid);
           } catch (e) {
             aviso(porQueNoSeGuardo(e, 'No se pudo guardar, intenta otra vez'));
           }
@@ -640,12 +670,12 @@ class DetallePeli extends StatelessWidget {
           const SizedBox(height: 14),
           SegmentedButton<EstadoPeli>(
             segments: [
-              for (final e in EstadoPeli.values)
+              for (final e in p.tipo.estados)
                 ButtonSegment(value: e, label: Text(e.label)),
             ],
             selected: {p.estado},
             showSelectedIcon: false,
-            onSelectionChanged: (s) => onCambiar(p.copyWith(estado: s.first)),
+            onSelectionChanged: (s) => onCambiar(p.conEstado(s.first)),
           ),
           if (p.tipo.tieneCapitulos) ...[
             const SizedBox(height: 12),
