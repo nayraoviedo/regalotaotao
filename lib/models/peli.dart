@@ -28,6 +28,11 @@ class TipoPeli {
   /// Las películas no tienen capítulos.
   bool get tieneCapitulos => id != 'pelicula';
 
+  /// En qué pestañas puede ir: las películas no tienen "Viendo".
+  List<EstadoPeli> get estados => tieneCapitulos
+      ? EstadoPeli.values
+      : const [EstadoPeli.porVer, EstadoPeli.vista];
+
   static const drama = TipoPeli(
     'drama',
     'Drama',
@@ -109,8 +114,14 @@ class Peli {
   /// capítulo en que van: "Ya vimos" solo al llegar al último (24 de 24),
   /// "Viendo" si ya empezaron y "Por ver" si no.
   EstadoPeli get estado {
+    // Las películas solo van en "Por ver" o "Ya vimos".
+    if (!tipo.tieneCapitulos) {
+      return estadoElegido == EstadoPeli.vista
+          ? EstadoPeli.vista
+          : EstadoPeli.porVer;
+    }
     final total = capitulos;
-    if (!tipo.tieneCapitulos || total == null || total <= 0) {
+    if (total == null || total <= 0) {
       return estadoElegido;
     }
     if (capitulo >= total) return EstadoPeli.vista;

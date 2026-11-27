@@ -125,6 +125,34 @@ void main() {
         EstadoPeli.vista,
       );
     });
+    test('las películas solo van en Por ver o Ya vimos', () {
+      expect(
+        peli(tipo: TipoPeli.pelicula, estado: EstadoPeli.viendo).estado,
+        EstadoPeli.porVer,
+      );
+      expect(TipoPeli.pelicula.estados, [EstadoPeli.porVer, EstadoPeli.vista]);
+      expect(TipoPeli.drama.estados, EstadoPeli.values);
+    });
+    testWidgets('el detalle de una película no ofrece Viendo', (t) async {
+      await t.pumpWidget(
+        app(
+          Scaffold(
+            body: DetallePeli(
+              peli: peli(tipo: TipoPeli.pelicula, estado: EstadoPeli.porVer),
+              miUid: 'a',
+              partnerName: 'Tao',
+              onCambiar: (_) {},
+              onEditar: () {},
+              onBorrar: () {},
+              onResena: (_) async {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Por ver'), findsOneWidget);
+      expect(find.text('Ya vimos'), findsOneWidget);
+      expect(find.text('Viendo'), findsNothing);
+    });
     test('moverla a mano acomoda el capítulo', () {
       final p = peli(capitulo: 8, capitulos: 24);
       expect(p.conEstado(EstadoPeli.vista).capitulo, 24);
@@ -301,7 +329,9 @@ void main() {
     await t.pumpAndSettle();
     expect(res?.titulo, 'Chihiro');
     expect(res?.tipo, TipoPeli.pelicula);
-    expect(res?.estado, EstadoPeli.viendo);
+    // Las películas no tienen "Viendo": se va a "Por ver".
+    expect(res?.estado, EstadoPeli.porVer);
+    expect(find.text('Viendo'), findsNothing);
   });
 
   testWidgets(

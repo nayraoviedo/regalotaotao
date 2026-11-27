@@ -83,6 +83,10 @@ class _PeliFormState extends State<PeliForm> {
     super.dispose();
   }
 
+  /// Las películas no tienen "Viendo": ahí cuenta como "Por ver".
+  EstadoPeli get _estadoVisible =>
+      _tipo.estados.contains(_estado) ? _estado : EstadoPeli.porVer;
+
   /// Al elegir la pestaña, el capítulo se acomoda para que cuadre (si
   /// saben cuántos capítulos tiene): Ya vimos = el último, Por ver = 0.
   void _elegir(EstadoPeli e) {
@@ -119,7 +123,7 @@ class _PeliFormState extends State<PeliForm> {
       base.copyWith(
         titulo: _titulo.text.trim(),
         tipo: _tipo,
-        estado: _estado,
+        estado: _estadoVisible,
         capitulo: cap,
         capitulos: () => total != null && total > 0 ? total : null,
         donde: _donde.text.trim(),
@@ -189,10 +193,10 @@ class _PeliFormState extends State<PeliForm> {
           _etiqueta('¿En qué van?'),
           SegmentedButton<EstadoPeli>(
             segments: [
-              for (final e in EstadoPeli.values)
+              for (final e in _tipo.estados)
                 ButtonSegment(value: e, label: Text(e.label)),
             ],
-            selected: {_estado},
+            selected: {_estadoVisible},
             showSelectedIcon: false,
             onSelectionChanged: (s) => setState(() => _elegir(s.first)),
           ),

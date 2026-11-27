@@ -640,7 +640,7 @@ class DetallePeli extends StatelessWidget {
           const SizedBox(height: 14),
           SegmentedButton<EstadoPeli>(
             segments: [
-              for (final e in EstadoPeli.values)
+              for (final e in p.tipo.estados)
                 ButtonSegment(value: e, label: Text(e.label)),
             ],
             selected: {p.estado},
