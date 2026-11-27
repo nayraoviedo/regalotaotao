@@ -466,18 +466,41 @@ class _EnVivoState extends State<_EnVivo> {
   late final _trazos = _svc.watchTrazos(widget.coupleId, widget.ronda.id);
   int _color = 0;
   int _grosor = Dibujos.grosorPorDefecto;
+  Herramienta _herramienta = Herramienta.lapiz;
 
   /// Revisa cada segundo si se acabó el minuto.
   Timer? _reloj;
-  final _abierta = DateTime.now();
+  final _abierta = RelojServidor.ahora();
   DateTime? _intentoAgotar;
 
   Ronda get _r => widget.ronda;
+
+  /// Horas del servidor que todavía no llegaban al abrir (la de la ronda
+  /// recién creada o la de "estoy mirando"): cuando llegan, sirven para
+  /// saber si el reloj del celular va desfasado.
+  late bool _sinHora = widget.ronda.creadaEn == null;
+  late bool _sinVista = !widget.ronda.viendo.containsKey(widget.uid);
 
   @override
   void initState() {
     super.initState();
     _reloj = Timer.periodic(const Duration(seconds: 1), (_) => _revisarReloj());
+  }
+
+  @override
+  void didUpdateWidget(_EnVivo old) {
+    super.didUpdateWidget(old);
+    final r = widget.ronda;
+    final creada = r.creadaEn;
+    if (_sinHora && creada != null) {
+      _sinHora = false;
+      RelojServidor.medir(creada);
+    }
+    final vista = r.viendo[widget.uid];
+    if (_sinVista && vista != null) {
+      _sinVista = false;
+      RelojServidor.medir(vista);
+    }
   }
 
   @override
@@ -491,7 +514,7 @@ class _EnVivoState extends State<_EnVivo> {
   /// segundos por si el reloj del celular va un poco adelantado.
   void _revisarReloj() {
     final r = _r;
-    final ahora = DateTime.now();
+    final ahora = RelojServidor.ahora();
     if (!r.enJuego || r.queda(ahora, desde: _abierta) != Duration.zero) return;
     final antes = _intentoAgotar;
     if (antes != null && ahora.difference(antes).inSeconds < 4) return;
@@ -515,7 +538,7 @@ class _EnVivoState extends State<_EnVivo> {
       _aviso('El chat de esta ronda ya está lleno');
       return;
     }
-    if (r.queda(DateTime.now(), desde: _abierta) == Duration.zero) {
+    if (r.queda(RelojServidor.ahora(), desde: _abierta) == Duration.zero) {
       _aviso('¡Se acabó el tiempo!');
     }
     try {
@@ -548,8 +571,10 @@ class _EnVivoState extends State<_EnVivo> {
           marcador: widget.marcador,
           color: _color,
           grosor: _grosor,
+          herramienta: _herramienta,
           onColor: (c) => setState(() => _color = c),
           onGrosor: (g) => setState(() => _grosor = g),
+          onHerramienta: (h) => setState(() => _herramienta = h),
           onTrazo: (t) {
             if (t.n >= Dibujos.maxTrazos) {
               _aviso('¡El papel ya está lleno de dibujos!');
@@ -599,8 +624,10 @@ class RondaEnVivo extends StatelessWidget {
     this.marcador,
     this.color = 0,
     this.grosor = 14,
+    this.herramienta = Herramienta.lapiz,
     this.onColor,
     this.onGrosor,
+    this.onHerramienta,
     this.onTrazo,
     this.onDeshacer,
     this.onLimpiar,
@@ -613,8 +640,10 @@ class RondaEnVivo extends StatelessWidget {
   final Marcador? marcador;
   final int color;
   final int grosor;
+  final Herramienta herramienta;
   final ValueChanged<int>? onColor;
   final ValueChanged<int>? onGrosor;
+  final ValueChanged<Herramienta>? onHerramienta;
   final void Function(Trazo)? onTrazo;
   final VoidCallback? onDeshacer;
   final VoidCallback? onLimpiar;
@@ -623,7 +652,9 @@ class RondaEnVivo extends StatelessWidget {
   bool get _dibujo => ronda.dibujo(uid);
 
   /// Alto que se guarda para el chat (aunque el papel quede más chico).
+  /// Quien dibuja casi solo lee, así que su papel puede ser más grande.
   static const altoChat = 235.0;
+  static const altoChatDibuja = 175.0;
 
   @override
   Widget build(BuildContext context) {
@@ -633,7 +664,9 @@ class RondaEnVivo extends StatelessWidget {
       builder: (context, c) {
         final ancho = c.maxWidth.clamp(0, 560).toDouble();
         final reservado =
-            altoChat + 86 + (ronda.enPartida ? 36 : 0) + (_dibujo ? 150 : 0);
+            (_dibujo ? altoChatDibuja + 104 : altoChat) +
+            86 +
+            (ronda.enPartida ? 36 : 0);
         final lado = (ancho - 24).clamp(
           120.0,
           (c.maxHeight - reservado).clamp(120.0, 900.0),
@@ -669,8 +702,11 @@ class RondaEnVivo extends StatelessWidget {
                     trazos: trazos,
                     borradoHasta: ronda.borradoHasta,
                     onTrazo: _dibujo ? onTrazo : null,
-                    color: color,
+                    color: herramienta == Herramienta.goma
+                        ? Dibujos.goma
+                        : color,
                     grosor: grosor,
+                    bote: herramienta == Herramienta.bote,
                     siguiente: siguiente,
                   ),
                 ),
@@ -678,8 +714,10 @@ class RondaEnVivo extends StatelessWidget {
                   Herramientas(
                     color: color,
                     grosor: grosor,
+                    herramienta: herramienta,
                     onColor: onColor,
                     onGrosor: onGrosor,
+                    onHerramienta: onHerramienta,
                     onDeshacer: onDeshacer,
                     onLimpiar: onLimpiar,
                   ),
@@ -786,7 +824,7 @@ class _Reloj extends StatefulWidget {
 
 class _RelojState extends State<_Reloj> {
   Timer? _t;
-  final _abierto = DateTime.now();
+  final _abierto = RelojServidor.ahora();
 
   @override
   void initState() {
@@ -805,7 +843,7 @@ class _RelojState extends State<_Reloj> {
   @override
   Widget build(BuildContext context) {
     final r = widget.ronda;
-    final ahora = DateTime.now();
+    final ahora = RelojServidor.ahora();
     final inicio = r.creadaEn ?? _abierto;
     var pasado = ahora.difference(inicio);
     if (pasado.isNegative) pasado = Duration.zero;
@@ -953,99 +991,158 @@ class _Cabecera extends StatelessWidget {
   }
 }
 
-/// Lápices de colores, grosor, deshacer y borrar todo.
-class Herramientas extends StatelessWidget {
+/// Lápiz, bote de pintura y goma; los colores en un carrusel; grosor,
+/// deshacer y borrar todo. Ocupa poquito para que el papel sea grande.
+class Herramientas extends StatefulWidget {
   const Herramientas({
     super.key,
     required this.color,
     required this.grosor,
+    this.herramienta = Herramienta.lapiz,
     this.onColor,
     this.onGrosor,
+    this.onHerramienta,
     this.onDeshacer,
     this.onLimpiar,
   });
 
+  /// Índice en [Dibujos.colores] (nunca la goma: la goma es herramienta).
   final int color;
   final int grosor;
+  final Herramienta herramienta;
   final ValueChanged<int>? onColor;
   final ValueChanged<int>? onGrosor;
+  final ValueChanged<Herramienta>? onHerramienta;
   final VoidCallback? onDeshacer;
   final VoidCallback? onLimpiar;
 
+  /// Los colores del carrusel, ordenados por tono (sin la goma).
+  static final colores = [
+    for (final i in Dibujos.ordenColores)
+      if (i != Dibujos.goma) i,
+  ];
+
+  @override
+  State<Herramientas> createState() => _HerramientasState();
+}
+
+class _HerramientasState extends State<Herramientas> {
+  final _carrusel = ScrollController();
+  static const _ancho = 40.0;
+
+  @override
+  void dispose() {
+    _carrusel.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final w = widget;
+    final goma = w.herramienta == Herramienta.goma;
+    final bote = w.herramienta == Herramienta.bote;
+    final tinta = goma ? AppTheme.gris : Dibujos.colores[w.color];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
       child: Column(
         children: [
-          // Todos los lápices a la vista, en 3 filas.
-          GridView.count(
-            crossAxisCount: (Dibujos.ordenColores.length / 3).ceil(),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            mainAxisSpacing: 2,
-            crossAxisSpacing: 2,
-            childAspectRatio: 1.15,
-            children: [
-              for (final i in Dibujos.ordenColores)
-                _Color(
-                  color: Dibujos.colores[i],
-                  goma: i == Dibujos.goma,
-                  elegido: i == color,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onColor?.call(i);
-                  },
-                ),
-            ],
+          // Los colores en un carrusel: se desliza de lado.
+          SizedBox(
+            height: 42,
+            child: ShaderMask(
+              shaderCallback: (r) => const LinearGradient(
+                colors: [
+                  Color(0x00FFFFFF),
+                  Colors.white,
+                  Colors.white,
+                  Color(0x00FFFFFF),
+                ],
+                stops: [0, 0.04, 0.94, 1],
+              ).createShader(r),
+              blendMode: BlendMode.dstIn,
+              child: ListView(
+                controller: _carrusel,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                children: [
+                  for (final i in Herramientas.colores)
+                    SizedBox(
+                      width: _ancho,
+                      child: _Color(
+                        color: Dibujos.colores[i],
+                        elegido: i == w.color && !goma,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          w.onColor?.call(i);
+                          // Tocar un color con la goma vuelve al lápiz.
+                          if (goma) w.onHerramienta?.call(Herramienta.lapiz);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          LayoutBuilder(
-            // En pantallas angostas "Borrar todo" queda solo con el dibujito.
-            builder: (context, c) => Row(
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
               children: [
-                for (final g in Dibujos.grosores)
-                  _Grosor(
-                    grosor: g,
-                    elegido: g == grosor,
-                    color: color == Dibujos.goma
-                        ? AppTheme.gris
-                        : Dibujos.colores[color],
-                    onTap: () => onGrosor?.call(g),
+                for (final (h, icono, nombre) in [
+                  (Herramienta.lapiz, Icons.edit, 'Lápiz'),
+                  (
+                    Herramienta.bote,
+                    Icons.format_color_fill,
+                    'Bote de pintura',
                   ),
-                const Spacer(),
+                  (Herramienta.goma, Icons.auto_fix_normal, 'Goma'),
+                ])
+                  _BotonHerramienta(
+                    icono: icono,
+                    nombre: nombre,
+                    elegido: w.herramienta == h,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      w.onHerramienta?.call(h);
+                    },
+                  ),
+                Container(
+                  width: 1.5,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  color: AppTheme.gris.withValues(alpha: 0.3),
+                ),
+                // El bote rellena todo el área: el grosor no cuenta.
+                Opacity(
+                  opacity: bote ? 0.35 : 1,
+                  child: Row(
+                    children: [
+                      for (final g in Dibujos.grosores)
+                        _Grosor(
+                          grosor: g,
+                          elegido: g == w.grosor && !bote,
+                          color: tinta,
+                          onTap: () => w.onGrosor?.call(g),
+                        ),
+                    ],
+                  ),
+                ),
                 IconButton(
                   tooltip: 'Deshacer',
                   visualDensity: VisualDensity.compact,
-                  onPressed: onDeshacer,
+                  onPressed: w.onDeshacer,
                   icon: Icon(Icons.undo_rounded, color: AppTheme.azul),
                 ),
-                if (c.maxWidth >= 390)
-                  TextButton.icon(
-                    onPressed: onLimpiar,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(0, 40),
-                    ),
-                    icon: Doodle(
-                      Icons.delete_outline,
-                      size: 20,
-                      color: AppTheme.azul,
-                    ),
-                    label: const Text('Borrar todo'),
-                  )
-                else
-                  IconButton(
-                    tooltip: 'Borrar todo',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onLimpiar,
-                    icon: Doodle(
-                      Icons.delete_outline,
-                      size: 22,
-                      color: AppTheme.azul,
-                    ),
+                IconButton(
+                  tooltip: 'Borrar todo',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: w.onLimpiar,
+                  icon: Doodle(
+                    Icons.delete_outline,
+                    size: 22,
+                    color: AppTheme.azul,
                   ),
+                ),
               ],
             ),
           ),
@@ -1058,13 +1155,11 @@ class Herramientas extends StatelessWidget {
 class _Color extends StatelessWidget {
   const _Color({
     required this.color,
-    required this.goma,
     required this.elegido,
     required this.onTap,
   });
 
   final Color color;
-  final bool goma;
   final bool elegido;
   final VoidCallback onTap;
 
@@ -1073,15 +1168,15 @@ class _Color extends StatelessWidget {
     return Semantics(
       button: true,
       selected: elegido,
-      label: goma ? 'Goma' : 'Color',
+      label: 'Color',
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Center(
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: elegido ? 30 : 24,
-            height: elegido ? 30 : 24,
+            width: elegido ? 34 : 28,
+            height: elegido ? 34 : 28,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
@@ -1092,18 +1187,51 @@ class _Color extends StatelessWidget {
                 width: elegido ? 3 : 1.5,
               ),
             ),
-            child: goma
-                ? Center(
-                    child: Text(
-                      'goma',
-                      style: TextStyle(
-                        color: AppTheme.azul,
-                        fontSize: 7.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  )
-                : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lápiz, bote o goma (con su dibujito).
+class _BotonHerramienta extends StatelessWidget {
+  const _BotonHerramienta({
+    required this.icono,
+    required this.nombre,
+    required this.elegido,
+    required this.onTap,
+  });
+
+  final IconData icono;
+  final String nombre;
+  final bool elegido;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: nombre,
+      child: Semantics(
+        button: true,
+        selected: elegido,
+        label: nombre,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 2),
+            decoration: BoxDecoration(
+              color: elegido ? AppTheme.amarillo.withValues(alpha: 0.45) : null,
+              borderRadius: BorderRadius.circular(12),
+              border: elegido
+                  ? Border.all(color: AppTheme.azul, width: 2)
+                  : null,
+            ),
+            child: Center(child: Doodle(icono, size: 26, color: AppTheme.azul)),
           ),
         ),
       ),
@@ -1133,17 +1261,16 @@ class _Grosor extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 36,
+          width: 32,
           height: 36,
-          margin: const EdgeInsets.only(right: 2),
           decoration: BoxDecoration(
             color: elegido ? AppTheme.amarillo.withValues(alpha: 0.35) : null,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: Container(
-              width: 3 + grosor * 0.65,
-              height: 3 + grosor * 0.65,
+              width: 3 + grosor * 0.6,
+              height: 3 + grosor * 0.6,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),

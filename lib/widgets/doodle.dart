@@ -166,6 +166,9 @@ final Map<int, String> _doodles = {
     Icons.casino_outlined: 'juegos',
     Icons.forum_outlined: 'chat',
     Icons.emoji_events_outlined: 'trofeo',
+    // Herramientas para dibujar
+    Icons.auto_fix_normal: 'goma',
+    Icons.format_color_fill: 'bote',
   }.entries)
     e.key.codePoint: e.value,
 };

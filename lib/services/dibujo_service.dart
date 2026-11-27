@@ -81,6 +81,7 @@ class DibujoService {
       'creadaEn': FieldValue.serverTimestamp(),
     });
     NotifyService.instance.send(NotifyKind.dibujo, coupleId, ref.id);
+    await _medirReloj(ref, (m) => m['creadaEn']);
     return ref.id;
   }
 
@@ -114,7 +115,7 @@ class DibujoService {
     final corto = t.length > Dibujos.maxMensaje
         ? t.substring(0, Dibujos.maxMensaje)
         : t;
-    final tarde = ronda.queda(DateTime.now()) == Duration.zero;
+    final tarde = ronda.queda(RelojServidor.ahora()) == Duration.zero;
     final acierto =
         !ronda.dibujo(uid) &&
         ronda.enJuego &&
@@ -150,21 +151,46 @@ class DibujoService {
   /// Se acabó el minuto: la ronda termina sin puntos y le toca dibujar a
   /// la otra persona. Lo puede marcar cualquiera de los dos.
   /// Si la cierra quien dibujaba, le avisa a la pareja que le toca.
+  ///
+  /// Va en una transacción: así el cambio no se muestra en el celular hasta
+  /// que el servidor lo acepta (si el reloj del celular iba adelantado y lo
+  /// rechaza, la pantalla no parpadea entre "se acabó" y el dibujo).
   Future<void> agotar(String coupleId, Ronda ronda, String uid) async {
-    await _col(coupleId).doc(ronda.id).update({
-      'estado': EstadoRonda.agotada.id,
-      'terminadaEn': FieldValue.serverTimestamp(),
+    final ref = _col(coupleId).doc(ronda.id);
+    final cerro = await FirebaseFirestore.instance.runTransaction((tx) async {
+      final d = await tx.get(ref);
+      if (d.data()?['estado'] != EstadoRonda.dibujando.id) return false;
+      tx.update(ref, {
+        'estado': EstadoRonda.agotada.id,
+        'terminadaEn': FieldValue.serverTimestamp(),
+      });
+      return true;
     });
+    if (!cerro) return;
     if (ronda.dibujo(uid)) {
       NotifyService.instance.send(NotifyKind.dibujo, coupleId, ronda.id);
     }
   }
 
   /// Avisa que [uid] está mirando la ronda (una sola vez por ronda).
-  Future<void> estoyViendo(String coupleId, String rondaId, String uid) =>
-      _col(coupleId)
-          .doc(rondaId)
-          .update({'viendo.$uid': FieldValue.serverTimestamp()});
+  Future<void> estoyViendo(String coupleId, String rondaId, String uid) async {
+    final ref = _col(coupleId).doc(rondaId);
+    await ref.update({'viendo.$uid': FieldValue.serverTimestamp()});
+    await _medirReloj(ref, (m) => (m['viendo'] as Map?)?[uid]);
+  }
+
+  /// Recién guardada una hora del servidor, la compara con la del celular
+  /// (ver [RelojServidor]).
+  Future<void> _medirReloj(
+    DocumentReference<Map<String, dynamic>> ref,
+    Object? Function(Map<String, dynamic>) hora,
+  ) async {
+    try {
+      final d = await ref.get(const GetOptions(source: Source.cache));
+      final h = hora(d.data() ?? const {});
+      if (h is Timestamp) RelojServidor.medir(h.toDate());
+    } catch (_) {}
+  }
 
   /// Cobra los pescaditos de una ronda adivinada.
   Future<int> cobrar(String coupleId, String uid, String rondaId) =>

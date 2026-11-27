@@ -176,6 +176,17 @@ D['pavo'] = ''.join(ambos(f'M48 56 L{48+36*c:.1f} {56-36*s:.1f} L{48+30*c2:.1f} 
 D['chat'] = ambos('M10 18 L60 18 Q66 18 66 24 L66 50 Q66 56 60 56 L30 56 L18 68 L20 56 L16 56 Q10 56 10 50 Z', CR) + ambos('M40 40 L80 40 Q86 40 86 46 L86 68 Q86 74 80 74 L76 74 L78 86 L66 74 L46 74 Q40 74 40 68 Z', AM) + punto(52, 57) + punto(63, 57) + punto(74, 57)
 D['trofeo'] = ambos('M28 14 L68 14 L66 40 C64 54 56 60 48 60 C40 60 32 54 30 40 Z', AM) + linea('M28 22 C14 22 14 42 31 44 M68 22 C82 22 82 42 65 44', 4.6) + linea('M48 60 L48 72', 5) + ambos('M30 72 L66 72 L70 84 L26 84 Z', TO) + linea('M40 28 Q42 24 46 24', 3.4, CR) + ambos('M48 26 L51 33 L58 33 L52 37 L54 44 L48 40 L42 44 L44 37 L38 33 L45 33 Z', CR, 3)
 
+# --- herramientas para dibujar: goma de borrar y bote de pintura ---
+D['goma'] = (ambos('M14 62 L44 32 L62 50 L32 80 Z', RO)
+             + ambos('M44 32 L60 16 Q64 12 68 16 L80 28 Q84 32 80 36 L62 50 Z', CE)
+             + linea('M50 26 Q54 22 58 22', 3.4, CR)
+             + linea('M30 86 L82 86', 3.6, '#B7B9C4'))
+D['bote'] = (ambos('M20 38 L50 22 L70 60 L44 76 Q36 80 32 72 Z', CE)
+             + linea('M20 38 C14 26 30 14 40 26', 4.4)
+             + ambos('M50 22 Q60 18 66 30 Q72 42 70 60 Z', AM, 4)
+             + ambos('M70 60 C78 64 82 70 80 78 C78 84 72 84 70 78 C68 72 70 66 70 60 Z', AM, 4)
+             + ambos('M84 50 C86 54 88 56 88 59 C88 62 86 63 84 63 C82 63 80 62 80 59 C80 56 82 54 84 50 Z', TO, 3.4))
+
 def claro(c):
     # Versión para fondos oscuros: contorno crema.
     return c.replace(f'"{AZ}"', '"#FFF8EE"').replace(f'fill="{CR}"', f'fill="{CE}"')
