@@ -141,3 +141,15 @@ test("cápsula del tiempo: el día que se abre avisa a los dos", async () => {
   ]);
   assert.equal(m.docs["couples/c1/capsulas/x"].avisarEn, null);
 });
+
+test("pareja desvinculada: ni notas de los dos, ni cartas, ni cápsulas avisan", async () => {
+  const m = mundo({
+    "couples/c1": { members: ["ana", "beto"], endedAt: hace(60) },
+    "couples/c1/notes/n1": { authorId: "ana", title: "Pagar la luz", avisarEn: hace(1) },
+    "couples/c1/letters/l1": { from: "ana", to: "beto", fiesta: "navidad", avisarEn: hace(1), openedAt: null },
+    "couples/c1/capsulas/c1": { creadaPor: "ana", titulo: "Un año", avisarEn: hace(1) },
+    "users/ana/privateNotes/p1": { authorId: "ana", text: "Tomar agua", recordatorioPara: "ambos", avisarEn: hace(0) },
+  });
+  await revisarRecordatorios(m.deps, AHORA);
+  assert.deepEqual(m.sent, [["ana", "⏰ Recordatorio", "Tomar agua"]]);
+});

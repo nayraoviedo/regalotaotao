@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'fechas.dart';
+
 class Couple {
   Couple({
     required this.id,
@@ -25,7 +27,7 @@ class Couple {
   int? get daysTogether {
     if (startDate == null) return null;
     final today = _dateOnly(DateTime.now());
-    return today.difference(_dateOnly(startDate!)).inDays;
+    return diasEntre(startDate!, today);
   }
 
   /// Próximo aniversario (misma fecha cada año).

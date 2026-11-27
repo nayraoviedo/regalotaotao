@@ -42,7 +42,11 @@ class DailyQuestionScreen extends StatefulWidget {
 class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
   final _answer = TextEditingController();
   final _mazo = GlobalKey<MazoState>();
-  late final _stream = _service.watchToday(widget.couple.id);
+  // El día de la carta que se está viendo: si la pantalla queda abierta
+  // pasada la medianoche, la respuesta se guarda en ese mismo día (antes se
+  // iba al día nuevo, sin carta, y la de ayer quedaba sin responder).
+  final _dia = TogetherService.todayKey();
+  late final _stream = _service.watchToday(widget.couple.id, dia: _dia);
 
   /// La carta ya se mostró en esta pantalla (después de la animación).
   bool _revelada = false;
@@ -110,7 +114,7 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
   void _sacar(DailyCard hoy) {
     final carta = hoy.drawn
         ? Future.value(hoy.card!)
-        : _service.drawToday(widget.couple.id, widget.me.uid);
+        : _service.drawToday(widget.couple.id, widget.me.uid, dia: _dia);
     _mazo.currentState?.barajar(carta).catchError((Object e) {
       debugPrint('No se pudo sacar la carta: $e');
       _mazo.currentState?.reiniciar();
@@ -129,7 +133,21 @@ class _DailyQuestionScreenState extends State<DailyQuestionScreen> {
     if (text.isEmpty || _enviando) return;
     setState(() => _enviando = true);
     try {
-      await _service.answerToday(widget.couple.id, widget.me.uid, text);
+      await _service.answerToday(
+        widget.couple.id,
+        widget.me.uid,
+        text,
+        dia: _dia,
+      );
+    } catch (e) {
+      debugPrint('No se pudo guardar la respuesta: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar tu respuesta. Intenta de nuevo.'),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _enviando = false);
     }

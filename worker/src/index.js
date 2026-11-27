@@ -843,6 +843,9 @@ async function handleNotify(sa, uid, kind, coupleId, docId) {
   ]);
   const members = couple?.data.members || [];
   if (!members.includes(uid)) return { status: 403, body: { error: "no_es_tu_pareja" } };
+  // Ya se desvincularon: el espacio de pareja guarda los recuerdos, pero
+  // nadie le manda más avisos a su ex desde ahí.
+  if (couple.data.endedAt != null) return { status: 403, body: { error: "pareja_terminada" } };
   const partner = members.find((m) => m !== uid);
   if (!partner) return { status: 403, body: { error: "sin_pareja" } };
 

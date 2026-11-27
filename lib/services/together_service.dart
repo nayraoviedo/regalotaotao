@@ -143,9 +143,9 @@ class TogetherService {
   }
 
   /// La carta del día de la pareja: qué naipe salió y las respuestas.
-  Stream<DailyCard> watchToday(String coupleId) =>
+  Stream<DailyCard> watchToday(String coupleId, {String? dia}) =>
       Db.coupleSub(coupleId, 'dailyAnswers')
-          .doc(todayKey())
+          .doc(dia ?? todayKey())
           .snapshots()
           .map((d) => DailyCard.fromData(d.data(), deck: questions));
 
@@ -184,8 +184,14 @@ class TogetherService {
   /// Las preguntas no se repiten: las que ya salieron se guardan en
   /// `couples/{id}.mazoUsado`, y solo cuando salieron todas se vuelve a
   /// barajar el mazo completo.
-  Future<int> drawToday(String coupleId, String uid, {Random? random}) async {
-    final ref = Db.coupleSub(coupleId, 'dailyAnswers').doc(todayKey());
+  Future<int> drawToday(
+    String coupleId,
+    String uid, {
+    Random? random,
+    String? dia,
+  }) async {
+    final hoy = dia ?? todayKey();
+    final ref = Db.coupleSub(coupleId, 'dailyAnswers').doc(hoy);
     final coupleRef = Db.couple(coupleId);
 
     // Parejas que sacaban cartas antes de que se guardara el mazo: se
@@ -197,8 +203,7 @@ class TogetherService {
       final ordenados = [...dias.docs]..sort((a, b) => a.id.compareTo(b.id));
       historial = mazoDesdeHistorial([
         for (final d in ordenados)
-          if (d.id != todayKey())
-            ?DailyCard.fromData(d.data(), deck: questions).card,
+          if (d.id != hoy) ?DailyCard.fromData(d.data(), deck: questions).card,
       ], questions.length);
     }
 
@@ -215,7 +220,7 @@ class TogetherService {
         final p = await tx.get(pRef);
         if (p.exists && p.data()?['usadaEn'] == null) {
           final card = PreguntaPropia.naipe(propia.id, questions.length);
-          tx.update(pRef, {'usadaEn': todayKey()});
+          tx.update(pRef, {'usadaEn': hoy});
           tx.set(ref, {
             'carta': card,
             'question': p.data()?['texto'] ?? propia.texto,
@@ -284,8 +289,13 @@ class TogetherService {
     return [...mazo];
   }
 
-  Future<void> answerToday(String coupleId, String uid, String answer) async {
-    final hoy = todayKey();
+  Future<void> answerToday(
+    String coupleId,
+    String uid,
+    String answer, {
+    String? dia,
+  }) async {
+    final hoy = dia ?? todayKey();
     await Db.coupleSub(coupleId, 'dailyAnswers').doc(hoy).set({
       'answers': {uid: answer},
     }, SetOptions(merge: true));

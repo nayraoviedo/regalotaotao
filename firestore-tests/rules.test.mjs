@@ -371,7 +371,7 @@ await no('A no quita el coupleId de B sin terminar la pareja', updateDoc(doc(db(
   await ok('y una de aniversario', especial('k2',{especial:'aniversario',pastel:'corazon'}));
   await no('no hay cartas de otra cosa', especial('k3',{especial:'boda',pastel:'fresa'}));
   await no('ni pasteles que no existen', especial('k4',{especial:'cumple',pastel:'pizza'}));
-  await ok('con ramo de flores y regalitos', especial('k5',{especial:'aniversario',ramo:'lila',regalitos:['peluche','chocolates']}));
+  await ok('con ramo de flores y regalitos', especial('k5ramo',{especial:'aniversario',ramo:'lila',regalitos:['peluche','chocolates']}));
   await no('ni ramos de colores que no hay', especial('k6',{especial:'aniversario',ramo:'negro'}));
   await no('ni regalitos que no existen', especial('k7',{especial:'cumple',regalitos:['auto']}));
   await ok('se guarda cuándo sembraron', setDoc(doc(db('A'),'couples/c1/casita/estado'),{sembrado:{tomatera:1764000000000}},{merge:true}));
