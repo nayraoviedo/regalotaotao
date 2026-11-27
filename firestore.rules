@@ -602,6 +602,26 @@ service cloud.firestore {
         allow delete: if isMember(coupleId) && resource.data.from == me();
       }
 
+      // Resumen del mes (yyyy-MM): platos cocinados y capítulos vistos.
+      // Solo se suma, de a poquito; nunca se resta ni se borra.
+      match /resumen/{mes} {
+        function sube(campo, tope) {
+          let antes = resource == null ? 0 : resource.data.get(campo, 0);
+          let ahora = request.resource.data.get(campo, 0);
+          return ahora is int && ahora >= antes && ahora <= antes + tope;
+        }
+        allow read: if isMember(coupleId);
+        allow create, update: if isMember(coupleId)
+          && mes.matches('[0-9]{4}-[0-9]{2}')
+          && request.resource.data.keys()
+               .hasOnly(['platos', 'platosJuntos', 'capitulos', 'pelis'])
+          && sube('platos', 1)
+          && sube('platosJuntos', 1)
+          && sube('capitulos', 500)
+          && sube('pelis', 1);
+        allow delete: if false;
+      }
+
       // Dramas y pelis que ven juntos. Los dos agregan, cambian en qué
       // capítulo van y borran; cada uno deja solo su propia reseña.
       match /pelis/{peliId} {

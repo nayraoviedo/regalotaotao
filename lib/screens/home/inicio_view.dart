@@ -78,6 +78,7 @@ class InicioView extends StatelessWidget {
     this.juegosJuntos,
     this.musica,
     this.pelis,
+    this.resumen,
     this.invitacionPomodoro,
     this.celebracion,
   });
@@ -99,6 +100,9 @@ class InicioView extends StatelessWidget {
 
   /// Tarjeta de "Dramas y pelis", debajo de la música.
   final Widget? pelis;
+
+  /// Tarjeta del "Resumen del mes", debajo de la cartelera.
+  final Widget? resumen;
 
   /// Aviso de que tu pareja te invitó a un pomodoro (si hay).
   final Widget? invitacionPomodoro;
@@ -241,6 +245,7 @@ class InicioView extends StatelessWidget {
                   ],
                   if (musica case final m?) ...[const SizedBox(height: 12), m],
                   if (pelis case final p?) ...[const SizedBox(height: 12), p],
+                  if (resumen case final r?) ...[const SizedBox(height: 12), r],
                   if (casita case final c?) ...[const SizedBox(height: 12), c],
                 ],
               ),

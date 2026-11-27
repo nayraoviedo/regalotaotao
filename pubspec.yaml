@@ -93,6 +93,8 @@ flutter:
     - assets/recomendaciones/
     # Dramas y pelis (ver assets/dibujos_editables/pelis/).
     - assets/pelis/
+    # Dibujo de arriba del resumen del mes (ver assets/resumen/LEEME.md).
+    - assets/resumen/
     - assets/casita/
     # Frasco de la cápsula del tiempo (ver capsula_screen.dart).
     - assets/capsula/
