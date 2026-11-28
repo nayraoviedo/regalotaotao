@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1094425418741",
+    "project_id": "taotao-bd5ee",
+    "storage_bucket": "taotao-bd5ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1094425418741:android:a953af405148792f8e9ebc",
+        "android_client_info": {
+          "package_name": "com.taotao.taotao"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAC0xKAiONP5oFWh47lbaaBrNqjxN3OGNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
