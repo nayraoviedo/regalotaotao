@@ -40,6 +40,10 @@ Future<void> showRuleta(
     stream: PelisService.instance.watchRuleta(coupleId),
     builder: (sheet, snap) => RuletaPelis(
       opciones: opcionesRuleta(pelis),
+      vigentes: {
+        for (final p in pelis)
+          if (p.estado != EstadoPeli.vista) p.id,
+      },
       giro: snap.data,
       cargando: snap.connectionState == ConnectionState.waiting,
       miUid: uid,
@@ -59,7 +63,12 @@ Future<void> showRuleta(
       },
       onVer: (id) {
         final p = pelis.where((p) => p.id == id).firstOrNull;
-        if (p == null) return;
+        if (p == null) {
+          ScaffoldMessenger.of(sheet).showSnackBar(
+            const SnackBar(content: Text('Esa ya no está en su lista')),
+          );
+          return;
+        }
         Navigator.of(sheet).pop();
         onVer(p);
       },
@@ -75,6 +84,7 @@ class RuletaPelis extends StatefulWidget {
     required this.opciones,
     required this.onVer,
     required this.onGirar,
+    this.vigentes,
     this.giro,
     this.miUid = '',
     this.partnerName = 'Tu pareja',
@@ -86,6 +96,11 @@ class RuletaPelis extends StatefulWidget {
 
   /// Lo que puede salir si giras tú.
   final List<Peli> opciones;
+
+  /// Ids de todo lo que existe ahora y puede salir en la ruleta
+  /// (null = no revisar). Un giro guardado con algo que ya no está aquí
+  /// (porque lo borraron o ya lo vieron) se ignora al abrir la ruleta.
+  final Set<String>? vigentes;
 
   /// El último giro guardado (de cualquiera de los dos).
   final GiroRuleta? giro;
@@ -158,8 +173,18 @@ class _RuletaPelisState extends State<RuletaPelis>
     return -((g.elegida + 0.5 + g.jitter) * seg);
   }
 
+  /// El giro guardado sirve solo si todo lo que tenía la rueda sigue
+  /// existiendo (si no, mostraría algo que ya borraron).
+  bool _sigueVigente(GiroRuleta g) {
+    final v = widget.vigentes;
+    return v == null || g.opciones.every((o) => v.contains(o.id));
+  }
+
   void _recibir(GiroRuleta g, {required bool alAbrir}) {
     _visto = g.token;
+    // Al abrir, un giro viejo con algo ya borrado se ignora: la rueda queda
+    // con lo que hay ahora y se puede volver a girar.
+    if (alAbrir && !_sigueVigente(g)) return;
     final ahora = (widget.ahora ?? DateTime.now)();
     final reciente =
         g.cuando == null ||
